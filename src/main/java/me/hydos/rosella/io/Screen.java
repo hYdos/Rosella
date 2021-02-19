@@ -1,7 +1,7 @@
-package me.hydos.mowingsim.engine.io;
+package me.hydos.rosella.io;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import me.hydos.mowingsim.engine.Rosella;
+import me.hydos.rosella.Rosella;
 
 import java.util.List;
 

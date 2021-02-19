@@ -1,4 +1,4 @@
-package me.hydos.mowingsim.engine.util;
+package me.hydos.rosella.util;
 
 public class VkError {
 

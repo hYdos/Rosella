@@ -1,8 +1,11 @@
-package me.hydos.mowingsim;
+package me.hydos.example;
 
-import me.hydos.mowingsim.engine.Rosella;
-import me.hydos.mowingsim.engine.io.Screen;
+import me.hydos.rosella.Rosella;
+import me.hydos.rosella.io.Screen;
 
+/**
+ * Funny joke i came up with in class yes
+ */
 public class MowingSim {
 
 	public static void main(String[] args) {
