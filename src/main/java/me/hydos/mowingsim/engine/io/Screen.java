@@ -44,10 +44,6 @@ public class Screen {
 		callbacks.add(callback);
 	}
 
-	private void debug(String msg) {
-		System.out.println(msg); //TODO: logging yes
-	}
-
 	public interface MainLoopCallback {
 		void run();
 	}

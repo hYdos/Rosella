@@ -19,8 +19,10 @@ import java.util.stream.Collectors;
 import static org.lwjgl.glfw.GLFWVulkan.glfwGetRequiredInstanceExtensions;
 import static org.lwjgl.system.MemoryStack.stackGet;
 import static org.lwjgl.system.MemoryStack.stackPush;
+import static org.lwjgl.system.MemoryUtil.NULL;
 import static org.lwjgl.vulkan.EXTDebugUtils.*;
 import static org.lwjgl.vulkan.VK10.*;
+import static org.lwjgl.vulkan.VK12.VK_API_VERSION_1_2;
 
 public class Rosella {
 
@@ -42,7 +44,7 @@ public class Rosella {
 					.applicationVersion(VK_MAKE_VERSION(1, 0, 0))
 					.pEngineName(stack.UTF8Safe("Rosella"))
 					.engineVersion(VK_MAKE_VERSION(0, 1, 0))
-					.apiVersion(VK_API_VERSION_1_0);
+					.apiVersion(VK_API_VERSION_1_2);
 
 			VkInstanceCreateInfo createInfo = VkInstanceCreateInfo.callocStack()
 					.pApplicationInfo(applicationInfo)
@@ -67,7 +69,7 @@ public class Rosella {
 
 			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 				vkDestroyInstance(vulkanInstance, null);
-				if (vkGetInstanceProcAddr(vulkanInstance, "vkDestroyDebugUtilsMessengerEXT") != VK_NULL_HANDLE) {
+				if (vkGetInstanceProcAddr(vulkanInstance, "vkDestroyDebugUtilsMessengerEXT") != NULL) {
 					vkDestroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, null);
 				}
 			}));
