@@ -35,7 +35,7 @@ public class Rosella {
 				throw new RuntimeException("Validation Layers are not available!");
 			}
 
-			VkApplicationInfo applicationInfo = VkApplicationInfo.callocStack()
+			VkApplicationInfo applicationInfo = VkApplicationInfo.callocStack(stack)
 					.sType(VK_STRUCTURE_TYPE_APPLICATION_INFO)
 					.pApplicationName(stack.UTF8Safe(name))
 					.applicationVersion(VK_MAKE_VERSION(1, 0, 0))
@@ -43,10 +43,10 @@ public class Rosella {
 					.engineVersion(VK_MAKE_VERSION(0, 1, 0))
 					.apiVersion(VK_API_VERSION_1_2);
 
-			VkInstanceCreateInfo createInfo = VkInstanceCreateInfo.callocStack()
+			VkInstanceCreateInfo createInfo = VkInstanceCreateInfo.callocStack(stack)
 					.pApplicationInfo(applicationInfo)
 					.sType(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
-					.ppEnabledExtensionNames(glfwGetRequiredInstanceExtensions());
+					.ppEnabledExtensionNames(getRequiredExtensions(enableValidationLayers));
 
 			if (enableValidationLayers) {
 				createInfo.ppEnabledLayerNames(layersAsPtrBuffer(validationLayers));
@@ -77,6 +77,19 @@ public class Rosella {
 
 			state = State.READY;
 		}
+	}
+
+	private PointerBuffer getRequiredExtensions(boolean validationLayersEnabled) {
+		PointerBuffer glfwExtensions = glfwGetRequiredInstanceExtensions();
+		if (validationLayersEnabled) {
+			MemoryStack stack = stackGet();
+			PointerBuffer extensions = stack.mallocPointer(glfwExtensions.capacity() + 1);
+			extensions.put(glfwExtensions);
+			extensions.put(stack.UTF8(VK_EXT_DEBUG_UTILS_EXTENSION_NAME));
+			return extensions.rewind();
+		}
+
+		return glfwExtensions;
 	}
 
 	private List<String> getDefaultValidationLayers() {
