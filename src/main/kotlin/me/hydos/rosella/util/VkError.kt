@@ -1,11 +1,11 @@
-package me.hydos.rosella.util;
+package me.hydos.rosella.util
 
-public class VkError {
+import org.lwjgl.vulkan.VK10
 
-	public static void check(int returnCode) {
-		if(returnCode != 0) {
-			System.out.println(returnCode);
-			System.exit(-2);
-		}
+fun Int.ok(): Int {
+	if (this != VK10.VK_SUCCESS) {
+		throw RuntimeException("crab")
 	}
+
+	return this
 }
