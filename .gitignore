@@ -1,4 +1,4 @@
 *.log
 *.iml
 .idea/
-.class
+*.class
