@@ -20,8 +20,9 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 	val width: Int = screen.width
 	val height: Int = screen.height
 	internal var swapchain: Swapchain
-	internal var vulkanInstance: VkInstance? = null
+	internal lateinit var vulkanInstance: VkInstance
 	internal val device: Device
+	internal val pipeline: GfxPipeline
 	internal var state: State
 	var surface: Long = 0
 	var debugMessenger: Long = 0
@@ -44,12 +45,10 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 		}
 
 		createSurface()
-
 		this.device = Device(this, validationLayers)
-
 		this.swapchain = Swapchain(this, device.device, device.physicalDevice, surface, validationLayers)
-
 		createImgViews();
+		this.pipeline = GfxPipeline(device)
 
 		state = State.READY
 	}
@@ -82,7 +81,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 	}
 
 	private fun createInstance(name: String, validationLayers: Set<String>) {
-		MemoryStack.stackPush().use { stack ->
+		stackPush().use { stack ->
 			val applicationInfo = VkApplicationInfo.callocStack(stack)
 				.sType(VK_STRUCTURE_TYPE_APPLICATION_INFO)
 				.pApplicationName(stack.UTF8Safe(name))
@@ -109,7 +108,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 	}
 
 	private fun createSurface() {
-		MemoryStack.stackPush().use {
+		stackPush().use {
 			val pSurface: LongBuffer = it.longs(VK_NULL_HANDLE)
 			glfwCreateWindowSurface(vulkanInstance!!, screen.windowPtr, null, pSurface).ok()
 			this.surface = pSurface.get(0)
@@ -150,7 +149,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 		}
 
 	private fun setupDebugMessenger() {
-		MemoryStack.stackPush().use { stack ->
+		stackPush().use { stack ->
 			val createInfo = VkDebugUtilsMessengerCreateInfoEXT.callocStack(stack)
 			populateDebugMessengerCreateInfo(createInfo)
 			val pDebugMessenger = stack.longs(VK_NULL_HANDLE)
@@ -189,7 +188,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 	}
 
 	private fun validationLayersSupported(validationLayers: Set<String>): Boolean {
-		MemoryStack.stackPush().use { stack ->
+		stackPush().use { stack ->
 			val layerCount = stack.ints(0)
 			vkEnumerateInstanceLayerProperties(layerCount, null).ok()
 			val availableLayers = VkLayerProperties.mallocStack(layerCount[0], stack)
