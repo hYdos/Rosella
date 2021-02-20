@@ -24,6 +24,7 @@
                             <jvmTarget>1.8</jvmTarget>
                             <sourceDirs>
                                 <sourceDir>src/main/kotlin</sourceDir>
+                                <sourceDir>src/test/kotlin</sourceDir>
                             </sourceDirs>
                         </configuration>
                     </execution>
