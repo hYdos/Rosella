@@ -14,6 +14,7 @@ object MowingSim {
 
 		// Register events so we can interact and run game logic
 		screen.onMainLoop { loop() }
+		screen.onWindowClose { engine.destroy() }
 
 		// Start the screens main loop.
 		screen.start(engine)

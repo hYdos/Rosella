@@ -91,7 +91,7 @@ class Rosella(name: String?, enableValidationLayers: Boolean) {
 	}
 
 	companion object {
-		private fun createDebugUtilsMessengerEXT(instance: VkInstance?, createInfo: VkDebugUtilsMessengerCreateInfoEXT, allocationCallbacks: VkAllocationCallbacks?, pDebugMessenger: LongBuffer): Int {
+		private fun createDebugUtilsMessengerEXT(instance: VkInstance, createInfo: VkDebugUtilsMessengerCreateInfoEXT, allocationCallbacks: VkAllocationCallbacks?, pDebugMessenger: LongBuffer): Int {
 			return if (VK10.vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") != MemoryUtil.NULL) {
 				EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, createInfo, allocationCallbacks, pDebugMessenger)
 			} else VK10.VK_ERROR_EXTENSION_NOT_PRESENT
@@ -127,16 +127,19 @@ class Rosella(name: String?, enableValidationLayers: Boolean) {
 			VK10.vkCreateInstance(createInfo, null, instancePtr).ok()
 
 			vulkanInstance = VkInstance(instancePtr[0], createInfo)
-			Runtime.getRuntime().addShutdownHook(Thread {
-				VK10.vkDestroyInstance(vulkanInstance, null)
-				if (VK10.vkGetInstanceProcAddr(vulkanInstance, "vkDestroyDebugUtilsMessengerEXT") != MemoryUtil.NULL) {
-					EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, null)
-				}
-			})
 			if (enableValidationLayers) {
 				setupDebugMessenger()
 			}
 			state = State.READY
 		}
+	}
+
+	fun destroy() {
+		this.state = State.STOPPING
+		if (VK10.vkGetInstanceProcAddr(vulkanInstance, "vkDestroyDebugUtilsMessengerEXT") != MemoryUtil.NULL) {
+			EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, null)
+		}
+
+		VK10.vkDestroyInstance(vulkanInstance, null)
 	}
 }
