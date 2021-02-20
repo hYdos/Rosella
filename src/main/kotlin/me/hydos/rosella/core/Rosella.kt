@@ -10,10 +10,10 @@ import java.nio.LongBuffer
 import java.util.*
 import java.util.stream.Collectors
 
-class Rosella(name: String, enableValidationLayers: Boolean) {
-	internal var vulkanInstance: VkInstance
+class Rosella(name: String, val enableValidationLayers: Boolean) {
+	internal val vulkanInstance: VkInstance
+	private val device: Device
 	private var state: State
-	private var device: Device
 	var debugMessenger: Long = 0
 
 	init {
@@ -54,7 +54,7 @@ class Rosella(name: String, enableValidationLayers: Boolean) {
 			}
 
 			// Get device information
-			this.device = Device(this)
+			this.device = Device(this, validationLayers)
 
 			state = State.READY
 		}
@@ -116,7 +116,7 @@ class Rosella(name: String, enableValidationLayers: Boolean) {
 		return VK10.VK_FALSE
 	}
 
-	private fun layersAsPtrBuffer(validationLayers: List<String>): PointerBuffer {
+	internal fun layersAsPtrBuffer(validationLayers: List<String>): PointerBuffer {
 		val stack = MemoryStack.stackGet()
 		val buffer = stack.mallocPointer(validationLayers.size)
 		for (validationLayer in validationLayers) {
@@ -129,9 +129,9 @@ class Rosella(name: String, enableValidationLayers: Boolean) {
 	private fun validationLayersSupported(validationLayers: List<String>): Boolean {
 		MemoryStack.stackPush().use { stack ->
 			val layerCount = stack.ints(0)
-			VK10.vkEnumerateInstanceLayerProperties(layerCount, null)
+			VK10.vkEnumerateInstanceLayerProperties(layerCount, null).ok()
 			val availableLayers = VkLayerProperties.mallocStack(layerCount[0], stack)
-			VK10.vkEnumerateInstanceLayerProperties(layerCount, availableLayers)
+			VK10.vkEnumerateInstanceLayerProperties(layerCount, availableLayers).ok()
 			val availableLayerNames = availableLayers.stream()
 					.map { obj: VkLayerProperties -> obj.layerNameString() }
 					.collect(Collectors.toSet())

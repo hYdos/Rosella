@@ -12,8 +12,10 @@ class Screen(title: String, width: Int, height: Int, windowResizable: Boolean) {
 
 	fun start(engine: Rosella) {
 		this.engine = engine
+
 		while (!GLFW.glfwWindowShouldClose(windowPtr)) {
 			GLFW.glfwPollEvents()
+
 			for (callback in loopCallbacks) {
 				callback()
 			}
@@ -32,7 +34,7 @@ class Screen(title: String, width: Int, height: Int, windowResizable: Boolean) {
 		GLFW.glfwInit()
 		windowPtr = GLFW.glfwCreateWindow(width, height, title, 0, 0)
 		GLFW.glfwWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API)
-		GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, if (windowResizable) GLFW.GLFW_TRUE else GLFW.GLFW_FALSE)
+		GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, windowResizable.asGlfw())
 		Runtime.getRuntime().addShutdownHook(Thread {
 			for (callback in closeCallbacks) {
 				callback()
@@ -42,3 +44,5 @@ class Screen(title: String, width: Int, height: Int, windowResizable: Boolean) {
 		})
 	}
 }
+
+private fun Boolean.asGlfw(): Int = if (this) GLFW.GLFW_TRUE else GLFW.GLFW_FALSE

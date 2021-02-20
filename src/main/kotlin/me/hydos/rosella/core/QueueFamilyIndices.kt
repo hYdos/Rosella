@@ -2,11 +2,10 @@ package me.hydos.rosella.core
 
 import java.util.stream.IntStream
 
-
-private class QueueFamilyIndices {
-	private val graphicsFamily: Int? = null
-	private val presentFamily: Int? = null
-	private val isComplete: Boolean
+class QueueFamilyIndices {
+	var graphicsFamily: Int? = null
+	val presentFamily: Int? = null
+	val isComplete: Boolean
 		get() = graphicsFamily != null && presentFamily != null
 
 	fun unique(): IntArray {
