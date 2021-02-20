@@ -22,7 +22,7 @@ class Swapchain(
 	var swapChainImageViews: List<Long>? = null
 	var swapChainImages: List<Long>? = null
 	var swapChainImageFormat = 0
-	private var swapChainExtent: VkExtent2D? = null
+	var swapChainExtent: VkExtent2D? = null
 
 	init {
 		MemoryStack.stackPush().use {

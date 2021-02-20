@@ -48,7 +48,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 		this.device = Device(this, validationLayers)
 		this.swapchain = Swapchain(this, device.device, device.physicalDevice, surface, validationLayers)
 		createImgViews();
-		this.pipeline = GfxPipeline(device)
+		this.pipeline = GfxPipeline(device, swapchain)
 
 		state = State.READY
 	}
@@ -119,6 +119,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 		this.state = State.STOPPING
 
 		swapchain.swapChainImageViews!!.forEach { imageView -> vkDestroyImageView(device.device, imageView, null) }
+		vkDestroyPipelineLayout(device.device, pipeline.pipelineLayout, null)
 		vkDestroySwapchainKHR(device.device, swapchain.swapChain, null)
 		vkDestroyDevice(device.device, null);
 		if (vkGetInstanceProcAddr(vulkanInstance, "vkDestroyDebugUtilsMessengerEXT") != MemoryUtil.NULL) {
