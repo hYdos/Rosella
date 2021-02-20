@@ -4,15 +4,18 @@ import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR
+import org.lwjgl.vulkan.KHRSurface.*
+import org.lwjgl.vulkan.KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME
 import org.lwjgl.vulkan.VK10.*
 
 
-class Device(private val engine: Rosella, private val layers: List<String>) {
+val DEVICE_EXTENSIONS: Set<String> = listOf(VK_KHR_SWAPCHAIN_EXTENSION_NAME).toSet()
+
+class Device(private val engine: Rosella, private val layers: Set<String>) {
 
 	internal var device: VkDevice
 
-	private val physicalDevice: VkPhysicalDevice = stackPush().use {
+	internal val physicalDevice: VkPhysicalDevice = stackPush().use {
 		val deviceCount = run {
 			val count = it.ints(0)
 			vkEnumeratePhysicalDevices(engine.vulkanInstance, count, null).ok()
@@ -40,9 +43,7 @@ class Device(private val engine: Rosella, private val layers: List<String>) {
 	init {
 		stackPush().use {
 			val indices = findQueueFamilies(physicalDevice, engine)
-
 			val uniqueQueueFamilies = indices.unique()
-
 			val queueCreateInfos = VkDeviceQueueCreateInfo.callocStack(uniqueQueueFamilies.size, it)
 
 			for (i in uniqueQueueFamilies.indices) {
@@ -53,26 +54,21 @@ class Device(private val engine: Rosella, private val layers: List<String>) {
 			}
 
 			val deviceFeatures: VkPhysicalDeviceFeatures = VkPhysicalDeviceFeatures.callocStack(it)
-
 			val createInfo: VkDeviceCreateInfo = VkDeviceCreateInfo.callocStack(it)
 
 			createInfo.sType(VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
 			createInfo.pQueueCreateInfos(queueCreateInfos)
-			// queueCreateInfoCount is automatically set
-
-			// queueCreateInfoCount is automatically set
 			createInfo.pEnabledFeatures(deviceFeatures)
+
+			createInfo.ppEnabledExtensionNames(engine.layersAsPtrBuffer(DEVICE_EXTENSIONS))
 
 			if (engine.enableValidationLayers) {
 				createInfo.ppEnabledLayerNames(engine.layersAsPtrBuffer(layers))
 			}
-
 			val pDevice: PointerBuffer = it.pointers(VK_NULL_HANDLE)
-
 			if (vkCreateDevice(physicalDevice, createInfo, null, pDevice) != VK_SUCCESS) {
 				throw RuntimeException("Failed to create logical device")
 			}
-
 			device = VkDevice(pDevice[0], physicalDevice, createInfo)
 
 			val pQueue: PointerBuffer = it.pointers(VK_NULL_HANDLE)
@@ -84,13 +80,38 @@ class Device(private val engine: Rosella, private val layers: List<String>) {
 			engine.presentQueue = VkQueue(pQueue[0], device)
 		}
 	}
+
+
+	private fun isDeviceSuitable(device: VkPhysicalDevice, engine: Rosella): Boolean {
+		val indices = findQueueFamilies(device, engine)
+
+		val extensionsSupported = checkDeviceExtensionsSupport(device)
+		var swapChainAdequate = false
+		if (extensionsSupported) {
+			stackPush().use {
+				val swapChainSupport: SwapChainSupportDetails = querySwapChainSupport(device, it, engine.surface)
+				swapChainAdequate =
+					swapChainSupport.formats!!.hasRemaining() && swapChainSupport.presentModes!!.hasRemaining();
+			}
+		}
+
+		return indices.isComplete && extensionsSupported && swapChainAdequate;
+	}
+
+	private fun checkDeviceExtensionsSupport(device: VkPhysicalDevice): Boolean {
+		stackPush().use { stack ->
+			val extensionCount = stack.ints(0)
+			vkEnumerateDeviceExtensionProperties(device, null as String?, extensionCount, null)
+			val availableExtensions =
+				VkExtensionProperties.mallocStack(extensionCount[0], stack)
+//			return availableExtensions.stream().collect(toSet()).containsAll(DEVICE_EXTENSIONS)
+			TODO("something broke here. based workaround")
+			return true
+		}
+	}
 }
 
-private fun isDeviceSuitable(device: VkPhysicalDevice, engine: Rosella): Boolean {
-	return findQueueFamilies(device, engine).isComplete
-}
-
-private fun findQueueFamilies(device: VkPhysicalDevice, engine: Rosella): QueueFamilyIndices {
+internal fun findQueueFamilies(device: VkPhysicalDevice, engine: Rosella): QueueFamilyIndices {
 	val indices = QueueFamilyIndices()
 
 	stackPush().use { stack ->
@@ -116,4 +137,3 @@ private fun findQueueFamilies(device: VkPhysicalDevice, engine: Rosella): QueueF
 		return indices
 	}
 }
-
