@@ -1,7 +1,7 @@
 package me.hydos.rosella.io
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
-import me.hydos.rosella.Rosella
+import me.hydos.rosella.core.Rosella
 import org.lwjgl.glfw.GLFW
 
 class Screen(title: String, width: Int, height: Int, windowResizable: Boolean) {

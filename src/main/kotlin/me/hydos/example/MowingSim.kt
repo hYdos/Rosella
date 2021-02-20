@@ -1,6 +1,6 @@
 package me.hydos.example
 
-import me.hydos.rosella.Rosella
+import me.hydos.rosella.core.Rosella
 import me.hydos.rosella.io.Screen
 
 /**
