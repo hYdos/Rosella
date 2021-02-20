@@ -6,12 +6,13 @@ import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.glfw.GLFWVulkan.glfwCreateWindowSurface
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR
+import org.lwjgl.vulkan.KHRSwapchain.vkDestroySwapchainKHR
 import org.lwjgl.vulkan.VK10.*
 import java.nio.LongBuffer
-import java.util.*
 import java.util.stream.Collectors
 
 
@@ -48,7 +49,36 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 
 		this.swapchain = Swapchain(this, device.device, device.physicalDevice, surface, validationLayers)
 
+		createImgViews();
+
 		state = State.READY
+	}
+
+	private fun createImgViews() {
+		swapchain.swapChainImageViews = ArrayList(swapchain.swapChainImages!!.size)
+
+		stackPush().use {
+			val pImageView: LongBuffer = it.mallocLong(1)
+
+			for (swapChainImage in swapchain.swapChainImages!!) {
+				val createInfo: VkImageViewCreateInfo = VkImageViewCreateInfo.callocStack(it)
+				createInfo.sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
+					.image(swapChainImage)
+					.viewType(VK_IMAGE_VIEW_TYPE_2D)
+					.format(swapchain.swapChainImageFormat)
+				createInfo.components().r(VK_COMPONENT_SWIZZLE_IDENTITY)
+					.g(VK_COMPONENT_SWIZZLE_IDENTITY)
+					.b(VK_COMPONENT_SWIZZLE_IDENTITY)
+					.a(VK_COMPONENT_SWIZZLE_IDENTITY)
+				createInfo.subresourceRange().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+					.baseMipLevel(0)
+					.levelCount(1)
+					.baseArrayLayer(0)
+					.layerCount(1)
+				vkCreateImageView(device.device, createInfo, null, pImageView).ok()
+				(swapchain.swapChainImageViews as ArrayList<Long>).add(pImageView[0])
+			}
+		}
 	}
 
 	private fun createInstance(name: String, validationLayers: Set<String>) {
@@ -88,6 +118,9 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 
 	fun destroy() {
 		this.state = State.STOPPING
+
+		swapchain.swapChainImageViews!!.forEach { imageView -> vkDestroyImageView(device.device, imageView, null) }
+		vkDestroySwapchainKHR(device.device, swapchain.swapChain, null)
 		vkDestroyDevice(device.device, null);
 		if (vkGetInstanceProcAddr(vulkanInstance, "vkDestroyDebugUtilsMessengerEXT") != MemoryUtil.NULL) {
 			EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, null)

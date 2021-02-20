@@ -18,9 +18,10 @@ class Swapchain(
 	surface: Long,
 	validationLayers: Set<String>
 ) {
-	private var swapChain: Long = 0
-	private var swapChainImages: List<Long>? = null
-	private var swapChainImageFormat = 0
+	var swapChain: Long = 0
+	var swapChainImageViews: List<Long>? = null
+	var swapChainImages: List<Long>? = null
+	var swapChainImageFormat = 0
 	private var swapChainExtent: VkExtent2D? = null
 
 	init {

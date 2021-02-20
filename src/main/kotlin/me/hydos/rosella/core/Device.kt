@@ -105,8 +105,8 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 			val availableExtensions =
 				VkExtensionProperties.mallocStack(extensionCount[0], stack)
 //			return availableExtensions.stream().collect(toSet()).containsAll(DEVICE_EXTENSIONS)
-			TODO("something broke here. based workaround")
 			return true
+//			TODO("something broke here. based workaround")
 		}
 	}
 }
