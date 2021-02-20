@@ -41,32 +41,47 @@ class Device(private val engine: Rosella, private val layers: List<String>) {
 		stackPush().use {
 			val indices = findQueueFamilies(physicalDevice, engine)
 
-			val queueCreateInfos = VkDeviceQueueCreateInfo.callocStack(1, it)
-					.sType(VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
-					.queueFamilyIndex(indices.graphicsFamily!!)
-					.pQueuePriorities(it.floats(1.0f))
+			val uniqueQueueFamilies = indices.unique()
 
-			val deviceFeatures = VkPhysicalDeviceFeatures.callocStack(it)
-			val createInfo = VkDeviceCreateInfo.callocStack(it)
-					.sType(VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
-					.pQueueCreateInfos(queueCreateInfos)
-					.pEnabledFeatures(deviceFeatures)
+			val queueCreateInfos = VkDeviceQueueCreateInfo.callocStack(uniqueQueueFamilies.size, it)
+
+			for (i in uniqueQueueFamilies.indices) {
+				val queueCreateInfo = queueCreateInfos[i]
+				queueCreateInfo.sType(VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
+				queueCreateInfo.queueFamilyIndex(uniqueQueueFamilies[i])
+				queueCreateInfo.pQueuePriorities(it.floats(1.0f))
+			}
+
+			val deviceFeatures: VkPhysicalDeviceFeatures = VkPhysicalDeviceFeatures.callocStack(it)
+
+			val createInfo: VkDeviceCreateInfo = VkDeviceCreateInfo.callocStack(it)
+
+			createInfo.sType(VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
+			createInfo.pQueueCreateInfos(queueCreateInfos)
+			// queueCreateInfoCount is automatically set
+
+			// queueCreateInfoCount is automatically set
+			createInfo.pEnabledFeatures(deviceFeatures)
 
 			if (engine.enableValidationLayers) {
 				createInfo.ppEnabledLayerNames(engine.layersAsPtrBuffer(layers))
 			}
 
 			val pDevice: PointerBuffer = it.pointers(VK_NULL_HANDLE)
-			vkCreateDevice(physicalDevice, createInfo, null, pDevice).ok()
-			this.device = VkDevice(pDevice.get(0), physicalDevice, createInfo)
+
+			if (vkCreateDevice(physicalDevice, createInfo, null, pDevice) != VK_SUCCESS) {
+				throw RuntimeException("Failed to create logical device")
+			}
+
+			device = VkDevice(pDevice[0], physicalDevice, createInfo)
 
 			val pQueue: PointerBuffer = it.pointers(VK_NULL_HANDLE)
 
 			vkGetDeviceQueue(device, indices.graphicsFamily!!, 0, pQueue)
-			engine.graphicsQueue = VkQueue(pQueue.get(0), device)
+			engine.graphicsQueue = VkQueue(pQueue[0], device)
 
 			vkGetDeviceQueue(device, indices.presentFamily!!, 0, pQueue)
-			engine.presentQueue = VkQueue(pQueue.get(0), device)
+			engine.presentQueue = VkQueue(pQueue[0], device)
 		}
 	}
 }
