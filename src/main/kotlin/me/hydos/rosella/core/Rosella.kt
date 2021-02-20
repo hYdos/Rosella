@@ -6,6 +6,7 @@ import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.VK10.vkDestroyDevice
 import java.nio.LongBuffer
 import java.util.*
 import java.util.stream.Collectors
@@ -62,6 +63,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean) {
 
 	fun destroy() {
 		this.state = State.STOPPING
+		vkDestroyDevice(device.device, null);
 		if (VK10.vkGetInstanceProcAddr(vulkanInstance, "vkDestroyDebugUtilsMessengerEXT") != MemoryUtil.NULL) {
 			EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, null)
 		}

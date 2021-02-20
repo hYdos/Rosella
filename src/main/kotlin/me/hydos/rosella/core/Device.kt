@@ -5,11 +5,18 @@ import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
+import java.util.stream.IntStream
+
+
+
+
+
+
 
 class Device(private val engine: Rosella, private val layers: List<String>) {
 
 	private var graphicsQueue: VkQueue
-	private var device: VkDevice
+	internal var device: VkDevice
 
 	private val physicalDevice: VkPhysicalDevice = stackPush().use {
 		val deviceCount = run {
@@ -25,7 +32,7 @@ class Device(private val engine: Rosella, private val layers: List<String>) {
 		val pPhysicalDevices = it.mallocPointer(deviceCount[0])
 		vkEnumeratePhysicalDevices(engine.vulkanInstance, deviceCount, pPhysicalDevices).ok()
 
-		for (i in 0..deviceCount[0]) {
+		for (i in 0 until deviceCount.capacity()) {
 			val device = VkPhysicalDevice(pPhysicalDevices[i], engine.vulkanInstance)
 
 			if (isDeviceSuitable(device)) {
@@ -60,6 +67,7 @@ class Device(private val engine: Rosella, private val layers: List<String>) {
 			this.device = VkDevice(pDevice.get(0), physicalDevice, createInfo)
 
 			val pGraphicsQueue: PointerBuffer = it.pointers(VK_NULL_HANDLE)
+			vkGetDeviceQueue(device, indices.graphicsFamily!!, 0, pGraphicsQueue);
 			this.graphicsQueue = VkQueue(pGraphicsQueue.get(0), device)
 		}
 	}
@@ -79,12 +87,10 @@ private fun findQueueFamilies(device: VkPhysicalDevice): QueueFamilyIndices {
 		val queueFamilies = VkQueueFamilyProperties.mallocStack(queueFamilyCount[0], stack)
 		vkGetPhysicalDeviceQueueFamilyProperties(device, queueFamilyCount, queueFamilies)
 
-		for (i in 0..queueFamilies.capacity()) {
-			if (queueFamilies[i].queueFlags() and VK_QUEUE_GRAPHICS_BIT != 0) {
-				indices.graphicsFamily = i
-				break
-			}
-		}
+		IntStream.range(0, queueFamilies.capacity())
+				.filter { index: Int -> queueFamilies[index].queueFlags() and VK_QUEUE_GRAPHICS_BIT != 0 }
+				.findFirst()
+				.ifPresent { index: Int -> indices.graphicsFamily = index }
 
 		return indices
 	}
