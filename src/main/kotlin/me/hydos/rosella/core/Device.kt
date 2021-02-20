@@ -4,18 +4,12 @@ import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR
 import org.lwjgl.vulkan.VK10.*
-import java.util.stream.IntStream
-
-
-
-
-
 
 
 class Device(private val engine: Rosella, private val layers: List<String>) {
 
-	private var graphicsQueue: VkQueue
 	internal var device: VkDevice
 
 	private val physicalDevice: VkPhysicalDevice = stackPush().use {
@@ -35,7 +29,7 @@ class Device(private val engine: Rosella, private val layers: List<String>) {
 		for (i in 0 until deviceCount.capacity()) {
 			val device = VkPhysicalDevice(pPhysicalDevices[i], engine.vulkanInstance)
 
-			if (isDeviceSuitable(device)) {
+			if (isDeviceSuitable(device, engine)) {
 				return@use device
 			}
 		}
@@ -45,7 +39,7 @@ class Device(private val engine: Rosella, private val layers: List<String>) {
 
 	init {
 		stackPush().use {
-			val indices = findQueueFamilies(physicalDevice)
+			val indices = findQueueFamilies(physicalDevice, engine)
 
 			val queueCreateInfos = VkDeviceQueueCreateInfo.callocStack(1, it)
 					.sType(VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
@@ -58,7 +52,7 @@ class Device(private val engine: Rosella, private val layers: List<String>) {
 					.pQueueCreateInfos(queueCreateInfos)
 					.pEnabledFeatures(deviceFeatures)
 
-			if(engine.enableValidationLayers) {
+			if (engine.enableValidationLayers) {
 				createInfo.ppEnabledLayerNames(engine.layersAsPtrBuffer(layers))
 			}
 
@@ -66,18 +60,22 @@ class Device(private val engine: Rosella, private val layers: List<String>) {
 			vkCreateDevice(physicalDevice, createInfo, null, pDevice).ok()
 			this.device = VkDevice(pDevice.get(0), physicalDevice, createInfo)
 
-			val pGraphicsQueue: PointerBuffer = it.pointers(VK_NULL_HANDLE)
-			vkGetDeviceQueue(device, indices.graphicsFamily!!, 0, pGraphicsQueue);
-			this.graphicsQueue = VkQueue(pGraphicsQueue.get(0), device)
+			val pQueue: PointerBuffer = it.pointers(VK_NULL_HANDLE)
+
+			vkGetDeviceQueue(device, indices.graphicsFamily!!, 0, pQueue)
+			engine.graphicsQueue = VkQueue(pQueue.get(0), device)
+
+			vkGetDeviceQueue(device, indices.presentFamily!!, 0, pQueue)
+			engine.presentQueue = VkQueue(pQueue.get(0), device)
 		}
 	}
 }
 
-private fun isDeviceSuitable(device: VkPhysicalDevice): Boolean {
-	return findQueueFamilies(device).isComplete
+private fun isDeviceSuitable(device: VkPhysicalDevice, engine: Rosella): Boolean {
+	return findQueueFamilies(device, engine).isComplete
 }
 
-private fun findQueueFamilies(device: VkPhysicalDevice): QueueFamilyIndices {
+private fun findQueueFamilies(device: VkPhysicalDevice, engine: Rosella): QueueFamilyIndices {
 	val indices = QueueFamilyIndices()
 
 	stackPush().use { stack ->
@@ -87,11 +85,19 @@ private fun findQueueFamilies(device: VkPhysicalDevice): QueueFamilyIndices {
 		val queueFamilies = VkQueueFamilyProperties.mallocStack(queueFamilyCount[0], stack)
 		vkGetPhysicalDeviceQueueFamilyProperties(device, queueFamilyCount, queueFamilies)
 
-		IntStream.range(0, queueFamilies.capacity())
-				.filter { index: Int -> queueFamilies[index].queueFlags() and VK_QUEUE_GRAPHICS_BIT != 0 }
-				.findFirst()
-				.ifPresent { index: Int -> indices.graphicsFamily = index }
+		val presentSupport = stack.ints(VK_FALSE)
 
+		var i = 0
+		while (i < queueFamilies.capacity() || !indices.isComplete) {
+			if (queueFamilies[i].queueFlags() and VK_QUEUE_GRAPHICS_BIT != 0) {
+				indices.graphicsFamily = i
+			}
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, engine.surface, presentSupport)
+			if (presentSupport.get(0) == VK_TRUE) {
+				indices.presentFamily = i
+			}
+			i++
+		}
 		return indices
 	}
 }

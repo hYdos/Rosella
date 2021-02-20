@@ -1,21 +1,28 @@
 package me.hydos.rosella.core
 
+import me.hydos.rosella.io.Screen
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFWVulkan
+import org.lwjgl.glfw.GLFWVulkan.glfwCreateWindowSurface
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK10.vkDestroyDevice
+import org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR
+import org.lwjgl.vulkan.VK10.*
 import java.nio.LongBuffer
 import java.util.*
 import java.util.stream.Collectors
 
-class Rosella(name: String, val enableValidationLayers: Boolean) {
+
+class Rosella(name: String, val enableValidationLayers: Boolean, private val screen: Screen) {
 	internal val vulkanInstance: VkInstance
 	private val device: Device
 	private var state: State
+	var surface: Long = 0
 	var debugMessenger: Long = 0
+	var graphicsQueue: VkQueue? = null
+	var presentQueue: VkQueue? = null
 
 	init {
 		state = State.STARTING
@@ -29,15 +36,15 @@ class Rosella(name: String, val enableValidationLayers: Boolean) {
 
 			// Setup an Vulkan Instance
 			val applicationInfo = VkApplicationInfo.callocStack(stack)
-					.sType(VK10.VK_STRUCTURE_TYPE_APPLICATION_INFO)
+					.sType(VK_STRUCTURE_TYPE_APPLICATION_INFO)
 					.pApplicationName(stack.UTF8Safe(name))
-					.applicationVersion(VK10.VK_MAKE_VERSION(1, 0, 0))
+					.applicationVersion(VK_MAKE_VERSION(1, 0, 0))
 					.pEngineName(stack.UTF8Safe("Rosella"))
-					.engineVersion(VK10.VK_MAKE_VERSION(0, 1, 0))
+					.engineVersion(VK_MAKE_VERSION(0, 1, 0))
 					.apiVersion(VK12.VK_API_VERSION_1_2)
 			val createInfo = VkInstanceCreateInfo.callocStack(stack)
 					.pApplicationInfo(applicationInfo)
-					.sType(VK10.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
+					.sType(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
 					.ppEnabledExtensionNames(getRequiredExtensions(enableValidationLayers))
 			if (enableValidationLayers) {
 				createInfo.ppEnabledLayerNames(layersAsPtrBuffer(validationLayers))
@@ -47,27 +54,38 @@ class Rosella(name: String, val enableValidationLayers: Boolean) {
 			}
 
 			val instancePtr = stack.mallocPointer(1)
-			VK10.vkCreateInstance(createInfo, null, instancePtr).ok()
+			vkCreateInstance(createInfo, null, instancePtr).ok()
 
 			vulkanInstance = VkInstance(instancePtr[0], createInfo)
 			if (enableValidationLayers) {
 				setupDebugMessenger()
 			}
 
-			// Get device information
+			createSurface()
+
 			this.device = Device(this, validationLayers)
 
 			state = State.READY
 		}
 	}
 
+	private fun createSurface() {
+		MemoryStack.stackPush().use {
+			val pSurface: LongBuffer = it.longs(VK_NULL_HANDLE)
+			glfwCreateWindowSurface(vulkanInstance, screen.windowPtr, null, pSurface).ok()
+			this.surface = pSurface.get(0)
+		}
+	}
+
 	fun destroy() {
 		this.state = State.STOPPING
 		vkDestroyDevice(device.device, null);
-		if (VK10.vkGetInstanceProcAddr(vulkanInstance, "vkDestroyDebugUtilsMessengerEXT") != MemoryUtil.NULL) {
+		if (vkGetInstanceProcAddr(vulkanInstance, "vkDestroyDebugUtilsMessengerEXT") != MemoryUtil.NULL) {
 			EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, null)
 		}
-		VK10.vkDestroyInstance(vulkanInstance, null)
+
+		vkDestroySurfaceKHR(vulkanInstance, surface, null)
+		vkDestroyInstance(vulkanInstance, null)
 	}
 
 	private fun getRequiredExtensions(validationLayersEnabled: Boolean): PointerBuffer? {
@@ -93,8 +111,8 @@ class Rosella(name: String, val enableValidationLayers: Boolean) {
 		MemoryStack.stackPush().use { stack ->
 			val createInfo = VkDebugUtilsMessengerCreateInfoEXT.callocStack(stack)
 			populateDebugMessengerCreateInfo(createInfo)
-			val pDebugMessenger = stack.longs(VK10.VK_NULL_HANDLE)
-			if (createDebugUtilsMessengerEXT(vulkanInstance, createInfo, null, pDebugMessenger) != VK10.VK_SUCCESS) {
+			val pDebugMessenger = stack.longs(VK_NULL_HANDLE)
+			if (createDebugUtilsMessengerEXT(vulkanInstance, createInfo, null, pDebugMessenger) != VK_SUCCESS) {
 				throw RuntimeException("Failed to set up debug messenger")
 			}
 			debugMessenger = pDebugMessenger[0]
@@ -115,7 +133,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean) {
 		} else {
 			println(callbackData.pMessageString())
 		}
-		return VK10.VK_FALSE
+		return VK_FALSE
 	}
 
 	internal fun layersAsPtrBuffer(validationLayers: List<String>): PointerBuffer {
@@ -131,9 +149,9 @@ class Rosella(name: String, val enableValidationLayers: Boolean) {
 	private fun validationLayersSupported(validationLayers: List<String>): Boolean {
 		MemoryStack.stackPush().use { stack ->
 			val layerCount = stack.ints(0)
-			VK10.vkEnumerateInstanceLayerProperties(layerCount, null).ok()
+			vkEnumerateInstanceLayerProperties(layerCount, null).ok()
 			val availableLayers = VkLayerProperties.mallocStack(layerCount[0], stack)
-			VK10.vkEnumerateInstanceLayerProperties(layerCount, availableLayers).ok()
+			vkEnumerateInstanceLayerProperties(layerCount, availableLayers).ok()
 			val availableLayerNames = availableLayers.stream()
 					.map { obj: VkLayerProperties -> obj.layerNameString() }
 					.collect(Collectors.toSet())
@@ -147,9 +165,9 @@ class Rosella(name: String, val enableValidationLayers: Boolean) {
 
 	companion object {
 		private fun createDebugUtilsMessengerEXT(instance: VkInstance, createInfo: VkDebugUtilsMessengerCreateInfoEXT, allocationCallbacks: VkAllocationCallbacks?, pDebugMessenger: LongBuffer): Int {
-			return if (VK10.vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") != MemoryUtil.NULL) {
+			return if (vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") != MemoryUtil.NULL) {
 				EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, createInfo, allocationCallbacks, pDebugMessenger)
-			} else VK10.VK_ERROR_EXTENSION_NOT_PRESENT
+			} else VK_ERROR_EXTENSION_NOT_PRESENT
 		}
 	}
 }

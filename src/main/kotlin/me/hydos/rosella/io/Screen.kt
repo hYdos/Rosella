@@ -3,9 +3,10 @@ package me.hydos.rosella.io
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
 import me.hydos.rosella.core.Rosella
 import org.lwjgl.glfw.GLFW
+import org.lwjgl.glfw.GLFW.*
 
 class Screen(title: String, width: Int, height: Int, windowResizable: Boolean) {
-	private val windowPtr: Long
+	internal val windowPtr: Long
 	private val loopCallbacks: MutableList<() -> Unit> = ObjectArrayList()
 	private val closeCallbacks: MutableList<() -> Unit> = ObjectArrayList()
 	private var engine: Rosella? = null
@@ -13,8 +14,8 @@ class Screen(title: String, width: Int, height: Int, windowResizable: Boolean) {
 	fun start(engine: Rosella) {
 		this.engine = engine
 
-		while (!GLFW.glfwWindowShouldClose(windowPtr)) {
-			GLFW.glfwPollEvents()
+		while (!glfwWindowShouldClose(windowPtr)) {
+			glfwPollEvents()
 
 			for (callback in loopCallbacks) {
 				callback()
@@ -31,16 +32,18 @@ class Screen(title: String, width: Int, height: Int, windowResizable: Boolean) {
 	}
 
 	init {
-		GLFW.glfwInit()
-		windowPtr = GLFW.glfwCreateWindow(width, height, title, 0, 0)
-		GLFW.glfwWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API)
-		GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, windowResizable.asGlfw())
+		if (!glfwInit()) {
+			throw RuntimeException("Cannot Initialize GLFW")
+		}
+		windowPtr = glfwCreateWindow(width, height, title, 0, 0)
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API)
+		glfwWindowHint(GLFW_RESIZABLE, windowResizable.asGlfw())
 		Runtime.getRuntime().addShutdownHook(Thread {
 			for (callback in closeCallbacks) {
 				callback()
 			}
-			GLFW.glfwDestroyWindow(windowPtr)
-			GLFW.glfwTerminate()
+			glfwDestroyWindow(windowPtr)
+			glfwTerminate()
 		})
 	}
 }

@@ -1,5 +1,6 @@
 package me.hydos.rosella.util
 
+import org.lwjgl.vulkan.KHRSurface
 import org.lwjgl.vulkan.VK10
 
 private val map = mutableMapOf<Int, String>().apply {
@@ -21,6 +22,7 @@ private val map = mutableMapOf<Int, String>().apply {
 	this[VK10.VK_ERROR_FORMAT_NOT_SUPPORTED] = "VK_ERROR_FORMAT_NOT_SUPPORTED"
 	this[VK10.VK_ERROR_FRAGMENTED_POOL] = "VK_ERROR_FRAGMENTED_POOL"
 	this[VK10.VK_ERROR_UNKNOWN] = "VK_ERROR_UNKNOWN"
+	this[KHRSurface.VK_ERROR_NATIVE_WINDOW_IN_USE_KHR] = "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR"
 }
 
 fun Int.ok(): Int {
