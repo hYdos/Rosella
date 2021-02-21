@@ -3,8 +3,9 @@ package me.hydos.rosella.core
 import java.util.stream.IntStream
 
 class QueueFamilyIndices {
-	var graphicsFamily: Int? = null
-	var presentFamily: Int? = null
+	internal var graphicsFamily: Int? = null
+	internal var presentFamily: Int? = null
+
 	val isComplete: Boolean
 		get() = graphicsFamily != null && presentFamily != null
 

@@ -26,9 +26,6 @@ import java.util.function.Consumer
 import java.util.stream.Collectors
 
 
-
-
-
 class Rosella(name: String, val enableValidationLayers: Boolean, internal val screen: Screen) {
 
 	var model: Model = Model()
@@ -38,7 +35,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 	private var framebufferResize: Boolean = false
 
-	internal lateinit var commandBuffers: CommandBuffers
+	internal var commandBuffers: CommandBuffers
 	private lateinit var swapChain: Swapchain
 	private lateinit var renderPass: RenderPass
 	internal lateinit var vulkanInstance: VkInstance
@@ -78,6 +75,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 	private fun createModels() {
 		model.createVertexBuffer(device, this)
+		model.createIndexBuffer(device, this)
 	}
 
 	private fun createFullSwapChain() {
@@ -353,7 +351,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 			submitInfo.pSignalSemaphores(thisFrame.pRenderFinishedSemaphore())
 			submitInfo.pCommandBuffers(stack.pointers(commandBuffers.commandBuffers[imageIndex]))
 			vkResetFences(device.device, thisFrame.pFence())
-			vkQueueSubmit(graphicsQueue!!, submitInfo, thisFrame.fence()).ok()
+			vkQueueSubmit(graphicsQueue, submitInfo, thisFrame.fence()).ok()
 			val presentInfo = VkPresentInfoKHR.callocStack(stack)
 			presentInfo.sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
 			presentInfo.pWaitSemaphores(thisFrame.pRenderFinishedSemaphore())
@@ -361,7 +359,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 			presentInfo.pSwapchains(stack.longs(swapChain.swapChain))
 			presentInfo.pImageIndices(pImageIndex)
 
-			vkResult = vkQueuePresentKHR(presentQueue!!, presentInfo)
+			vkResult = vkQueuePresentKHR(presentQueue, presentInfo)
 
 			if (vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR || framebufferResize) {
 				framebufferResize = false

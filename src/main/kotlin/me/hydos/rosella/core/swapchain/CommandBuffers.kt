@@ -6,8 +6,7 @@ import me.hydos.rosella.core.findQueueFamilies
 import me.hydos.rosella.util.ok
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO
-import org.lwjgl.vulkan.VK10.vkCreateCommandPool
+import org.lwjgl.vulkan.VK10.*
 import java.util.*
 
 
@@ -48,12 +47,12 @@ class CommandBuffers(
 		stackPush().use { stack ->
 			// Allocate
 			val allocInfo = VkCommandBufferAllocateInfo.callocStack(stack)
-			allocInfo.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
+			allocInfo.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
 			allocInfo.commandPool(commandPool)
-			allocInfo.level(VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+			allocInfo.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
 			allocInfo.commandBufferCount(commandBuffersCount)
 			val pCommandBuffers = stack.mallocPointer(commandBuffersCount)
-			if (VK10.vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffers) != VK10.VK_SUCCESS) {
+			if (vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffers) != VK_SUCCESS) {
 				throw RuntimeException("Failed to allocate command buffers")
 			}
 
@@ -61,10 +60,10 @@ class CommandBuffers(
 				(commandBuffers as ArrayList<VkCommandBuffer>).add(VkCommandBuffer(pCommandBuffers[i], device.device))
 			}
 			val beginInfo = VkCommandBufferBeginInfo.callocStack(stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
+				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
 
 			val renderPassInfo = VkRenderPassBeginInfo.callocStack(stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
+				.sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
 				.renderPass(renderPass.renderPass)
 
 			val renderArea = VkRect2D.callocStack(stack)
@@ -80,25 +79,27 @@ class CommandBuffers(
 
 			for (i in 0 until commandBuffersCount) {
 				val commandBuffer = commandBuffers[i]
-				VK10.vkBeginCommandBuffer(commandBuffer, beginInfo).ok()
+				vkBeginCommandBuffer(commandBuffer, beginInfo).ok()
 				renderPassInfo.framebuffer(swapchain.swapChainFramebuffers[i])
 
 				// Draw stuff
-				VK10.vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK10.VK_SUBPASS_CONTENTS_INLINE)
+				vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE)
 				run {
-					VK10.vkCmdBindPipeline(
+					vkCmdBindPipeline(
 						commandBuffer,
-						VK10.VK_PIPELINE_BIND_POINT_GRAPHICS,
+						VK_PIPELINE_BIND_POINT_GRAPHICS,
 						pipeline.graphicsPipeline
 					)
 					val offsets = stack.longs(0)
 
 					val vertexBuffers = stack.longs(engine.model.vertexBuffer)
-					VK10.vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets)
-					VK10.vkCmdDraw(commandBuffer, engine.model.vertices.size, 1, 0, 0)
+					vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets)
+					vkCmdBindIndexBuffer(commandBuffer, engine.model.indexBuffer, 0, VK_INDEX_TYPE_UINT16)
+
+					vkCmdDrawIndexed(commandBuffer, engine.model.indices.size, 1, 0, 0, 0)
 				}
-				VK10.vkCmdEndRenderPass(commandBuffer)
-				VK10.vkEndCommandBuffer(commandBuffer).ok()
+				vkCmdEndRenderPass(commandBuffer)
+				vkEndCommandBuffer(commandBuffer).ok()
 			}
 		}
 	}

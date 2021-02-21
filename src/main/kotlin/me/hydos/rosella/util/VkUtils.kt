@@ -51,6 +51,13 @@ fun memcpy(buffer: ByteBuffer, vertices: Array<Vertex>) {
 	}
 }
 
+fun memcpy(buffer: ByteBuffer, indices: ShortArray) {
+	for (index in indices) {
+		buffer.putShort(index)
+	}
+	buffer.rewind()
+}
+
 fun findMemoryType(typeFilter: Int, properties: Int, device: Device): Int {
 	val memProperties = VkPhysicalDeviceMemoryProperties.mallocStack()
 	vkGetPhysicalDeviceMemoryProperties(device.physicalDevice, memProperties)
