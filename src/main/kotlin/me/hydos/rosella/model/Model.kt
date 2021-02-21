@@ -2,7 +2,7 @@ package me.hydos.rosella.model
 
 import me.hydos.rosella.core.Device
 import me.hydos.rosella.core.Rosella
-import me.hydos.rosella.util.findMemoryType
+import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memcpy
 import me.hydos.rosella.util.ok
 import org.joml.Vector2f
@@ -10,7 +10,6 @@ import org.joml.Vector3f
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
-import java.nio.LongBuffer
 
 
 class Model {
@@ -102,46 +101,19 @@ class Model {
 		}
 	}
 
-
-	private fun createBuffer(
-		size: Int,
-		usage: Int,
-		properties: Int,
-		pBuffer: LongBuffer,
-		pBufferMemory: LongBuffer,
-		device: Device
-	) {
-		stackPush().use { stack ->
-			val bufferInfo = VkBufferCreateInfo.callocStack(stack)
-			bufferInfo.sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
-			bufferInfo.size(size.toLong())
-			bufferInfo.usage(usage)
-			bufferInfo.sharingMode(VK_SHARING_MODE_EXCLUSIVE)
-			vkCreateBuffer(device.device, bufferInfo, null, pBuffer).ok()
-			val memRequirements = VkMemoryRequirements.mallocStack(stack)
-			vkGetBufferMemoryRequirements(device.device, pBuffer[0], memRequirements)
-			val allocInfo = VkMemoryAllocateInfo.callocStack(stack)
-			allocInfo.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-			allocInfo.allocationSize(memRequirements.size())
-			allocInfo.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), properties, device))
-			vkAllocateMemory(device.device, allocInfo, null, pBufferMemory).ok()
-			vkBindBufferMemory(device.device, pBuffer[0], pBufferMemory[0], 0)
-		}
-	}
-
 	private fun copyBuffer(srcBuffer: Long, dstBuffer: Long, size: Int, engine: Rosella, device: Device) {
 		stackPush().use { stack ->
 			val allocInfo = VkCommandBufferAllocateInfo.callocStack(stack)
-			allocInfo.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
-			allocInfo.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-			allocInfo.commandPool(engine.commandBuffers.commandPool)
-			allocInfo.commandBufferCount(1)
+				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
+				.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+				.commandPool(engine.commandBuffers.commandPool)
+				.commandBufferCount(1)
 			val pCommandBuffer = stack.mallocPointer(1)
 			vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffer)
 			val commandBuffer = VkCommandBuffer(pCommandBuffer[0], device.device)
 			val beginInfo = VkCommandBufferBeginInfo.callocStack(stack)
-			beginInfo.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
-			beginInfo.flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
+				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
+				.flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
 			vkBeginCommandBuffer(commandBuffer, beginInfo)
 			run {
 				val copyRegion = VkBufferCopy.callocStack(1, stack)
@@ -150,8 +122,8 @@ class Model {
 			}
 			vkEndCommandBuffer(commandBuffer)
 			val submitInfo = VkSubmitInfo.callocStack(stack)
-			submitInfo.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
-			submitInfo.pCommandBuffers(pCommandBuffer)
+				.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
+				.pCommandBuffers(pCommandBuffer)
 			vkQueueSubmit(engine.graphicsQueue, submitInfo, VK_NULL_HANDLE).ok()
 			vkQueueWaitIdle(engine.graphicsQueue)
 			vkFreeCommandBuffers(device.device, engine.commandBuffers.commandPool, pCommandBuffer)

@@ -13,7 +13,7 @@ import java.nio.ByteBuffer
 import java.nio.LongBuffer
 
 
-class GfxPipeline(private val device: Device, private val swapchain: Swapchain, private val renderPass: RenderPass) {
+class GfxPipeline(private val device: Device, private val swapchain: Swapchain, private val renderPass: RenderPass, private val descriptorSetLayout: Long) {
 
 	internal var pipelineLayout: Long = 0
 	internal var graphicsPipeline: Long = 0
@@ -22,8 +22,8 @@ class GfxPipeline(private val device: Device, private val swapchain: Swapchain, 
 		stackPush().use {
 			val vertShaderSPIRV: SpirV = compileShaderFile("shaders/base.v.glsl", ShaderType.VERTEX_SHADER)
 			val fragShaderSPIRV: SpirV = compileShaderFile("shaders/base.f.glsl", ShaderType.FRAGMENT_SHADER)
-			val vertShaderModule = createShaderModule(vertShaderSPIRV.bytecode()!!)
-			val fragShaderModule = createShaderModule(fragShaderSPIRV.bytecode()!!)
+			val vertShaderModule = createShaderModule(vertShaderSPIRV.bytecode())
+			val fragShaderModule = createShaderModule(fragShaderSPIRV.bytecode())
 			val entryPoint: ByteBuffer = it.UTF8("main")
 			val shaderStages = VkPipelineShaderStageCreateInfo.callocStack(2, it)
 
@@ -92,7 +92,7 @@ class GfxPipeline(private val device: Device, private val swapchain: Swapchain, 
 					.polygonMode(VK_POLYGON_MODE_FILL)
 					.lineWidth(1.0f)
 					.cullMode(VK_CULL_MODE_BACK_BIT)
-					.frontFace(VK_FRONT_FACE_CLOCKWISE)
+					.frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE) //TODO: make the user be able to specify this
 					.depthBiasEnable(false)
 
 			/**
@@ -124,6 +124,7 @@ class GfxPipeline(private val device: Device, private val swapchain: Swapchain, 
 			 */
 			val pipelineLayoutInfo: VkPipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.callocStack(it)
 				.sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+				.pSetLayouts(it.longs(descriptorSetLayout))
 			val pPipelineLayout = it.longs(VK_NULL_HANDLE)
 			vkCreatePipelineLayout(device.device, pipelineLayoutInfo, null, pPipelineLayout).ok()
 			pipelineLayout = pPipelineLayout[0]

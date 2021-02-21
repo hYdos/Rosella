@@ -95,6 +95,14 @@ class CommandBuffers(
 					val vertexBuffers = stack.longs(engine.model.vertexBuffer)
 					vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets)
 					vkCmdBindIndexBuffer(commandBuffer, engine.model.indexBuffer, 0, VK_INDEX_TYPE_UINT16)
+					vkCmdBindDescriptorSets(
+						commandBuffer,
+						VK_PIPELINE_BIND_POINT_GRAPHICS,
+						pipeline.pipelineLayout,
+						0,
+						stack.longs(engine.descriptorSets[i]),
+						null
+					)
 
 					vkCmdDrawIndexed(commandBuffer, engine.model.indices.size, 1, 0, 0, 0)
 				}

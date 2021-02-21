@@ -6,6 +6,7 @@ import me.hydos.rosella.core.swapchain.RenderPass
 import me.hydos.rosella.core.swapchain.Swapchain
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.model.Model
+import me.hydos.rosella.model.ubo.*
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
@@ -26,9 +27,16 @@ import java.util.function.Consumer
 import java.util.stream.Collectors
 
 
+
+
+
 class Rosella(name: String, val enableValidationLayers: Boolean, internal val screen: Screen) {
 
+	var descriptorSetLayout: Long = 0
+	var descriptorPool: Long = 0
+	var descriptorSets: List<Long> = ArrayList()
 	var model: Model = Model()
+
 	private var inFlightFrames: List<Frame>? = null
 	private var imagesInFlight: MutableMap<Int, Frame>? = null
 	private var currentFrame = 0
@@ -76,16 +84,94 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 	private fun createModels() {
 		model.createVertexBuffer(device, this)
 		model.createIndexBuffer(device, this)
+
+		createDescriptorSetLayout()
+	}
+
+	private fun createDescriptorSetLayout() {
+		stackPush().use { stack ->
+			val uboLayoutBinding = VkDescriptorSetLayoutBinding.callocStack(1, stack)
+				.binding(0)
+				.descriptorCount(1)
+				.descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+				.pImmutableSamplers(null)
+				.stageFlags(VK_SHADER_STAGE_VERTEX_BIT)
+
+			val layoutInfo =
+				VkDescriptorSetLayoutCreateInfo.callocStack(stack)
+					.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
+					.pBindings(uboLayoutBinding)
+
+			val pDescriptorSetLayout = stack.mallocLong(1)
+			vkCreateDescriptorSetLayout(
+				device.device,
+				layoutInfo,
+				null,
+				pDescriptorSetLayout
+			).ok()
+			descriptorSetLayout = pDescriptorSetLayout[0]
+		}
 	}
 
 	private fun createFullSwapChain() {
 		this.swapChain = Swapchain(this, device.device, device.physicalDevice, surface)
 		this.renderPass = RenderPass(device, swapChain)
 		createImgViews()
-		this.pipeline = GfxPipeline(device, swapChain, renderPass)
+		this.pipeline = GfxPipeline(device, swapChain, renderPass, descriptorSetLayout)
 		createFramebuffers()
+		createUniformBuffers(swapChain, device)
+		createDescriptorPool()
+		createDescriptorSets()
 		this.commandBuffers.createCommandBuffers(swapChain, renderPass, pipeline)
 		createSyncObjects()
+	}
+
+	private fun createDescriptorSets() {
+		stackPush().use { stack ->
+			val layouts = stack.mallocLong(swapChain.swapChainImages.size)
+			for (i in 0 until layouts.capacity()) {
+				layouts.put(i, descriptorSetLayout)
+			}
+			val allocInfo = VkDescriptorSetAllocateInfo.callocStack(stack)
+				.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
+				.descriptorPool(descriptorPool)
+				.pSetLayouts(layouts)
+			val pDescriptorSets = stack.mallocLong(swapChain.swapChainImages.size)
+			vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets).ok()
+			descriptorSets = ArrayList(pDescriptorSets.capacity())
+			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
+				.offset(0)
+				.range(UniformBufferObject.SIZEOF.toLong())
+			val descriptorWrite = VkWriteDescriptorSet.callocStack(1, stack)
+				.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+				.dstBinding(0)
+				.dstArrayElement(0)
+				.descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+				.descriptorCount(1)
+				.pBufferInfo(bufferInfo)
+			for (i in 0 until pDescriptorSets.capacity()) {
+				val descriptorSet = pDescriptorSets[i]
+				bufferInfo.buffer(uniformBuffers[i])
+				descriptorWrite.dstSet(descriptorSet)
+				vkUpdateDescriptorSets(device.device, descriptorWrite, null)
+				(descriptorSets as ArrayList<Long>).add(descriptorSet)
+			}
+		}
+	}
+
+	private fun createDescriptorPool() {
+		stackPush().use { stack ->
+			val poolSize = VkDescriptorPoolSize.callocStack(1, stack)
+			poolSize.type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			poolSize.descriptorCount(swapChain.swapChainImages.size)
+			val poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
+			poolInfo.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
+			poolInfo.pPoolSizes(poolSize)
+			poolInfo.maxSets(swapChain.swapChainImages.size)
+			val pDescriptorPool = stack.mallocLong(1)
+			vkCreateDescriptorPool(device.device, poolInfo, null, pDescriptorPool).ok()
+			descriptorPool = pDescriptorPool[0]
+		}
 	}
 
 	private fun createSyncObjects() {
@@ -339,6 +425,9 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 			}
 
 			val imageIndex = pImageIndex[0]
+
+			updateUniformBuffer(imageIndex, swapChain, device)
+
 			if (imagesInFlight!!.containsKey(imageIndex)) {
 				vkWaitForFences(device.device, imagesInFlight!![imageIndex]!!.fence(), true, UINT64_MAX)
 			}
@@ -388,6 +477,9 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 	}
 
 	private fun destroySwapChain() {
+		vkDestroyDescriptorPool(device.device, descriptorPool, null)
+		destroyUbos(device)
+
 		swapChain.swapChainFramebuffers.forEach { framebuffer ->
 			vkDestroyFramebuffer(
 				device.device,
