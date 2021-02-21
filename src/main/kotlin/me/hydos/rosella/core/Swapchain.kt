@@ -1,7 +1,10 @@
 package me.hydos.rosella.core
 
+import me.hydos.rosella.io.Screen
 import me.hydos.rosella.util.ok
+import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryStack.stackGet
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.*
 import org.lwjgl.vulkan.KHRSwapchain.*
@@ -14,8 +17,7 @@ class Swapchain(
 	engine: Rosella,
 	device: VkDevice,
 	physicalDevice: VkPhysicalDevice,
-	surface: Long,
-	validationLayers: Set<String>
+	surface: Long
 ) {
 	var swapChain: Long = 0
 	var swapChainImageViews: List<Long> = ArrayList()
@@ -30,7 +32,7 @@ class Swapchain(
 
 			val surfaceFormat: VkSurfaceFormatKHR = chooseSwapSurfaceFormat(swapChainSupport.formats!!)!!
 			val presentMode: Int = chooseSwapPresentMode(swapChainSupport.presentModes!!)
-			val extent: VkExtent2D = chooseSwapExtent(swapChainSupport.capabilities!!, engine.width, engine.height)!!
+			val extent: VkExtent2D = chooseSwapExtent(swapChainSupport.capabilities!!, engine.screen)!!
 
 			val imageCount: IntBuffer = it.ints(swapChainSupport.capabilities!!.minImageCount() + 1)
 
@@ -72,7 +74,7 @@ class Swapchain(
 			val pSwapchainImages: LongBuffer = it.mallocLong(imageCount[0])
 			vkGetSwapchainImagesKHR(device, swapChain, imageCount, pSwapchainImages)
 
-			swapChainImages = ArrayList<Long>(imageCount[0])
+			swapChainImages = ArrayList(imageCount[0])
 
 			for (i in 0 until pSwapchainImages.capacity()) {
 				(swapChainImages as ArrayList<Long>).add(pSwapchainImages[i])
@@ -100,11 +102,17 @@ class Swapchain(
 		return VK_PRESENT_MODE_FIFO_KHR
 	}
 
-	private fun chooseSwapExtent(capabilities: VkSurfaceCapabilitiesKHR, width: Int, height: Int): VkExtent2D? {
-		if (capabilities.currentExtent().width() != Companion.UINT32_MAX) {
+	private fun chooseSwapExtent(capabilities: VkSurfaceCapabilitiesKHR, screen: Screen): VkExtent2D? {
+		if (capabilities.currentExtent().width() != UINT32_MAX) {
 			return capabilities.currentExtent()
 		}
-		val actualExtent = VkExtent2D.mallocStack().set(width, height)
+
+		val width = stackGet().ints(0)
+		val height = stackGet().ints(0)
+
+		glfwGetFramebufferSize(screen.windowPtr, width, height)
+
+		val actualExtent = VkExtent2D.mallocStack().set(width[0], height[0])
 		val minExtent = capabilities.minImageExtent()
 		val maxExtent = capabilities.maxImageExtent()
 		actualExtent.width(minExtent.width().coerceIn(maxExtent.width(), actualExtent.width()))
@@ -120,17 +128,17 @@ class Swapchain(
 fun querySwapChainSupport(device: VkPhysicalDevice, stack: MemoryStack, surface: Long): SwapChainSupportDetails {
 	val details = SwapChainSupportDetails()
 	details.capabilities = VkSurfaceCapabilitiesKHR.mallocStack(stack)
-	KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, details.capabilities!!)
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, details.capabilities!!)
 	val count = stack.ints(0)
-	KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, count, null)
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, count, null)
 	if (count[0] != 0) {
 		details.formats = VkSurfaceFormatKHR.mallocStack(count[0], stack)
-		KHRSurface.vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, count, details.formats)
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, count, details.formats)
 	}
-	KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, count, null)
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, count, null)
 	if (count[0] != 0) {
 		details.presentModes = stack.mallocInt(count[0])
-		KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, count, details.presentModes)
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, count, details.presentModes)
 	}
 	return details
 }

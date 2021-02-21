@@ -3,11 +3,13 @@ package me.hydos.rosella.core
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
+import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
+import org.lwjgl.glfw.GLFW.glfwWaitEvents
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.glfw.GLFWVulkan.glfwCreateWindowSurface
 import org.lwjgl.system.MemoryStack.stackGet
 import org.lwjgl.system.MemoryStack.stackPush
-import org.lwjgl.system.MemoryUtil
+import org.lwjgl.system.MemoryUtil.NULL
 import org.lwjgl.system.Pointer
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR
@@ -19,24 +21,25 @@ import java.util.function.Consumer
 import java.util.stream.Collectors
 
 
-class Rosella(name: String, val enableValidationLayers: Boolean, private val screen: Screen) {
+class Rosella(name: String, val enableValidationLayers: Boolean, internal val screen: Screen) {
 
 	private var inFlightFrames: List<Frame>? = null
 	private var imagesInFlight: MutableMap<Int, Frame>? = null
 	private var currentFrame = 0
 
-	val width: Int = screen.width
-	val height: Int = screen.height
+	private var framebufferResize: Boolean = false
 
-	private var commandBuffers: CommandBuffers
-	private var swapchain: Swapchain
-	private var renderPass: RenderPass
+	private lateinit var commandBuffers: CommandBuffers
+	private lateinit var swapChain: Swapchain
+	private lateinit var renderPass: RenderPass
 	internal lateinit var vulkanInstance: VkInstance
+	private lateinit var pipeline: GfxPipeline
+
 	internal val device: Device
-	private val pipeline: GfxPipeline
 	private var state: State
 	private var debugMessenger: Long = 0
 	var surface: Long = 0
+
 	var graphicsQueue: VkQueue? = null
 	var presentQueue: VkQueue? = null
 
@@ -57,20 +60,23 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 
 		createSurface()
 		this.device = Device(this, validationLayers)
-		this.swapchain = Swapchain(this, device.device, device.physicalDevice, surface, validationLayers)
-		createImgViews()
-		this.renderPass = RenderPass(device, swapchain)
-		this.pipeline = GfxPipeline(device, swapchain, renderPass)
-		createFramebuffers()
-		this.commandBuffers = CommandBuffers(device, swapchain, renderPass, pipeline, this)
-		createSyncObjects()
-
+		createFullSwapChain()
 		state = State.READY
+	}
+
+	private fun createFullSwapChain() {
+		this.swapChain = Swapchain(this, device.device, device.physicalDevice, surface)
+		this.renderPass = RenderPass(device, swapChain)
+		createImgViews()
+		this.pipeline = GfxPipeline(device, swapChain, renderPass)
+		createFramebuffers()
+		this.commandBuffers = CommandBuffers(device, swapChain, renderPass, pipeline, this)
+		createSyncObjects()
 	}
 
 	private fun createSyncObjects() {
 		inFlightFrames = ArrayList(MAX_FRAMES_IN_FLIGHT)
-		imagesInFlight = HashMap(swapchain.swapChainImages.size)
+		imagesInFlight = HashMap(swapChain.swapChainImages.size)
 
 		stackPush().use { stack ->
 			val semaphoreInfo = VkSemaphoreCreateInfo.callocStack(stack)
@@ -106,38 +112,42 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 		}
 	}
 
+	fun windowResizeCallback(windowPtr: Long, width: Int, height: Int) {
+		this.framebufferResize = true
+	}
+
 	private fun createFramebuffers() {
-		swapchain.swapChainFramebuffers = ArrayList<Long>(swapchain.swapChainImageViews.size)
+		swapChain.swapChainFramebuffers = ArrayList<Long>(swapChain.swapChainImageViews.size)
 		stackPush().use { stack ->
 			val attachments = stack.mallocLong(1)
 			val pFramebuffer = stack.mallocLong(1)
 			val framebufferInfo = VkFramebufferCreateInfo.callocStack(stack)
 			framebufferInfo.sType(VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO)
 			framebufferInfo.renderPass(renderPass.renderPass)
-			framebufferInfo.width(swapchain.swapChainExtent!!.width())
-			framebufferInfo.height(swapchain.swapChainExtent!!.height())
+			framebufferInfo.width(swapChain.swapChainExtent!!.width())
+			framebufferInfo.height(swapChain.swapChainExtent!!.height())
 			framebufferInfo.layers(1)
-			for (imageView in swapchain.swapChainImageViews) {
+			for (imageView in swapChain.swapChainImageViews) {
 				attachments.put(0, imageView)
 				framebufferInfo.pAttachments(attachments)
 				vkCreateFramebuffer(device.device, framebufferInfo, null, pFramebuffer).ok()
-				(swapchain.swapChainFramebuffers as ArrayList<Long>).add(pFramebuffer[0])
+				(swapChain.swapChainFramebuffers as ArrayList<Long>).add(pFramebuffer[0])
 			}
 		}
 	}
 
 	private fun createImgViews() {
-		swapchain.swapChainImageViews = ArrayList(swapchain.swapChainImages.size)
+		swapChain.swapChainImageViews = ArrayList(swapChain.swapChainImages.size)
 
 		stackPush().use {
 			val pImageView: LongBuffer = it.mallocLong(1)
 
-			for (swapChainImage in swapchain.swapChainImages) {
+			for (swapChainImage in swapChain.swapChainImages) {
 				val createInfo: VkImageViewCreateInfo = VkImageViewCreateInfo.callocStack(it)
 				createInfo.sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
 					.image(swapChainImage)
 					.viewType(VK_IMAGE_VIEW_TYPE_2D)
-					.format(swapchain.swapChainImageFormat)
+					.format(swapChain.swapChainImageFormat)
 				createInfo.components().r(VK_COMPONENT_SWIZZLE_IDENTITY)
 					.g(VK_COMPONENT_SWIZZLE_IDENTITY)
 					.b(VK_COMPONENT_SWIZZLE_IDENTITY)
@@ -148,7 +158,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 					.baseArrayLayer(0)
 					.layerCount(1)
 				vkCreateImageView(device.device, createInfo, null, pImageView).ok()
-				(swapchain.swapChainImageViews as ArrayList<Long>).add(pImageView[0])
+				(swapChain.swapChainImageViews as ArrayList<Long>).add(pImageView[0])
 			}
 		}
 	}
@@ -191,8 +201,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 	fun destroy() {
 		this.state = State.STOPPING
 
-		vkFreeCommandBuffers(device.device, commandBuffers.commandPool, asPtrBuffer(commandBuffers.commandBuffers))
-		vkDestroyCommandPool(device.device, commandBuffers.commandPool, null)
+		destroySwapChain()
 
 		inFlightFrames!!.forEach(Consumer { frame: Frame ->
 			vkDestroySemaphore(device.device, frame.renderFinishedSemaphore(), null)
@@ -201,22 +210,12 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 		})
 		imagesInFlight = null
 
-		swapchain.swapChainImageViews.forEach { imageView ->
-			vkDestroyImageView(device.device, imageView, null)
-		}
-		swapchain.swapChainFramebuffers.forEach { frameBuffer ->
-			vkDestroyFramebuffer(
-				device.device,
-				frameBuffer,
-				null
-			)
-		}
-		vkDestroyRenderPass(device.device, renderPass.renderPass, null)
-		vkDestroyPipeline(device.device, pipeline.graphicsPipeline, null)
-		vkDestroyPipelineLayout(device.device, pipeline.pipelineLayout, null)
-		vkDestroySwapchainKHR(device.device, swapchain.swapChain, null)
+		vkDestroyCommandPool(device.device, commandBuffers.commandPool, null)
+
+		vkDestroySwapchainKHR(device.device, swapChain.swapChain, null)
 		vkDestroyDevice(device.device, null)
-		if (vkGetInstanceProcAddr(vulkanInstance, "vkDestroyDebugUtilsMessengerEXT") != MemoryUtil.NULL) {
+
+		if (vkGetInstanceProcAddr(vulkanInstance, "vkDestroyDebugUtilsMessengerEXT") != NULL) {
 			EXTDebugUtils.vkDestroyDebugUtilsMessengerEXT(vulkanInstance, debugMessenger, null)
 		}
 
@@ -307,14 +306,21 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 			val thisFrame = inFlightFrames!![currentFrame]
 			vkWaitForFences(device.device, thisFrame.pFence(), true, UINT64_MAX)
 			val pImageIndex = stack.mallocInt(1)
-			vkAcquireNextImageKHR(
+
+			var vkResult: Int = vkAcquireNextImageKHR(
 				device.device,
-				swapchain.swapChain,
+				swapChain.swapChain,
 				UINT64_MAX,
 				thisFrame.imageAvailableSemaphore(),
 				VK_NULL_HANDLE,
 				pImageIndex
 			)
+
+			if (vkResult == VK_ERROR_OUT_OF_DATE_KHR) {
+				recreateSwapChain()
+				return
+			}
+
 			val imageIndex = pImageIndex[0]
 			if (imagesInFlight!!.containsKey(imageIndex)) {
 				vkWaitForFences(device.device, imagesInFlight!![imageIndex]!!.fence(), true, UINT64_MAX)
@@ -333,12 +339,53 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 			presentInfo.sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
 			presentInfo.pWaitSemaphores(thisFrame.pRenderFinishedSemaphore())
 			presentInfo.swapchainCount(1)
-			presentInfo.pSwapchains(stack.longs(swapchain.swapChain))
+			presentInfo.pSwapchains(stack.longs(swapChain.swapChain))
 			presentInfo.pImageIndices(pImageIndex)
-			vkQueuePresentKHR(presentQueue!!, presentInfo)
+
+			vkResult = vkQueuePresentKHR(presentQueue!!, presentInfo)
+
+			if (vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR || framebufferResize) {
+				framebufferResize = false
+				recreateSwapChain()
+			} else if (vkResult != VK_SUCCESS) {
+				throw RuntimeException("Failed to present swap chain image")
+			}
+
 			currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT
 		}
 	}
+
+	private fun recreateSwapChain() {
+		stackPush().use { stack ->
+			val width = stack.ints(0)
+			val height = stack.ints(0)
+			while (width[0] == 0 && height[0] == 0) {
+				glfwGetFramebufferSize(screen.windowPtr, width, height)
+				glfwWaitEvents()
+			}
+		}
+
+		vkDeviceWaitIdle(device.device)
+		destroySwapChain()
+		createFullSwapChain()
+	}
+
+	private fun destroySwapChain() {
+		swapChain.swapChainFramebuffers.forEach { framebuffer ->
+			vkDestroyFramebuffer(
+				device.device,
+				framebuffer,
+				null
+			)
+		}
+		vkFreeCommandBuffers(device.device, commandBuffers.commandPool, asPtrBuffer(commandBuffers.commandBuffers))
+		vkDestroyPipeline(device.device, pipeline.graphicsPipeline, null)
+		vkDestroyPipelineLayout(device.device, pipeline.pipelineLayout, null)
+		vkDestroyRenderPass(device.device, renderPass.renderPass, null)
+		swapChain.swapChainImageViews.forEach { imageView -> vkDestroyImageView(device.device, imageView, null) }
+		vkDestroySwapchainKHR(device.device, swapChain.swapChain, null)
+	}
+
 
 	enum class State {
 		STARTING, READY, STOPPING
@@ -351,7 +398,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 			allocationCallbacks: VkAllocationCallbacks?,
 			pDebugMessenger: LongBuffer
 		): Int {
-			return if (vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") != MemoryUtil.NULL) {
+			return if (vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") != NULL) {
 				EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, createInfo, allocationCallbacks, pDebugMessenger)
 			} else VK_ERROR_EXTENSION_NOT_PRESENT
 		}

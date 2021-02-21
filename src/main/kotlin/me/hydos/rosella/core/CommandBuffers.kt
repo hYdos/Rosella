@@ -47,7 +47,7 @@ class CommandBuffers(
 			allocInfo.commandBufferCount(commandBuffersCount)
 			val pCommandBuffers = stack.mallocPointer(commandBuffersCount)
 			if (vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffers) != VK_SUCCESS) {
-				throw RuntimeException("Fialed to allocate command buffers")
+				throw RuntimeException("Failed to allocate command buffers")
 			}
 
 			for (i in 0 until commandBuffersCount) {
@@ -67,7 +67,7 @@ class CommandBuffers(
 			renderPassInfo.renderArea(renderArea)
 
 			val clearValues = VkClearValue.callocStack(1, stack)
-			clearValues.color().float32(stack.floats(0.0f, 0.0f, 0.0f, 1.0f))
+			clearValues.color().float32(stack.floats(0xef / 255f, 0x32 / 255f, 0x3d / 255f, 1.0f))
 
 			renderPassInfo.pClearValues(clearValues)
 
