@@ -85,11 +85,10 @@ class CommandBuffers(
 				vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE)
 				run {
 					vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.graphicsPipeline)
+					val offsets = stack.longs(0)
 
 					val vertexBuffers = stack.longs(engine.model.vertexBuffer)
-					val offsets = stack.longs(0)
 					vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets)
-
 					vkCmdDraw(commandBuffer, engine.model.VERTICES.size, 1, 0, 0)
 				}
 				vkCmdEndRenderPass(commandBuffer)
