@@ -10,16 +10,27 @@ import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR
-import org.lwjgl.vulkan.KHRSwapchain.vkDestroySwapchainKHR
+import org.lwjgl.vulkan.KHRSwapchain.*
 import org.lwjgl.vulkan.VK10.*
 import java.nio.LongBuffer
 import java.util.*
+import java.util.function.Consumer
 import java.util.stream.Collectors
 
 
 class Rosella(name: String, val enableValidationLayers: Boolean, private val screen: Screen) {
+
+	private val UINT64_MAX = -0x1L
+	private val MAX_FRAMES_IN_FLIGHT = 2
+
+	private var inFlightFrames: List<Frame>? = null
+	private var imagesInFlight: MutableMap<Int, Frame>? = null
+	private var currentFrame = 0
+
 	val width: Int = screen.width
 	val height: Int = screen.height
+
+	private var commandBuffers: CommandBuffers
 	private var swapchain: Swapchain
 	private var renderPass: RenderPass
 	internal lateinit var vulkanInstance: VkInstance
@@ -49,12 +60,52 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 		createSurface()
 		this.device = Device(this, validationLayers)
 		this.swapchain = Swapchain(this, device.device, device.physicalDevice, surface, validationLayers)
-		createImgViews();
+		createImgViews()
 		this.renderPass = RenderPass(device, swapchain)
 		this.pipeline = GfxPipeline(device, swapchain, renderPass)
 		createFramebuffers()
+		this.commandBuffers = CommandBuffers(device, swapchain, renderPass, pipeline, this)
+		createSyncObjects()
 
 		state = State.READY
+	}
+
+	private fun createSyncObjects() {
+		inFlightFrames = ArrayList(MAX_FRAMES_IN_FLIGHT)
+		imagesInFlight = HashMap(swapchain.swapChainImages.size)
+
+		stackPush().use { stack ->
+			val semaphoreInfo = VkSemaphoreCreateInfo.callocStack(stack)
+			semaphoreInfo.sType(VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO)
+			val fenceInfo = VkFenceCreateInfo.callocStack(stack)
+			fenceInfo.sType(VK_STRUCTURE_TYPE_FENCE_CREATE_INFO)
+			fenceInfo.flags(VK_FENCE_CREATE_SIGNALED_BIT)
+			val pImageAvailableSemaphore = stack.mallocLong(1)
+			val pRenderFinishedSemaphore = stack.mallocLong(1)
+			val pFence = stack.mallocLong(1)
+			for (i in 0 until MAX_FRAMES_IN_FLIGHT) {
+				vkCreateSemaphore(
+					device.device,
+					semaphoreInfo,
+					null,
+					pImageAvailableSemaphore
+				).ok()
+				vkCreateSemaphore(
+					device.device,
+					semaphoreInfo,
+					null,
+					pRenderFinishedSemaphore
+				).ok()
+				vkCreateFence(device.device, fenceInfo, null, pFence).ok()
+				(inFlightFrames as ArrayList<Frame>).add(
+					Frame(
+						pImageAvailableSemaphore[0],
+						pRenderFinishedSemaphore[0],
+						pFence[0]
+					)
+				)
+			}
+		}
 	}
 
 	private fun createFramebuffers() {
@@ -142,7 +193,23 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 	fun destroy() {
 		this.state = State.STOPPING
 
-		swapchain.swapChainImageViews.forEach { imageView -> vkDestroyImageView(device.device, imageView, null) }
+		inFlightFrames!!.forEach(Consumer { frame: Frame ->
+			vkDestroySemaphore(device.device, frame.renderFinishedSemaphore(), null)
+			vkDestroySemaphore(device.device, frame.imageAvailableSemaphore(), null)
+			vkDestroyFence(device.device, frame.fence(), null)
+		})
+		imagesInFlight = null
+
+		swapchain.swapChainImageViews.forEach { imageView ->
+			vkDestroyImageView(device.device, imageView, null)
+		}
+		swapchain.swapChainFramebuffers.forEach { frameBuffer ->
+			vkDestroyFramebuffer(
+				device.device,
+				frameBuffer,
+				null
+			)
+		}
 		vkDestroyRenderPass(device.device, renderPass.renderPass, null)
 		vkDestroyPipeline(device.device, pipeline.graphicsPipeline, null)
 		vkDestroyPipelineLayout(device.device, pipeline.pipelineLayout, null)
@@ -224,6 +291,44 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 				.map { obj: VkLayerProperties -> obj.layerNameString() }
 				.collect(Collectors.toSet())
 			return availableLayerNames.containsAll(validationLayers)
+		}
+	}
+
+	fun renderFrame() {
+		stackPush().use { stack ->
+			val thisFrame = inFlightFrames!![currentFrame]
+			vkWaitForFences(device.device, thisFrame.pFence(), true, UINT64_MAX)
+			val pImageIndex = stack.mallocInt(1)
+			vkAcquireNextImageKHR(
+				device.device,
+				swapchain.swapChain,
+				UINT64_MAX,
+				thisFrame.imageAvailableSemaphore(),
+				VK_NULL_HANDLE,
+				pImageIndex
+			)
+			val imageIndex = pImageIndex[0]
+			if (imagesInFlight!!.containsKey(imageIndex)) {
+				vkWaitForFences(device.device, imagesInFlight!![imageIndex]!!.fence(), true, UINT64_MAX)
+			}
+			imagesInFlight!![imageIndex] = thisFrame
+			val submitInfo = VkSubmitInfo.callocStack(stack)
+			submitInfo.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
+			submitInfo.waitSemaphoreCount(1)
+			submitInfo.pWaitSemaphores(thisFrame.pImageAvailableSemaphore())
+			submitInfo.pWaitDstStageMask(stack.ints(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT))
+			submitInfo.pSignalSemaphores(thisFrame.pRenderFinishedSemaphore())
+			submitInfo.pCommandBuffers(stack.pointers(commandBuffers.commandBuffers[imageIndex]))
+			vkResetFences(device.device, thisFrame.pFence())
+			vkQueueSubmit(graphicsQueue!!, submitInfo, thisFrame.fence()).ok()
+			val presentInfo = VkPresentInfoKHR.callocStack(stack)
+			presentInfo.sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
+			presentInfo.pWaitSemaphores(thisFrame.pRenderFinishedSemaphore())
+			presentInfo.swapchainCount(1)
+			presentInfo.pSwapchains(stack.longs(swapchain.swapChain))
+			presentInfo.pImageIndices(pImageIndex)
+			vkQueuePresentKHR(presentQueue!!, presentInfo)
+			currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT
 		}
 	}
 

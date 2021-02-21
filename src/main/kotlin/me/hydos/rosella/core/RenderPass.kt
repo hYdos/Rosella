@@ -2,12 +2,9 @@ package me.hydos.rosella.core
 
 import me.hydos.rosella.util.ok
 import org.lwjgl.system.MemoryStack.stackPush
+import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.VkAttachmentDescription
-import org.lwjgl.vulkan.VkAttachmentReference
-import org.lwjgl.vulkan.VkRenderPassCreateInfo
-import org.lwjgl.vulkan.VkSubpassDescription
 import java.nio.LongBuffer
 
 
@@ -35,10 +32,20 @@ class RenderPass(val device: Device, val swapchain: Swapchain) {
 				.colorAttachmentCount(1)
 				.pColorAttachments(colorAttachmentRef)
 
+
+			val dependency = VkSubpassDependency.callocStack(1, it)
+				.srcSubpass(VK_SUBPASS_EXTERNAL)
+				.dstSubpass(0)
+				.srcStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+				.srcAccessMask(0)
+				.dstStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+				.dstAccessMask(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT or VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+
 			val renderPassInfo: VkRenderPassCreateInfo = VkRenderPassCreateInfo.callocStack(it)
 				.sType(VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO)
 				.pAttachments(colorAttachment)
 				.pSubpasses(subpass)
+				.pDependencies(dependency)
 
 			val pRenderPass: LongBuffer = it.mallocLong(1)
 			vkCreateRenderPass(device.device, renderPassInfo, null, pRenderPass).ok()
