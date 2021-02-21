@@ -8,7 +8,6 @@ import org.lwjgl.vulkan.KHRSwapchain.*
 import org.lwjgl.vulkan.VK10.*
 import java.nio.IntBuffer
 import java.nio.LongBuffer
-import java.util.*
 
 
 class Swapchain(
@@ -19,8 +18,9 @@ class Swapchain(
 	validationLayers: Set<String>
 ) {
 	var swapChain: Long = 0
-	var swapChainImageViews: List<Long>? = null
-	var swapChainImages: List<Long>? = null
+	var swapChainImageViews: List<Long> = ArrayList()
+	var swapChainFramebuffers: List<Long> = ArrayList()
+	var swapChainImages: List<Long> = ArrayList()
 	var swapChainImageFormat = 0
 	var swapChainExtent: VkExtent2D? = null
 

@@ -12,8 +12,8 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 
-fun compileShaderFile(shaderFile: String?, shaderType: ShaderType): SpirV? {
-	return compileShaderAbsoluteFile(getSystemClassLoader().getResource(shaderFile).toExternalForm(), shaderType)
+fun compileShaderFile(shaderFile: String?, shaderType: ShaderType): SpirV {
+	return compileShaderAbsoluteFile(getSystemClassLoader().getResource(shaderFile).toExternalForm(), shaderType)!!
 }
 
 fun compileShaderAbsoluteFile(shaderFile: String, shaderType: ShaderType): SpirV? {
@@ -28,7 +28,7 @@ fun compileShaderAbsoluteFile(shaderFile: String, shaderType: ShaderType): SpirV
 	return null
 }
 
-fun compileShader(filename: String, source: String?, shaderType: ShaderType): SpirV? {
+fun compileShader(filename: String, source: String?, shaderType: ShaderType): SpirV {
 	val compiler = shaderc_compiler_initialize()
 	if (compiler == NULL) {
 		throw RuntimeException("Failed to create shader compiler")
