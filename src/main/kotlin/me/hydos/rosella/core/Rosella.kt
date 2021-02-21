@@ -38,7 +38,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 	private var framebufferResize: Boolean = false
 
-	private lateinit var commandBuffers: CommandBuffers
+	internal lateinit var commandBuffers: CommandBuffers
 	private lateinit var swapChain: Swapchain
 	private lateinit var renderPass: RenderPass
 	internal lateinit var vulkanInstance: VkInstance
@@ -49,8 +49,8 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 	private var debugMessenger: Long = 0
 	var surface: Long = 0
 
-	var graphicsQueue: VkQueue? = null
-	var presentQueue: VkQueue? = null
+	lateinit var graphicsQueue: VkQueue
+	lateinit var presentQueue: VkQueue
 
 	init {
 		state = State.STARTING
@@ -69,13 +69,15 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 		createSurface()
 		this.device = Device(this, validationLayers)
+		this.commandBuffers = CommandBuffers(device, this)
+		createModels()
 		createFullSwapChain()
 
 		state = State.READY
 	}
 
 	private fun createModels() {
-		model.createVertBuf(device)
+		model.createVertexBuffer(device, this)
 	}
 
 	private fun createFullSwapChain() {
@@ -84,8 +86,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		createImgViews()
 		this.pipeline = GfxPipeline(device, swapChain, renderPass)
 		createFramebuffers()
-		createModels()
-		this.commandBuffers = CommandBuffers(device, swapChain, renderPass, pipeline, this)
+		this.commandBuffers.createCommandBuffers(swapChain, renderPass, pipeline)
 		createSyncObjects()
 	}
 
