@@ -5,6 +5,7 @@ import me.hydos.rosella.core.swapchain.GfxPipeline
 import me.hydos.rosella.core.swapchain.RenderPass
 import me.hydos.rosella.core.swapchain.Swapchain
 import me.hydos.rosella.io.Screen
+import me.hydos.rosella.model.Model
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
@@ -25,8 +26,12 @@ import java.util.function.Consumer
 import java.util.stream.Collectors
 
 
+
+
+
 class Rosella(name: String, val enableValidationLayers: Boolean, internal val screen: Screen) {
 
+	var model: Model = Model()
 	private var inFlightFrames: List<Frame>? = null
 	private var imagesInFlight: MutableMap<Int, Frame>? = null
 	private var currentFrame = 0
@@ -65,7 +70,12 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		createSurface()
 		this.device = Device(this, validationLayers)
 		createFullSwapChain()
+
 		state = State.READY
+	}
+
+	private fun createModels() {
+		model.createVertBuf(device)
 	}
 
 	private fun createFullSwapChain() {
@@ -74,6 +84,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		createImgViews()
 		this.pipeline = GfxPipeline(device, swapChain, renderPass)
 		createFramebuffers()
+		createModels()
 		this.commandBuffers = CommandBuffers(device, swapChain, renderPass, pipeline, this)
 		createSyncObjects()
 	}
@@ -204,6 +215,9 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 	fun destroy() {
 		this.state = State.STOPPING
+
+		//TODO: less temporary model system
+		model.destroy(device)
 
 		destroySwapChain()
 

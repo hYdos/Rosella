@@ -1,6 +1,7 @@
 package me.hydos.rosella.core.swapchain
 
 import me.hydos.rosella.core.Device
+import me.hydos.rosella.model.Vertex
 import me.hydos.rosella.util.ShaderType
 import me.hydos.rosella.util.SpirV
 import me.hydos.rosella.util.compileShaderFile
@@ -19,8 +20,8 @@ class GfxPipeline(private val device: Device, private val swapchain: Swapchain, 
 
 	init {
 		stackPush().use {
-			val vertShaderSPIRV: SpirV = compileShaderFile("shaders/base.vert", ShaderType.VERTEX_SHADER)!!
-			val fragShaderSPIRV: SpirV = compileShaderFile("shaders/base.frag", ShaderType.FRAGMENT_SHADER)!!
+			val vertShaderSPIRV: SpirV = compileShaderFile("shaders/base.v.glsl", ShaderType.VERTEX_SHADER)
+			val fragShaderSPIRV: SpirV = compileShaderFile("shaders/base.f.glsl", ShaderType.FRAGMENT_SHADER)
 			val vertShaderModule = createShaderModule(vertShaderSPIRV.bytecode()!!)
 			val fragShaderModule = createShaderModule(fragShaderSPIRV.bytecode()!!)
 			val entryPoint: ByteBuffer = it.UTF8("main")
@@ -45,6 +46,8 @@ class GfxPipeline(private val device: Device, private val swapchain: Swapchain, 
 			val vertexInputInfo: VkPipelineVertexInputStateCreateInfo =
 				VkPipelineVertexInputStateCreateInfo.callocStack(it)
 					.sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
+					.pVertexBindingDescriptions(Vertex.bindingDescription)
+					.pVertexAttributeDescriptions(Vertex.attributeDescriptions)
 
 			/**
 			 * Assembly

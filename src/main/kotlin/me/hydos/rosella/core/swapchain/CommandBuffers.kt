@@ -1,6 +1,8 @@
 package me.hydos.rosella.core.swapchain
 
-import me.hydos.rosella.core.*
+import me.hydos.rosella.core.Device
+import me.hydos.rosella.core.Rosella
+import me.hydos.rosella.core.findQueueFamilies
 import me.hydos.rosella.util.ok
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
@@ -84,7 +86,11 @@ class CommandBuffers(
 				run {
 					vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.graphicsPipeline)
 
-					vkCmdDraw(commandBuffer, 3, 1, 0, 0)
+					val vertexBuffers = stack.longs(engine.model.vertexBuffer)
+					val offsets = stack.longs(0)
+					vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets)
+
+					vkCmdDraw(commandBuffer, engine.model.VERTICES.size, 1, 0, 0)
 				}
 				vkCmdEndRenderPass(commandBuffer)
 				vkEndCommandBuffer(commandBuffer).ok()

@@ -1,7 +1,14 @@
 package me.hydos.rosella.util
 
+import me.hydos.rosella.core.Device
+import me.hydos.rosella.model.Vertex
 import org.lwjgl.vulkan.KHRSurface
 import org.lwjgl.vulkan.VK10
+import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties
+
+import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties
+import java.nio.ByteBuffer
+
 
 private val map = mutableMapOf<Int, String>().apply {
 	this[VK10.VK_NOT_READY] = "VK_NOT_READY"
@@ -31,4 +38,27 @@ fun Int.ok(): Int {
 	}
 
 	return this
+}
+
+fun memcpy(buffer: ByteBuffer, vertices: Array<Vertex>) {
+	for (vertex in vertices) {
+		buffer.putFloat(vertex.pos.x())
+		buffer.putFloat(vertex.pos.y())
+		buffer.putFloat(vertex.color.x())
+		buffer.putFloat(vertex.color.y())
+		buffer.putFloat(vertex.color.z())
+	}
+}
+
+fun findMemoryType(typeFilter: Int, properties: Int, device: Device): Int {
+	val memProperties = VkPhysicalDeviceMemoryProperties.mallocStack()
+	vkGetPhysicalDeviceMemoryProperties(device.physicalDevice, memProperties)
+	for (i in 0 until memProperties.memoryTypeCount()) {
+		if (typeFilter and (1 shl i) != 0 && memProperties.memoryTypes(i)
+				.propertyFlags() and properties == properties
+		) {
+			return i
+		}
+	}
+	throw RuntimeException("Failed to find suitable memory type")
 }
