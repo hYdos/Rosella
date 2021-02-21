@@ -14,7 +14,7 @@ class CommandBuffers(
 	pipeline: GfxPipeline,
 	engine: Rosella
 ) {
-	private var commandPool: Long = 0
+	internal var commandPool: Long = 0
 	internal var commandBuffers: List<VkCommandBuffer> = ArrayList<VkCommandBuffer>()
 
 	init {

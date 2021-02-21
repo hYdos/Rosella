@@ -60,10 +60,10 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 			createInfo.pQueueCreateInfos(queueCreateInfos)
 			createInfo.pEnabledFeatures(deviceFeatures)
 
-			createInfo.ppEnabledExtensionNames(engine.layersAsPtrBuffer(DEVICE_EXTENSIONS))
+			createInfo.ppEnabledExtensionNames(engine.asPtrBuffer(DEVICE_EXTENSIONS))
 
 			if (engine.enableValidationLayers) {
-				createInfo.ppEnabledLayerNames(engine.layersAsPtrBuffer(layers))
+				createInfo.ppEnabledLayerNames(engine.asPtrBuffer(layers))
 			}
 			val pDevice: PointerBuffer = it.pointers(VK_NULL_HANDLE)
 			if (vkCreateDevice(physicalDevice, createInfo, null, pDevice) != VK_SUCCESS) {

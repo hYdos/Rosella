@@ -5,9 +5,10 @@ import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.glfw.GLFWVulkan.glfwCreateWindowSurface
-import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryStack.stackGet
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.system.MemoryUtil
+import org.lwjgl.system.Pointer
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR
 import org.lwjgl.vulkan.KHRSwapchain.*
@@ -19,9 +20,6 @@ import java.util.stream.Collectors
 
 
 class Rosella(name: String, val enableValidationLayers: Boolean, private val screen: Screen) {
-
-	private val UINT64_MAX = -0x1L
-	private val MAX_FRAMES_IN_FLIGHT = 2
 
 	private var inFlightFrames: List<Frame>? = null
 	private var imagesInFlight: MutableMap<Int, Frame>? = null
@@ -37,8 +35,8 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 	internal val device: Device
 	private val pipeline: GfxPipeline
 	private var state: State
+	private var debugMessenger: Long = 0
 	var surface: Long = 0
-	var debugMessenger: Long = 0
 	var graphicsQueue: VkQueue? = null
 	var presentQueue: VkQueue? = null
 
@@ -169,7 +167,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 				.sType(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
 				.ppEnabledExtensionNames(getRequiredExtensions(enableValidationLayers))
 			if (enableValidationLayers) {
-				createInfo.ppEnabledLayerNames(layersAsPtrBuffer(validationLayers))
+				createInfo.ppEnabledLayerNames(asPtrBuffer(validationLayers))
 				val debugCreateInfo = VkDebugUtilsMessengerCreateInfoEXT.callocStack(stack)
 				populateDebugMessengerCreateInfo(debugCreateInfo)
 				createInfo.pNext(debugCreateInfo.address())
@@ -192,6 +190,9 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 
 	fun destroy() {
 		this.state = State.STOPPING
+
+		vkFreeCommandBuffers(device.device, commandBuffers.commandPool, asPtrBuffer(commandBuffers.commandBuffers))
+		vkDestroyCommandPool(device.device, commandBuffers.commandPool, null)
 
 		inFlightFrames!!.forEach(Consumer { frame: Frame ->
 			vkDestroySemaphore(device.device, frame.renderFinishedSemaphore(), null)
@@ -226,7 +227,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 	private fun getRequiredExtensions(validationLayersEnabled: Boolean): PointerBuffer? {
 		val glfwExtensions = GLFWVulkan.glfwGetRequiredInstanceExtensions()
 		if (validationLayersEnabled) {
-			val stack = MemoryStack.stackGet()
+			val stack = stackGet()
 			val extensions = stack.mallocPointer(glfwExtensions!!.capacity() + 1)
 			extensions.put(glfwExtensions)
 			extensions.put(stack.UTF8(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
@@ -271,13 +272,20 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 		return VK_FALSE
 	}
 
-	internal fun layersAsPtrBuffer(validationLayers: Set<String>): PointerBuffer {
-		val stack = MemoryStack.stackGet()
+	internal fun asPtrBuffer(validationLayers: Set<String>): PointerBuffer {
+		val stack = stackGet()
 		val buffer = stack.mallocPointer(validationLayers.size)
 		for (validationLayer in validationLayers) {
 			val byteBuffer = stack.UTF8(validationLayer)
 			buffer.put(byteBuffer)
 		}
+		return buffer.rewind()
+	}
+
+	private fun asPtrBuffer(list: List<Pointer>): PointerBuffer {
+		val stack = stackGet()
+		val buffer = stack.mallocPointer(list.size)
+		list.forEach { pointer: Pointer? -> buffer.put(pointer!!) }
 		return buffer.rewind()
 	}
 
@@ -347,5 +355,8 @@ class Rosella(name: String, val enableValidationLayers: Boolean, private val scr
 				EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, createInfo, allocationCallbacks, pDebugMessenger)
 			} else VK_ERROR_EXTENSION_NOT_PRESENT
 		}
+
+		private const val MAX_FRAMES_IN_FLIGHT = 2
+		private const val UINT64_MAX = -0x1L
 	}
 }
