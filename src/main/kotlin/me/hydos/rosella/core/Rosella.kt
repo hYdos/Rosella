@@ -82,6 +82,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 	}
 
 	private fun createModels() {
+		model.createTextureImage(device, this, "textures/texture.jpg")
 		model.createVertexBuffer(device, this)
 		model.createIndexBuffer(device, this)
 

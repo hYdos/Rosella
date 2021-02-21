@@ -126,6 +126,12 @@ fun memcpy(buffer: ByteBuffer, ubo: UniformBufferObject) {
 	ubo.proj.get(alignas(mat4Size * 2, alignof(ubo.view)), buffer)
 }
 
+fun memcpy(dst: ByteBuffer, src: ByteBuffer, size: Long) {
+	src.limit(size.toInt())
+	dst.put(src)
+	src.limit(src.capacity()).rewind()
+}
+
 fun findMemoryType(typeFilter: Int, properties: Int, device: Device): Int {
 	val memProperties = VkPhysicalDeviceMemoryProperties.mallocStack()
 	vkGetPhysicalDeviceMemoryProperties(device.physicalDevice, memProperties)
