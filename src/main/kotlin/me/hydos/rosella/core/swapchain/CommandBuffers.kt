@@ -1,5 +1,6 @@
-package me.hydos.rosella.core
+package me.hydos.rosella.core.swapchain
 
+import me.hydos.rosella.core.*
 import me.hydos.rosella.util.ok
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*

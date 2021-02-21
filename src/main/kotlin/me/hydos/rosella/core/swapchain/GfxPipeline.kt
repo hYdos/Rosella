@@ -1,5 +1,6 @@
-package me.hydos.rosella.core
+package me.hydos.rosella.core.swapchain
 
+import me.hydos.rosella.core.Device
 import me.hydos.rosella.util.ShaderType
 import me.hydos.rosella.util.SpirV
 import me.hydos.rosella.util.compileShaderFile

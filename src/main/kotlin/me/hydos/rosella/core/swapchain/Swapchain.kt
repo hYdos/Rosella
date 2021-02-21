@@ -1,5 +1,8 @@
-package me.hydos.rosella.core
+package me.hydos.rosella.core.swapchain
 
+import me.hydos.rosella.core.QueueFamilyIndices
+import me.hydos.rosella.core.Rosella
+import me.hydos.rosella.core.findQueueFamilies
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.util.ok
 import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize

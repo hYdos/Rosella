@@ -1,5 +1,6 @@
-package me.hydos.rosella.core
+package me.hydos.rosella.core.swapchain
 
+import me.hydos.rosella.core.Device
 import me.hydos.rosella.util.ok
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
@@ -31,7 +32,6 @@ class RenderPass(val device: Device, val swapchain: Swapchain) {
 				.pipelineBindPoint(VK_PIPELINE_BIND_POINT_GRAPHICS)
 				.colorAttachmentCount(1)
 				.pColorAttachments(colorAttachmentRef)
-
 
 			val dependency = VkSubpassDependency.callocStack(1, it)
 				.srcSubpass(VK_SUBPASS_EXTERNAL)

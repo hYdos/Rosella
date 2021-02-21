@@ -1,5 +1,7 @@
 package me.hydos.rosella.core
 
+import me.hydos.rosella.core.swapchain.SwapChainSupportDetails
+import me.hydos.rosella.core.swapchain.querySwapChainSupport
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack.stackPush

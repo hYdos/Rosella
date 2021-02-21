@@ -1,4 +1,4 @@
-package me.hydos.rosella.core
+package me.hydos.rosella.core.swapchain
 
 import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR
 import org.lwjgl.vulkan.VkSurfaceFormatKHR

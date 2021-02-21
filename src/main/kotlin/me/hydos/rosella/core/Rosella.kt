@@ -1,5 +1,9 @@
 package me.hydos.rosella.core
 
+import me.hydos.rosella.core.swapchain.CommandBuffers
+import me.hydos.rosella.core.swapchain.GfxPipeline
+import me.hydos.rosella.core.swapchain.RenderPass
+import me.hydos.rosella.core.swapchain.Swapchain
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
