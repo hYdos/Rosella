@@ -93,11 +93,11 @@ fun transitionImageLayout(image: Long, format: Int, oldLayout: Int, newLayout: I
 
 fun copyBufferToImage(buffer: Long, image: Long, width: Int, height: Int, engine: Rosella) {
 	stackPush().use { stack ->
-		val commandBuffer: VkCommandBuffer = beginSingleTimeCommands(engine.commandBuffers, engine.device)
+		val commandBuffer = beginSingleTimeCommands(engine.commandBuffers, engine.device)
 		val region = VkBufferImageCopy.callocStack(1, stack)
 			.bufferOffset(0)
-			.bufferRowLength(0)
-			.bufferImageHeight(0)
+			.bufferRowLength(0) // Tightly packed
+			.bufferImageHeight(0) // Tightly packed
 		region.imageSubresource().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
 			.mipLevel(0)
 			.baseArrayLayer(0)
@@ -109,20 +109,19 @@ fun copyBufferToImage(buffer: Long, image: Long, width: Int, height: Int, engine
 	}
 }
 
-
-private fun beginSingleTimeCommands(commandBuffers: CommandBuffers, device: Device): VkCommandBuffer {
+fun beginSingleTimeCommands(commandBuffers: CommandBuffers, device: Device): VkCommandBuffer {
 	stackPush().use { stack ->
 		val allocInfo = VkCommandBufferAllocateInfo.callocStack(stack)
-		allocInfo.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
-		allocInfo.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-		allocInfo.commandPool(commandBuffers.commandPool)
-		allocInfo.commandBufferCount(1)
+			.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
+			.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+			.commandPool(commandBuffers.commandPool)
+			.commandBufferCount(1)
 		val pCommandBuffer = stack.mallocPointer(1)
 		vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffer)
 		val commandBuffer = VkCommandBuffer(pCommandBuffer[0], device.device)
 		val beginInfo = VkCommandBufferBeginInfo.callocStack(stack)
-		beginInfo.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
-		beginInfo.flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
+			.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
+			.flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
 		vkBeginCommandBuffer(commandBuffer, beginInfo)
 		return commandBuffer
 	}
@@ -139,6 +138,7 @@ private fun endSingleTimeCommands(commandBuffer: VkCommandBuffer, engine: Rosell
 		vkFreeCommandBuffers(engine.device.device, engine.commandBuffers.commandPool, commandBuffer)
 	}
 }
+
 
 fun ioResourceToByteBuffer(resource: String?, bufferSize: Int): ByteBuffer {
 	var buffer: ByteBuffer
