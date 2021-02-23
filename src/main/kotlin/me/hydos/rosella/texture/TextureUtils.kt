@@ -5,10 +5,13 @@ import me.hydos.rosella.core.Rosella
 import me.hydos.rosella.core.swapchain.CommandBuffers
 import me.hydos.rosella.util.findMemoryType
 import me.hydos.rosella.util.ok
+import org.lwjgl.BufferUtils.createByteBuffer
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
+import java.nio.ByteBuffer
 import java.nio.LongBuffer
+import java.nio.channels.Channels
 
 
 fun createImage(
@@ -135,4 +138,31 @@ private fun endSingleTimeCommands(commandBuffer: VkCommandBuffer, engine: Rosell
 		vkQueueWaitIdle(engine.graphicsQueue)
 		vkFreeCommandBuffers(engine.device.device, engine.commandBuffers.commandPool, commandBuffer)
 	}
+}
+
+fun ioResourceToByteBuffer(resource: String?, bufferSize: Int): ByteBuffer {
+	var buffer: ByteBuffer
+	ClassLoader.getSystemClassLoader().getResourceAsStream(resource).use { source ->
+		Channels.newChannel(source!!).use { rbc ->
+			buffer = createByteBuffer(bufferSize)
+			while (true) {
+				val bytes = rbc.read(buffer)
+				if (bytes == -1) {
+					break
+				}
+				if (buffer.remaining() === 0) {
+					buffer = resizeBuffer(buffer, buffer.capacity() * 3 / 2)
+				}
+			}
+		}
+	}
+	buffer.flip()
+	return buffer
+}
+
+private fun resizeBuffer(buffer: ByteBuffer, newCapacity: Int): ByteBuffer {
+	val newBuffer: ByteBuffer = createByteBuffer(newCapacity)
+	buffer.flip()
+	newBuffer.put(buffer)
+	return newBuffer
 }

@@ -4,6 +4,7 @@ import me.hydos.rosella.core.Device
 import me.hydos.rosella.core.Rosella
 import me.hydos.rosella.texture.copyBufferToImage
 import me.hydos.rosella.texture.createImage
+import me.hydos.rosella.texture.ioResourceToByteBuffer
 import me.hydos.rosella.texture.transitionImageLayout
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memcpy
@@ -14,7 +15,6 @@ import org.lwjgl.stb.STBImage.*
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
-import java.lang.ClassLoader.getSystemClassLoader
 import java.nio.ByteBuffer
 
 
@@ -39,18 +39,16 @@ class Model {
 	var indexBuffer: Long = 0
 	var indexBufferMemory: Long = 0
 
-	internal fun createTextureImage(device: Device, engine: Rosella, texture: String) {
+	internal fun createTexture(device: Device, engine: Rosella, texture: String) {
 		stackPush().use { stack ->
-			val filename =
-				getSystemClassLoader().getResource(texture).toExternalForm()
 			val pWidth = stack.mallocInt(1)
 			val pHeight = stack.mallocInt(1)
 			val pChannels = stack.mallocInt(1)
-			val pixels: ByteBuffer? = stbi_load(filename, pWidth, pHeight, pChannels, STBI_rgb_alpha)
+			val pixels: ByteBuffer? = stbi_load_from_memory(ioResourceToByteBuffer(texture, 8 * 1024), pWidth, pHeight, pChannels, STBI_rgb_alpha)
 			val imageSize =
 				(pWidth[0] * pHeight[0] * pChannels[0]).toLong()
 			if (pixels == null) {
-				throw RuntimeException("Failed to load texture $filename" + " Reason: " + stbi_failure_reason())
+				throw RuntimeException("Failed to load texture $texture" + " Reason: " + stbi_failure_reason())
 			}
 			val pStagingBuffer = stack.mallocLong(1)
 			val pStagingBufferMemory = stack.mallocLong(1)
