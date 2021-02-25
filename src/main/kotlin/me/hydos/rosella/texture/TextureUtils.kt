@@ -127,7 +127,7 @@ fun beginSingleTimeCommands(commandBuffers: CommandBuffers, device: Device): VkC
 	}
 }
 
-private fun endSingleTimeCommands(commandBuffer: VkCommandBuffer, engine: Rosella) {
+fun endSingleTimeCommands(commandBuffer: VkCommandBuffer, engine: Rosella) {
 	stackPush().use { stack ->
 		vkEndCommandBuffer(commandBuffer)
 		val submitInfo = VkSubmitInfo.callocStack(1, stack)

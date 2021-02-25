@@ -2,24 +2,21 @@ package me.hydos.rosella.model
 
 import me.hydos.rosella.core.Device
 import me.hydos.rosella.core.Rosella
-import me.hydos.rosella.texture.copyBufferToImage
-import me.hydos.rosella.texture.createImage
-import me.hydos.rosella.texture.ioResourceToByteBuffer
-import me.hydos.rosella.texture.transitionImageLayout
+import me.hydos.rosella.texture.*
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memcpy
-import me.hydos.rosella.util.ok
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.lwjgl.stb.STBImage.*
 import org.lwjgl.system.MemoryStack.stackPush
-import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VkBufferCopy
+import org.lwjgl.vulkan.VkCommandBuffer
 import java.nio.ByteBuffer
 
 
 class Model {
-	val vertices = arrayOf(
+	private val vertices = arrayOf(
 		Vertex(Vector2f(-0.5f, -0.5f), Vector3f(1.0f, 0.0f, 0.0f)),
 		Vertex(Vector2f(0.5f, -0.5f), Vector3f(0.0f, 1.0f, 0.0f)),
 		Vertex(Vector2f(0.5f, 0.5f), Vector3f(0.0f, 0.0f, 1.0f)),
@@ -44,7 +41,13 @@ class Model {
 			val pWidth = stack.mallocInt(1)
 			val pHeight = stack.mallocInt(1)
 			val pChannels = stack.mallocInt(1)
-			val pixels: ByteBuffer? = stbi_load_from_memory(ioResourceToByteBuffer(texture, 8 * 1024), pWidth, pHeight, pChannels, STBI_rgb_alpha)
+			val pixels: ByteBuffer? = stbi_load_from_memory(
+				ioResourceToByteBuffer(texture, 8 * 1024),
+				pWidth,
+				pHeight,
+				pChannels,
+				STBI_rgb_alpha
+			)
 			val imageSize =
 				(pWidth[0] * pHeight[0] * pChannels[0]).toLong()
 			if (pixels == null) {
@@ -127,7 +130,7 @@ class Model {
 			)
 			vertexBuffer = pBuffer[0]
 			vertexBufferMemory = pBufferMemory[0]
-			copyBuffer(stagingBuffer, vertexBuffer, bufferSize, rosella, device)
+			copyBuffer(stagingBuffer, vertexBuffer, bufferSize.toLong(), rosella, device)
 			vkDestroyBuffer(device.device, stagingBuffer, null)
 			vkFreeMemory(device.device, stagingBufferMemory, null)
 		}
@@ -163,38 +166,19 @@ class Model {
 			)
 			indexBuffer = pBuffer[0]
 			indexBufferMemory = pBufferMemory[0]
-			copyBuffer(stagingBuffer, indexBuffer, bufferSize.toInt(), engine, device)
+			copyBuffer(stagingBuffer, indexBuffer, bufferSize.toInt().toLong(), engine, device)
 			vkDestroyBuffer(device.device, stagingBuffer, null)
 			vkFreeMemory(device.device, stagingBufferMemory, null)
 		}
 	}
 
-	private fun copyBuffer(srcBuffer: Long, dstBuffer: Long, size: Int, engine: Rosella, device: Device) {
+	private fun copyBuffer(srcBuffer: Long, dstBuffer: Long, size: Long, engine: Rosella, device: Device) {
 		stackPush().use { stack ->
-			val allocInfo = VkCommandBufferAllocateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
-				.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-				.commandPool(engine.commandBuffers.commandPool)
-				.commandBufferCount(1)
-			val pCommandBuffer = stack.mallocPointer(1)
-			vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffer)
-			val commandBuffer = VkCommandBuffer(pCommandBuffer[0], device.device)
-			val beginInfo = VkCommandBufferBeginInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
-				.flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
-			vkBeginCommandBuffer(commandBuffer, beginInfo)
-			run {
-				val copyRegion = VkBufferCopy.callocStack(1, stack)
-				copyRegion.size(size.toLong())
-				vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, copyRegion)
-			}
-			vkEndCommandBuffer(commandBuffer)
-			val submitInfo = VkSubmitInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
-				.pCommandBuffers(pCommandBuffer)
-			vkQueueSubmit(engine.graphicsQueue, submitInfo, VK_NULL_HANDLE).ok()
-			vkQueueWaitIdle(engine.graphicsQueue)
-			vkFreeCommandBuffers(device.device, engine.commandBuffers.commandPool, pCommandBuffer)
+			val commandBuffer: VkCommandBuffer = beginSingleTimeCommands(engine.commandBuffers, device)
+			val copyRegion = VkBufferCopy.callocStack(1, stack)
+			copyRegion.size(size)
+			vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, copyRegion)
+			endSingleTimeCommands(commandBuffer, engine)
 		}
 	}
 
