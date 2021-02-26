@@ -27,12 +27,6 @@ import java.util.function.Consumer
 import java.util.stream.Collectors
 
 
-
-
-
-
-
-
 class Rosella(name: String, val enableValidationLayers: Boolean, internal val screen: Screen) {
 
 	var descriptorSetLayout: Long = 0
@@ -90,26 +84,32 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 	}
 
 	private fun createDescriptorSetLayout() {
-		stackPush().use { stack ->
-			val uboLayoutBinding = VkDescriptorSetLayoutBinding.callocStack(1, stack)
+		stackPush().use {
+			val bindings = VkDescriptorSetLayoutBinding.callocStack(2, it)
+
+			// Ubo Layout
+			bindings[0]
 				.binding(0)
 				.descriptorCount(1)
 				.descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 				.pImmutableSamplers(null)
 				.stageFlags(VK_SHADER_STAGE_VERTEX_BIT)
 
-			val layoutInfo =
-				VkDescriptorSetLayoutCreateInfo.callocStack(stack)
-					.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
-					.pBindings(uboLayoutBinding)
+			// Sampler Layout
+			bindings[1]
+				.binding(1)
+				.descriptorCount(1)
+				.descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				.pImmutableSamplers(null)
+				.stageFlags(VK_SHADER_STAGE_FRAGMENT_BIT)
 
-			val pDescriptorSetLayout = stack.mallocLong(1)
-			vkCreateDescriptorSetLayout(
-				device.device,
-				layoutInfo,
-				null,
-				pDescriptorSetLayout
-			).ok()
+			val layoutInfo = VkDescriptorSetLayoutCreateInfo.callocStack(it)
+			layoutInfo.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
+			layoutInfo.pBindings(bindings)
+			val pDescriptorSetLayout = it.mallocLong(1)
+			if (vkCreateDescriptorSetLayout(device.device, layoutInfo, null, pDescriptorSetLayout) !== VK_SUCCESS) {
+				throw RuntimeException("Failed to create descriptor set layout")
+			}
 			descriptorSetLayout = pDescriptorSetLayout[0]
 		}
 	}
@@ -138,23 +138,38 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 				.descriptorPool(descriptorPool)
 				.pSetLayouts(layouts)
 			val pDescriptorSets = stack.mallocLong(swapChain.swapChainImages.size)
-			vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets).ok()
+			if (vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets) !== VK_SUCCESS) {
+				throw RuntimeException("Failed to allocate descriptor sets")
+			}
 			descriptorSets = ArrayList(pDescriptorSets.capacity())
 			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
 				.offset(0)
 				.range(UniformBufferObject.SIZEOF.toLong())
-			val descriptorWrite = VkWriteDescriptorSet.callocStack(1, stack)
+			val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
+				.imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+				.imageView(model.textureImageView)
+				.sampler(model.textureSampler)
+			val descriptorWrites = VkWriteDescriptorSet.callocStack(2, stack)
+			val uboDescriptorWrite = descriptorWrites[0]
 				.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
 				.dstBinding(0)
 				.dstArrayElement(0)
 				.descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 				.descriptorCount(1)
 				.pBufferInfo(bufferInfo)
+			val samplerDescriptorWrite = descriptorWrites[1]
+				.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+				.dstBinding(1)
+				.dstArrayElement(0)
+				.descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				.descriptorCount(1)
+				.pImageInfo(imageInfo)
 			for (i in 0 until pDescriptorSets.capacity()) {
 				val descriptorSet = pDescriptorSets[i]
 				bufferInfo.buffer(uniformBuffers[i])
-				descriptorWrite.dstSet(descriptorSet)
-				vkUpdateDescriptorSets(device.device, descriptorWrite, null)
+				uboDescriptorWrite.dstSet(descriptorSet)
+				samplerDescriptorWrite.dstSet(descriptorSet)
+				vkUpdateDescriptorSets(device.device, descriptorWrites, null)
 				(descriptorSets as ArrayList<Long>).add(descriptorSet)
 			}
 		}
@@ -162,15 +177,27 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 	private fun createDescriptorPool() {
 		stackPush().use { stack ->
-			val poolSize = VkDescriptorPoolSize.callocStack(1, stack)
-			poolSize.type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-			poolSize.descriptorCount(swapChain.swapChainImages.size)
+			val poolSizes = VkDescriptorPoolSize.callocStack(2, stack)
+
+			// Uniform Buffer Pool Size
+			poolSizes[0]
+				.type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+				.descriptorCount(swapChain.swapChainImages.size)
+
+			// Texture Sampler Pool Size
+			poolSizes[1]
+				.type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				.descriptorCount(swapChain.swapChainImages.size)
+
 			val poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
-			poolInfo.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
-			poolInfo.pPoolSizes(poolSize)
-			poolInfo.maxSets(swapChain.swapChainImages.size)
+				.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
+				.pPoolSizes(poolSizes)
+				.maxSets(swapChain.swapChainImages.size)
+
 			val pDescriptorPool = stack.mallocLong(1)
-			vkCreateDescriptorPool(device.device, poolInfo, null, pDescriptorPool).ok()
+			if (vkCreateDescriptorPool(device.device, poolInfo, null, pDescriptorPool) !== VK_SUCCESS) {
+				throw RuntimeException("Failed to create descriptor pool")
+			}
 			descriptorPool = pDescriptorPool[0]
 		}
 	}
@@ -261,7 +288,12 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		swapChain.swapChainImageViews = ArrayList(swapChain.swapChainImages.size)
 
 		for (swapChainImage in swapChain.swapChainImages) {
-			(swapChain.swapChainImageViews as ArrayList<Long>).add(createImageView(swapChainImage, VK_FORMAT_R8G8B8A8_SRGB))
+			(swapChain.swapChainImageViews as ArrayList<Long>).add(
+				createImageView(
+					swapChainImage,
+					swapChain.swapChainImageFormat
+				)
+			)
 		}
 	}
 

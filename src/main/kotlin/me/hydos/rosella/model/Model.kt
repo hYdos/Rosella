@@ -21,10 +21,10 @@ import java.nio.LongBuffer
 
 class Model {
 	private val vertices = arrayOf(
-		Vertex(Vector2f(-0.5f, -0.5f), Vector3f(1.0f, 0.0f, 0.0f)),
-		Vertex(Vector2f(0.5f, -0.5f), Vector3f(0.0f, 1.0f, 0.0f)),
-		Vertex(Vector2f(0.5f, 0.5f), Vector3f(0.0f, 0.0f, 1.0f)),
-		Vertex(Vector2f(-0.5f, 0.5f), Vector3f(1.0f, 1.0f, 1.0f))
+		Vertex(Vector2f(-0.5f, -0.5f), Vector3f(1.0f, 0.0f, 0.0f), Vector2f(1.0f, 0.0f)),
+		Vertex(Vector2f(0.5f, -0.5f), Vector3f(0.0f, 1.0f, 0.0f), Vector2f(0.0f, 0.0f)),
+		Vertex(Vector2f(0.5f, 0.5f), Vector3f(0.0f, 0.0f, 1.0f), Vector2f(0.0f, 1.0f)),
+		Vertex(Vector2f(-0.5f, 0.5f), Vector3f(1.0f, 1.0f, 1.0f), Vector2f(1.0f, 1.0f))
 	)
 
 	internal val indices = shortArrayOf(
@@ -36,8 +36,8 @@ class Model {
 
 	private var textureImage: Long = 0
 	private var textureImageMemory: Long = 0
-	private var textureImageView: Long = 0
-	private var textureSampler: Long = 0
+	var textureImageView: Long = 0
+	var textureSampler: Long = 0
 
 
 	var indexBuffer: Long = 0
@@ -205,8 +205,7 @@ class Model {
 			val pHeight = stack.mallocInt(1)
 			val pChannels = stack.mallocInt(1)
 			val pixels: ByteBuffer? = stbi_load(filename, pWidth, pHeight, pChannels, STBI_rgb_alpha)
-			val imageSize =
-				(pWidth[0] * pHeight[0] *  /*always 4 due to STBI_rgb_alpha*/pChannels[0]).toLong()
+			val imageSize = (pWidth[0] * pHeight[0] * 4).toLong()
 			if (pixels == null) {
 				throw RuntimeException("Failed to load texture image $filename")
 			}

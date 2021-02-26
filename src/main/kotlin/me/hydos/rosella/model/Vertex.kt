@@ -7,11 +7,9 @@ import org.lwjgl.vulkan.VkVertexInputAttributeDescription
 import org.lwjgl.vulkan.VkVertexInputBindingDescription
 
 
-class Vertex(val pos: Vector2fc, val color: Vector3fc) {
+class Vertex(val pos: Vector2fc, val color: Vector3fc, val texCoords: Vector2fc) {
 	companion object {
-		const val SIZEOF = (2 + 3) * java.lang.Float.BYTES
-		private const val OFFSETOF_POS = 0
-		private const val OFFSETOF_COLOR = 2 * java.lang.Float.BYTES
+		const val SIZEOF = (2 + 3 + 2) * java.lang.Float.BYTES
 
 		internal val bindingDescription: VkVertexInputBindingDescription.Buffer
 			get() {
@@ -24,19 +22,28 @@ class Vertex(val pos: Vector2fc, val color: Vector3fc) {
 
 		internal val attributeDescriptions: VkVertexInputAttributeDescription.Buffer
 			get() {
-				val attributeDescriptions = VkVertexInputAttributeDescription.callocStack(2)
+				val attributeDescriptions = VkVertexInputAttributeDescription.callocStack(3)
+				// Pos
+				attributeDescriptions[0]
+					.binding(0)
+					.location(0)
+					.format(VK_FORMAT_R32G32_SFLOAT)
+					.offset(0) // Offset
 
-				val posDescription = attributeDescriptions[0]
-				posDescription.binding(0)
-				posDescription.location(0)
-				posDescription.format(VK_FORMAT_R32G32_SFLOAT)
-				posDescription.offset(OFFSETOF_POS)
+				// Colour
+				attributeDescriptions[1]
+					.binding(0)
+					.location(1)
+					.format(VK_FORMAT_R32G32B32_SFLOAT)
+					.offset(2 * java.lang.Float.BYTES) // Offset
 
-				val colorDescription = attributeDescriptions[1]
-				colorDescription.binding(0)
-				colorDescription.location(1)
-				colorDescription.format(VK_FORMAT_R32G32B32_SFLOAT)
-				colorDescription.offset(OFFSETOF_COLOR)
+				// Tex Coords
+				attributeDescriptions[2]
+					.binding(0)
+					.location(2)
+					.format(VK_FORMAT_R32G32_SFLOAT)
+					.offset(5 * java.lang.Float.BYTES) // Offset
+
 				return attributeDescriptions.rewind()
 			}
 	}
