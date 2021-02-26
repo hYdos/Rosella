@@ -1,8 +1,5 @@
 package me.hydos.rosella.core
 
-import me.hydos.rosella.core.swapchain.CommandBuffers
-import me.hydos.rosella.core.swapchain.GfxPipeline
-import me.hydos.rosella.core.swapchain.RenderPass
 import me.hydos.rosella.core.swapchain.Swapchain
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.model.Model
@@ -22,7 +19,6 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR
 import org.lwjgl.vulkan.KHRSwapchain.*
 import org.lwjgl.vulkan.VK10.*
-import java.nio.IntBuffer
 import java.nio.LongBuffer
 import java.util.*
 import java.util.function.Consumer
@@ -31,9 +27,7 @@ import java.util.stream.Collectors
 
 class Rosella(name: String, val enableValidationLayers: Boolean, internal val screen: Screen, val resources: ResourceLoader) {
 
-	private var depthImage: Long = 0
-	private var depthImageMemory: Long = 0
-	private var depthImageView: Long = 0
+	var depthBuffer = DepthBuffer()
 
 	var descriptorSetLayout: Long = 0
 	var descriptorPool: Long = 0
@@ -46,11 +40,10 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 	private var framebufferResize: Boolean = false
 
-	internal var commandBuffers: CommandBuffers
-	private lateinit var swapChain: Swapchain
+	lateinit var swapChain: Swapchain
 	private lateinit var renderPass: RenderPass
 	internal lateinit var vulkanInstance: VkInstance
-	private lateinit var pipeline: GfxPipeline
+	var pipeline: Pipeline = Pipeline()
 
 	internal val device: Device
 	private var state: State
@@ -77,7 +70,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 		createSurface()
 		this.device = Device(this, validationLayers)
-		this.commandBuffers = CommandBuffers(device, this)
+		this.pipeline.createCmdPool(this)
 		createModels()
 		createFullSwapChain()
 
@@ -125,13 +118,13 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		this.swapChain = Swapchain(this, device.device, device.physicalDevice, surface)
 		this.renderPass = RenderPass(device, swapChain, this)
 		createImgViews()
-		this.pipeline = GfxPipeline(device, swapChain, renderPass, descriptorSetLayout)
-		createDepthResources()
+		this.pipeline.createPipeline(device, swapChain, renderPass, descriptorSetLayout)
+		depthBuffer.createDepthResources(this)
 		createFramebuffers()
 		createUniformBuffers(swapChain, device)
 		createDescriptorPool()
 		createDescriptorSets()
-		this.commandBuffers.createCommandBuffers(swapChain, renderPass, pipeline)
+		this.pipeline.createCommandBuffers(swapChain, renderPass, pipeline, this)
 		createSyncObjects()
 	}
 
@@ -170,32 +163,6 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		}
 	}
 
-	private fun createDepthResources() {
-		stackPush().use { stack ->
-			val depthFormat: Int = findDepthFormat()
-			val pDepthImage = stack.mallocLong(1)
-			val pDepthImageMemory = stack.mallocLong(1)
-			createImage(
-				swapChain.swapChainExtent!!.width(), swapChain.swapChainExtent!!.height(),
-				depthFormat,
-				VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-				pDepthImage,
-				pDepthImageMemory
-			)
-			depthImage = pDepthImage[0]
-			depthImageMemory = pDepthImageMemory[0]
-			depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT)
-
-			// Explicitly transitioning the depth image
-			transitionImageLayout(
-				depthImage, depthFormat,
-				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-			)
-		}
-	}
-
 	fun transitionImageLayout(
 		image: Long,
 		format: Int,
@@ -218,7 +185,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 			if (newLayout === VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 				barrier.subresourceRange().aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT)
-				if (hasStencilComponent(format)) {
+				if (depthBuffer.hasStencilComponent(format)) {
 					barrier.subresourceRange().aspectMask(
 						barrier.subresourceRange().aspectMask() or VK_IMAGE_ASPECT_STENCIL_BIT
 					)
@@ -261,35 +228,6 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 			)
 			model.endSingleTimeCommands(commandBuffer, device, this)
 		}
-	}
-
-	private fun findSupportedFormat(formatCandidates: IntBuffer, tiling: Int, features: Int): Int {
-		stackPush().use { stack ->
-			val props = VkFormatProperties.callocStack(stack)
-			for (i in 0 until formatCandidates.capacity()) {
-				val format = formatCandidates[i]
-				vkGetPhysicalDeviceFormatProperties(device.physicalDevice, format, props)
-				if (tiling == VK_IMAGE_TILING_LINEAR && props.linearTilingFeatures() and features == features) {
-					return format
-				} else if (tiling == VK_IMAGE_TILING_OPTIMAL && props.optimalTilingFeatures() and features == features) {
-					return format
-				}
-			}
-		}
-		throw RuntimeException("Failed to find supported format")
-	}
-
-
-	fun findDepthFormat(): Int {
-		return findSupportedFormat(
-			stackGet().ints(VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT),
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-		)
-	}
-
-	fun hasStencilComponent(format: Int): Boolean {
-		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT
 	}
 
 	private fun createDescriptorSets() {
@@ -412,7 +350,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 	private fun createFramebuffers() {
 		swapChain.swapChainFramebuffers = ArrayList<Long>(swapChain.swapChainImageViews.size)
 		stackPush().use { stack ->
-			val attachments = stack.longs(VK_NULL_HANDLE, depthImageView)
+			val attachments = stack.longs(VK_NULL_HANDLE, depthBuffer.depthImageView)
 			val pFramebuffer = stack.mallocLong(1)
 			val framebufferInfo = VkFramebufferCreateInfo.callocStack(stack)
 			framebufferInfo.sType(VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO)
@@ -504,7 +442,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		//TODO: less temporary model system
 		model.destroy(device)
 
-		destroySwapChain()
+		freeSwapChain()
 
 		inFlightFrames!!.forEach(Consumer { frame: Frame ->
 			vkDestroySemaphore(device.device, frame.renderFinishedSemaphore(), null)
@@ -513,7 +451,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		})
 		imagesInFlight = null
 
-		vkDestroyCommandPool(device.device, commandBuffers.commandPool, null)
+		vkDestroyCommandPool(device.device, pipeline.commandPool, null)
 
 		vkDestroySwapchainKHR(device.device, swapChain.swapChain, null)
 		vkDestroyDevice(device.device, null)
@@ -638,7 +576,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 			submitInfo.pWaitSemaphores(thisFrame.pImageAvailableSemaphore())
 			submitInfo.pWaitDstStageMask(stack.ints(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT))
 			submitInfo.pSignalSemaphores(thisFrame.pRenderFinishedSemaphore())
-			submitInfo.pCommandBuffers(stack.pointers(commandBuffers.commandBuffers[imageIndex]))
+			submitInfo.pCommandBuffers(stack.pointers(pipeline.commandBuffers[imageIndex]))
 			vkResetFences(device.device, thisFrame.pFence())
 			vkQueueSubmit(graphicsQueue, submitInfo, thisFrame.fence()).ok()
 			val presentInfo = VkPresentInfoKHR.callocStack(stack)
@@ -672,19 +610,17 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		}
 
 		vkDeviceWaitIdle(device.device)
-		destroySwapChain()
+		freeSwapChain()
 		createFullSwapChain()
 	}
 
-	private fun destroySwapChain() {
+	private fun freeSwapChain() {
 		vkDestroyDescriptorPool(device.device, descriptorPool, null)
 
 		// Free Depth Buffer
-		vkDestroyImageView(device.device, depthImageView, null)
-		vkDestroyImage(device.device, depthImage, null)
-		vkFreeMemory(device.device, depthImageMemory, null)
+		depthBuffer.free(device)
 
-		destroyUbos(device)
+		freeUbos(device)
 
 		swapChain.swapChainFramebuffers.forEach { framebuffer ->
 			vkDestroyFramebuffer(
@@ -693,9 +629,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 				null
 			)
 		}
-		vkFreeCommandBuffers(device.device, commandBuffers.commandPool, asPtrBuffer(commandBuffers.commandBuffers))
-		vkDestroyPipeline(device.device, pipeline.graphicsPipeline, null)
-		vkDestroyPipelineLayout(device.device, pipeline.pipelineLayout, null)
+		pipeline.free(device)
 		vkDestroyRenderPass(device.device, renderPass.renderPass, null)
 		swapChain.swapChainImageViews.forEach { imageView -> vkDestroyImageView(device.device, imageView, null) }
 		vkDestroySwapchainKHR(device.device, swapChain.swapChain, null)

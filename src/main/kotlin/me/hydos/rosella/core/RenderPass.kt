@@ -1,7 +1,6 @@
-package me.hydos.rosella.core.swapchain
+package me.hydos.rosella.core
 
-import me.hydos.rosella.core.Device
-import me.hydos.rosella.core.Rosella
+import me.hydos.rosella.core.swapchain.Swapchain
 import me.hydos.rosella.util.ok
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
@@ -28,14 +27,14 @@ class RenderPass(val device: Device, private val swapchain: Swapchain, private v
 				.initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 				.finalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 
-			val y = attachments[0].samples()
+			val samples = attachments[0].samples()
 
 			val colorAttachmentRef = attachmentRefs[0]
 				.attachment(0)
 				.layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 
 			attachments[1]
-				.format(engine.findDepthFormat())
+				.format(engine.depthBuffer.findDepthFormat(engine.device))
 				.samples(VK_SAMPLE_COUNT_1_BIT)
 				.loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
 				.storeOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)

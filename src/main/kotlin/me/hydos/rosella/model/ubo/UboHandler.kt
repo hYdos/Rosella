@@ -15,7 +15,7 @@ import java.util.function.Consumer
 var uniformBuffers: List<Long> = ArrayList()
 var uniformBuffersMemory: List<Long> = ArrayList()
 
-fun destroyUbos(device: Device) {
+fun freeUbos(device: Device) {
 	uniformBuffers.forEach(Consumer { ubo: Long? -> vkDestroyBuffer(device.device, ubo!!, null) })
 	uniformBuffersMemory.forEach(Consumer { uboMemory: Long? ->
 		vkFreeMemory(

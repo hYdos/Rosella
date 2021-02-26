@@ -122,7 +122,7 @@ class Model(val modelLocation: String) {
 				.pCommandBuffers(pCommandBuffer)
 			vkQueueSubmit(engine.graphicsQueue, submitInfo, VK_NULL_HANDLE).ok()
 			vkQueueWaitIdle(engine.graphicsQueue)
-			vkFreeCommandBuffers(device.device, engine.commandBuffers.commandPool, pCommandBuffer)
+			vkFreeCommandBuffers(device.device, engine.pipeline.commandPool, pCommandBuffer)
 		}
 	}
 
@@ -135,7 +135,7 @@ class Model(val modelLocation: String) {
 		val allocInfo = VkCommandBufferAllocateInfo.callocStack(stack)
 			.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
 			.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-			.commandPool(engine.commandBuffers.commandPool)
+			.commandPool(engine.pipeline.commandPool)
 			.commandBufferCount(1)
 		vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffer)
 		val commandBuffer = VkCommandBuffer(pCommandBuffer[0], device.device)
@@ -313,7 +313,7 @@ class Model(val modelLocation: String) {
 				.pCommandBuffers(stack.pointers(commandBuffer))
 			vkQueueSubmit(engine.graphicsQueue, submitInfo, VK_NULL_HANDLE)
 			vkQueueWaitIdle(engine.graphicsQueue)
-			vkFreeCommandBuffers(device.device, engine.commandBuffers.commandPool, commandBuffer)
+			vkFreeCommandBuffers(device.device, engine.pipeline.commandPool, commandBuffer)
 		}
 	}
 }
