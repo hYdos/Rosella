@@ -50,8 +50,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 	private var debugMessenger: Long = 0
 	var surface: Long = 0
 
-	lateinit var graphicsQueue: VkQueue
-	lateinit var presentQueue: VkQueue
+	var queues: Queues = Queues()
 
 	init {
 		state = State.STARTING
@@ -107,9 +106,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 			layoutInfo.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
 			layoutInfo.pBindings(bindings)
 			val pDescriptorSetLayout = it.mallocLong(1)
-			if (vkCreateDescriptorSetLayout(device.device, layoutInfo, null, pDescriptorSetLayout) !== VK_SUCCESS) {
-				throw RuntimeException("Failed to create descriptor set layout")
-			}
+			vkCreateDescriptorSetLayout(device.device, layoutInfo, null, pDescriptorSetLayout).ok("Failed to create descriptor set layout")
 			descriptorSetLayout = pDescriptorSetLayout[0]
 		}
 	}
@@ -578,7 +575,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 			submitInfo.pSignalSemaphores(thisFrame.pRenderFinishedSemaphore())
 			submitInfo.pCommandBuffers(stack.pointers(pipeline.commandBuffers[imageIndex]))
 			vkResetFences(device.device, thisFrame.pFence())
-			vkQueueSubmit(graphicsQueue, submitInfo, thisFrame.fence()).ok()
+			vkQueueSubmit(queues.graphicsQueue, submitInfo, thisFrame.fence()).ok()
 			val presentInfo = VkPresentInfoKHR.callocStack(stack)
 			presentInfo.sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
 			presentInfo.pWaitSemaphores(thisFrame.pRenderFinishedSemaphore())
@@ -586,7 +583,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 			presentInfo.pSwapchains(stack.longs(swapChain.swapChain))
 			presentInfo.pImageIndices(pImageIndex)
 
-			vkResult = vkQueuePresentKHR(presentQueue, presentInfo)
+			vkResult = vkQueuePresentKHR(queues.presentQueue, presentInfo)
 
 			if (vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR || framebufferResize) {
 				framebufferResize = false

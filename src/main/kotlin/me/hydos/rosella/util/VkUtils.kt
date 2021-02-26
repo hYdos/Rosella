@@ -71,7 +71,13 @@ fun Int.ok(): Int {
 	if (this != VK10.VK_SUCCESS) {
 		throw RuntimeException(map[this] ?: toString(16))
 	}
+	return this
+}
 
+fun Int.ok(message: String): Int {
+	if (this != VK10.VK_SUCCESS) {
+		throw RuntimeException(message + " Caused by: " + map[this])
+	}
 	return this
 }
 

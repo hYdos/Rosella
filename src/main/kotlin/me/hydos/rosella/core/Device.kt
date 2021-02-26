@@ -76,10 +76,10 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 			val pQueue: PointerBuffer = it.pointers(VK_NULL_HANDLE)
 
 			vkGetDeviceQueue(device, indices.graphicsFamily!!, 0, pQueue)
-			engine.graphicsQueue = VkQueue(pQueue[0], device)
+			engine.queues.graphicsQueue = VkQueue(pQueue[0], device)
 
 			vkGetDeviceQueue(device, indices.presentFamily!!, 0, pQueue)
-			engine.presentQueue = VkQueue(pQueue[0], device)
+			engine.queues.presentQueue = VkQueue(pQueue[0], device)
 		}
 	}
 

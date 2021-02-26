@@ -120,8 +120,8 @@ class Model(val modelLocation: String) {
 			val submitInfo = VkSubmitInfo.callocStack(stack)
 				.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
 				.pCommandBuffers(pCommandBuffer)
-			vkQueueSubmit(engine.graphicsQueue, submitInfo, VK_NULL_HANDLE).ok()
-			vkQueueWaitIdle(engine.graphicsQueue)
+			vkQueueSubmit(engine.queues.graphicsQueue, submitInfo, VK_NULL_HANDLE).ok()
+			vkQueueWaitIdle(engine.queues.graphicsQueue)
 			vkFreeCommandBuffers(device.device, engine.pipeline.commandPool, pCommandBuffer)
 		}
 	}
@@ -311,8 +311,8 @@ class Model(val modelLocation: String) {
 			val submitInfo = VkSubmitInfo.callocStack(1, stack)
 				.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
 				.pCommandBuffers(stack.pointers(commandBuffer))
-			vkQueueSubmit(engine.graphicsQueue, submitInfo, VK_NULL_HANDLE)
-			vkQueueWaitIdle(engine.graphicsQueue)
+			vkQueueSubmit(engine.queues.graphicsQueue, submitInfo, VK_NULL_HANDLE)
+			vkQueueWaitIdle(engine.queues.graphicsQueue)
 			vkFreeCommandBuffers(device.device, engine.pipeline.commandPool, commandBuffer)
 		}
 	}
