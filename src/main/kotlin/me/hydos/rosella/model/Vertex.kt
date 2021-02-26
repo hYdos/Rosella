@@ -7,9 +7,9 @@ import org.lwjgl.vulkan.VkVertexInputAttributeDescription
 import org.lwjgl.vulkan.VkVertexInputBindingDescription
 
 
-class Vertex(val pos: Vector2fc, val color: Vector3fc, val texCoords: Vector2fc) {
+class Vertex(val pos: Vector3fc, val color: Vector3fc, val texCoords: Vector2fc) {
 	companion object {
-		const val SIZEOF = (2 + 3 + 2) * java.lang.Float.BYTES
+		const val SIZEOF = (3 + 3 + 2) * java.lang.Float.BYTES
 
 		internal val bindingDescription: VkVertexInputBindingDescription.Buffer
 			get() {
@@ -27,7 +27,7 @@ class Vertex(val pos: Vector2fc, val color: Vector3fc, val texCoords: Vector2fc)
 				attributeDescriptions[0]
 					.binding(0)
 					.location(0)
-					.format(VK_FORMAT_R32G32_SFLOAT)
+					.format(VK_FORMAT_R32G32B32_SFLOAT)
 					.offset(0) // Offset
 
 				// Colour
@@ -35,14 +35,14 @@ class Vertex(val pos: Vector2fc, val color: Vector3fc, val texCoords: Vector2fc)
 					.binding(0)
 					.location(1)
 					.format(VK_FORMAT_R32G32B32_SFLOAT)
-					.offset(2 * java.lang.Float.BYTES) // Offset
+					.offset(3 * java.lang.Float.BYTES) // Offset
 
 				// Tex Coords
 				attributeDescriptions[2]
 					.binding(0)
 					.location(2)
 					.format(VK_FORMAT_R32G32_SFLOAT)
-					.offset(5 * java.lang.Float.BYTES) // Offset
+					.offset((3 + 3) * java.lang.Float.BYTES) // Offset
 
 				return attributeDescriptions.rewind()
 			}

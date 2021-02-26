@@ -13,7 +13,12 @@ import java.nio.ByteBuffer
 import java.nio.LongBuffer
 
 
-class GfxPipeline(private val device: Device, private val swapchain: Swapchain, private val renderPass: RenderPass, private val descriptorSetLayout: Long) {
+class GfxPipeline(
+	private val device: Device,
+	private val swapchain: Swapchain,
+	private val renderPass: RenderPass,
+	private val descriptorSetLayout: Long
+) {
 
 	internal var pipelineLayout: Long = 0
 	internal var graphicsPipeline: Long = 0
@@ -104,6 +109,17 @@ class GfxPipeline(private val device: Device, private val swapchain: Swapchain, 
 					.sampleShadingEnable(false)
 					.rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
 
+			val depthStencil: VkPipelineDepthStencilStateCreateInfo =
+				VkPipelineDepthStencilStateCreateInfo.callocStack(it)
+					.sType(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
+					.depthTestEnable(true)
+					.depthWriteEnable(true)
+					.depthCompareOp(VK_COMPARE_OP_LESS)
+					.depthBoundsTestEnable(false)
+					.minDepthBounds(0.0f)
+					.maxDepthBounds(1.0f)
+					.stencilTestEnable(false)
+
 			/**
 			 * Colour Blending
 			 */
@@ -140,6 +156,7 @@ class GfxPipeline(private val device: Device, private val swapchain: Swapchain, 
 				.pViewportState(viewportState)
 				.pRasterizationState(rasterizer)
 				.pMultisampleState(multisampling)
+				.pDepthStencilState(depthStencil)
 				.pColorBlendState(colorBlending)
 				.layout(pipelineLayout)
 				.renderPass(renderPass.renderPass)

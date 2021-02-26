@@ -105,6 +105,7 @@ fun memcpy(buffer: ByteBuffer, vertices: Array<Vertex>) {
 	for (vertex in vertices) {
 		buffer.putFloat(vertex.pos.x())
 		buffer.putFloat(vertex.pos.y())
+		buffer.putFloat(vertex.pos.z())
 
 		buffer.putFloat(vertex.color.x())
 		buffer.putFloat(vertex.color.y())

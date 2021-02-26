@@ -3,7 +3,6 @@ package me.hydos.rosella.model
 import me.hydos.rosella.core.Device
 import me.hydos.rosella.core.Rosella
 import me.hydos.rosella.util.createBuffer
-import me.hydos.rosella.util.findMemoryType
 import me.hydos.rosella.util.memcpy
 import me.hydos.rosella.util.ok
 import org.joml.Vector2f
@@ -16,19 +15,26 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
 import java.lang.ClassLoader.getSystemClassLoader
 import java.nio.ByteBuffer
-import java.nio.LongBuffer
 
 
 class Model {
 	private val vertices = arrayOf(
-		Vertex(Vector2f(-0.5f, -0.5f), Vector3f(1.0f, 0.0f, 0.0f), Vector2f(1.0f, 0.0f)),
-		Vertex(Vector2f(0.5f, -0.5f), Vector3f(0.0f, 1.0f, 0.0f), Vector2f(0.0f, 0.0f)),
-		Vertex(Vector2f(0.5f, 0.5f), Vector3f(0.0f, 0.0f, 1.0f), Vector2f(0.0f, 1.0f)),
-		Vertex(Vector2f(-0.5f, 0.5f), Vector3f(1.0f, 1.0f, 1.0f), Vector2f(1.0f, 1.0f))
+		// Top Square
+		Vertex(Vector3f(-0.5f, -0.5f, 0.0f), Vector3f(1.0f, 0.0f, 0.0f), Vector2f(0.0f, 0.0f)),
+		Vertex(Vector3f(0.5f, -0.5f, 0.0f), Vector3f(0.0f, 1.0f, 0.0f), Vector2f(1.0f, 0.0f)),
+		Vertex(Vector3f(0.5f, 0.5f, 0.0f), Vector3f(0.0f, 0.0f, 1.0f), Vector2f(1.0f, 1.0f)),
+		Vertex(Vector3f(-0.5f, 0.5f, 0.0f), Vector3f(1.0f, 1.0f, 1.0f), Vector2f(0.0f, 1.0f)),
+
+		// Bottom Square
+		Vertex(Vector3f(-0.5f, -0.5f, -0.5f), Vector3f(1.0f, 0.0f, 0.0f), Vector2f(0.0f, 0.0f)),
+		Vertex(Vector3f(0.5f, -0.5f, -0.5f), Vector3f(0.0f, 1.0f, 0.0f), Vector2f(1.0f, 0.0f)),
+		Vertex(Vector3f(0.5f, 0.5f, -0.5f), Vector3f(0.0f, 0.0f, 1.0f), Vector2f(1.0f, 1.0f)),
+		Vertex(Vector3f(-0.5f, 0.5f, -0.5f), Vector3f(1.0f, 1.0f, 1.0f), Vector2f(0.0f, 1.0f))
 	)
 
 	internal val indices = shortArrayOf(
-		0, 1, 2, 2, 3, 0
+		0, 1, 2, 2, 3, 0,
+		4, 5, 6, 6, 7, 4
 	)
 
 	var vertexBuffer: Long = 0
@@ -194,7 +200,7 @@ class Model {
 	}
 
 	private fun createTextureImageView(engine: Rosella) {
-		textureImageView = engine.createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB)
+		textureImageView = engine.createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT)
 	}
 
 	private fun createTextureImage(device: Device, engine: Rosella) {
@@ -226,120 +232,31 @@ class Model {
 			stbi_image_free(pixels)
 			val pTextureImage = stack.mallocLong(1)
 			val pTextureImageMemory = stack.mallocLong(1)
-			createImage(
+			engine.createImage(
 				pWidth[0], pHeight[0],
 				VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK_IMAGE_USAGE_SAMPLED_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 				pTextureImage,
-				pTextureImageMemory,
-				device
+				pTextureImageMemory
 			)
 			textureImage = pTextureImage[0]
 			textureImageMemory = pTextureImageMemory[0]
-			transitionImageLayout(
+			engine.transitionImageLayout(
 				textureImage,
 				VK_FORMAT_R8G8B8A8_SRGB,
 				VK_IMAGE_LAYOUT_UNDEFINED,
-				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				device,
-				engine
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 			)
 			copyBufferToImage(pStagingBuffer[0], textureImage, pWidth[0], pHeight[0], device, engine)
-			transitionImageLayout(
+			engine.transitionImageLayout(
 				textureImage,
 				VK_FORMAT_R8G8B8A8_SRGB,
 				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-				device,
-				engine
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 			)
 			vkDestroyBuffer(device.device, pStagingBuffer[0], null)
 			vkFreeMemory(device.device, pStagingBufferMemory[0], null)
-		}
-	}
-
-	private fun createImage(
-		width: Int, height: Int, format: Int, tiling: Int, usage: Int, memProperties: Int,
-		pTextureImage: LongBuffer, pTextureImageMemory: LongBuffer, device: Device
-	) {
-		stackPush().use { stack ->
-			val imageInfo = VkImageCreateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
-				.imageType(VK_IMAGE_TYPE_2D)
-			imageInfo.extent().width(width)
-			imageInfo.extent().height(height)
-			imageInfo.extent().depth(1)
-			imageInfo.mipLevels(1)
-				.arrayLayers(1)
-				.format(format)
-				.tiling(tiling)
-				.initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
-				.usage(usage)
-				.samples(VK_SAMPLE_COUNT_1_BIT)
-				.sharingMode(VK_SHARING_MODE_EXCLUSIVE)
-			if (vkCreateImage(device.device, imageInfo, null, pTextureImage) !== VK_SUCCESS) {
-				throw RuntimeException("Failed to create image")
-			}
-			val memRequirements = VkMemoryRequirements.mallocStack(stack)
-			vkGetImageMemoryRequirements(device.device, pTextureImage[0], memRequirements)
-			val allocInfo = VkMemoryAllocateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-				.allocationSize(memRequirements.size())
-				.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), memProperties, device))
-			if (vkAllocateMemory(device.device, allocInfo, null, pTextureImageMemory) !== VK_SUCCESS) {
-				throw RuntimeException("Failed to allocate image memory")
-			}
-			vkBindImageMemory(device.device, pTextureImage[0], pTextureImageMemory[0], 0)
-		}
-	}
-
-	private fun transitionImageLayout(
-		image: Long,
-		format: Int,
-		oldLayout: Int,
-		newLayout: Int,
-		device: Device,
-		engine: Rosella
-	) {
-		stackPush().use { stack ->
-			val barrier = VkImageMemoryBarrier.callocStack(1, stack)
-				.sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-				.oldLayout(oldLayout)
-				.newLayout(newLayout)
-				.srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-				.dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-				.image(image)
-			barrier.subresourceRange().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-			barrier.subresourceRange().baseMipLevel(0)
-			barrier.subresourceRange().levelCount(1)
-			barrier.subresourceRange().baseArrayLayer(0)
-			barrier.subresourceRange().layerCount(1)
-			val sourceStage: Int
-			val destinationStage: Int
-			if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-				barrier.srcAccessMask(0)
-					.dstAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
-				sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
-				destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT
-			} else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-				barrier.srcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
-					.dstAccessMask(VK_ACCESS_SHADER_READ_BIT)
-				sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT
-				destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-			} else {
-				throw IllegalArgumentException("Unsupported layout transition")
-			}
-			val commandBuffer: VkCommandBuffer = beginSingleTimeCommands(device, engine)
-			vkCmdPipelineBarrier(
-				commandBuffer,
-				sourceStage, destinationStage,
-				0,
-				null,
-				null,
-				barrier
-			)
-			endSingleTimeCommands(commandBuffer, device, engine)
 		}
 	}
 
@@ -367,14 +284,14 @@ class Model {
 		src.limit(src.capacity()).rewind()
 	}
 
-	private fun beginSingleTimeCommands(device: Device, engine: Rosella): VkCommandBuffer {
+	fun beginSingleTimeCommands(device: Device, engine: Rosella): VkCommandBuffer {
 		stackPush().use { stack ->
 			val pCommandBuffer = stack.mallocPointer(1)
 			return beginCmdBuffer(stack, engine, device, pCommandBuffer)
 		}
 	}
 
-	private fun endSingleTimeCommands(commandBuffer: VkCommandBuffer, device: Device, engine: Rosella) {
+	fun endSingleTimeCommands(commandBuffer: VkCommandBuffer, device: Device, engine: Rosella) {
 		stackPush().use { stack ->
 			vkEndCommandBuffer(commandBuffer)
 			val submitInfo = VkSubmitInfo.callocStack(1, stack)

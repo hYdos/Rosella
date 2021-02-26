@@ -7,6 +7,7 @@ import me.hydos.rosella.core.swapchain.Swapchain
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.model.Model
 import me.hydos.rosella.model.ubo.*
+import me.hydos.rosella.util.findMemoryType
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
@@ -21,13 +22,28 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR
 import org.lwjgl.vulkan.KHRSwapchain.*
 import org.lwjgl.vulkan.VK10.*
+import java.nio.IntBuffer
 import java.nio.LongBuffer
 import java.util.*
 import java.util.function.Consumer
 import java.util.stream.Collectors
 
 
+
+
+
+
+
+
+
+
+
 class Rosella(name: String, val enableValidationLayers: Boolean, internal val screen: Screen) {
+
+
+	private var depthImage: Long = 0
+	private var depthImageMemory: Long = 0
+	private var depthImageView: Long = 0
 
 	var descriptorSetLayout: Long = 0
 	var descriptorPool: Long = 0
@@ -116,15 +132,173 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 	private fun createFullSwapChain() {
 		this.swapChain = Swapchain(this, device.device, device.physicalDevice, surface)
-		this.renderPass = RenderPass(device, swapChain)
+		this.renderPass = RenderPass(device, swapChain, this)
 		createImgViews()
 		this.pipeline = GfxPipeline(device, swapChain, renderPass, descriptorSetLayout)
+		createDepthResources()
 		createFramebuffers()
 		createUniformBuffers(swapChain, device)
 		createDescriptorPool()
 		createDescriptorSets()
 		this.commandBuffers.createCommandBuffers(swapChain, renderPass, pipeline)
 		createSyncObjects()
+	}
+
+	fun createImage(
+		width: Int, height: Int, format: Int, tiling: Int, usage: Int, memProperties: Int,
+		pTextureImage: LongBuffer, pTextureImageMemory: LongBuffer
+	) {
+		stackPush().use { stack ->
+			val imageInfo = VkImageCreateInfo.callocStack(stack)
+				.sType(VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
+				.imageType(VK_IMAGE_TYPE_2D)
+			imageInfo.extent().width(width)
+			imageInfo.extent().height(height)
+			imageInfo.extent().depth(1)
+			imageInfo.mipLevels(1)
+				.arrayLayers(1)
+				.format(format)
+				.tiling(tiling)
+				.initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+				.usage(usage)
+				.samples(VK_SAMPLE_COUNT_1_BIT)
+				.sharingMode(VK_SHARING_MODE_EXCLUSIVE)
+			if (vkCreateImage(device.device, imageInfo, null, pTextureImage) !== VK_SUCCESS) {
+				throw RuntimeException("Failed to create image")
+			}
+			val memRequirements = VkMemoryRequirements.mallocStack(stack)
+			vkGetImageMemoryRequirements(device.device, pTextureImage[0], memRequirements)
+			val allocInfo = VkMemoryAllocateInfo.callocStack(stack)
+				.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
+				.allocationSize(memRequirements.size())
+				.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), memProperties, device))
+			if (vkAllocateMemory(device.device, allocInfo, null, pTextureImageMemory) !== VK_SUCCESS) {
+				throw RuntimeException("Failed to allocate image memory")
+			}
+			vkBindImageMemory(device.device, pTextureImage[0], pTextureImageMemory[0], 0)
+		}
+	}
+
+	private fun createDepthResources() {
+		stackPush().use { stack ->
+			val depthFormat: Int = findDepthFormat()
+			val pDepthImage = stack.mallocLong(1)
+			val pDepthImageMemory = stack.mallocLong(1)
+			createImage(
+				swapChain.swapChainExtent!!.width(), swapChain.swapChainExtent!!.height(),
+				depthFormat,
+				VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				pDepthImage,
+				pDepthImageMemory
+			)
+			depthImage = pDepthImage[0]
+			depthImageMemory = pDepthImageMemory[0]
+			depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT)
+
+			// Explicitly transitioning the depth image
+			transitionImageLayout(
+				depthImage, depthFormat,
+				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+			)
+		}
+	}
+
+	fun transitionImageLayout(
+		image: Long,
+		format: Int,
+		oldLayout: Int,
+		newLayout: Int,
+	) {
+		stackPush().use { stack ->
+			val barrier = VkImageMemoryBarrier.callocStack(1, stack)
+				.sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
+				.oldLayout(oldLayout)
+				.newLayout(newLayout)
+				.srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.image(image)
+			barrier.subresourceRange().baseMipLevel(0)
+			barrier.subresourceRange().levelCount(1)
+			barrier.subresourceRange().baseArrayLayer(0)
+			barrier.subresourceRange().layerCount(1)
+
+
+			if (newLayout === VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+				barrier.subresourceRange().aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT)
+				if (hasStencilComponent(format)) {
+					barrier.subresourceRange().aspectMask(
+						barrier.subresourceRange().aspectMask() or VK_IMAGE_ASPECT_STENCIL_BIT
+					)
+				}
+			} else {
+				barrier.subresourceRange().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+			}
+
+			val sourceStage: Int
+			val destinationStage: Int
+			if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+				barrier.srcAccessMask(0)
+					.dstAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
+				sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+				destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT
+			} else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+				barrier.srcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
+					.dstAccessMask(VK_ACCESS_SHADER_READ_BIT)
+				sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT
+				destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+			} else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+
+				barrier.srcAccessMask(0);
+				barrier.dstAccessMask(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT or VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+
+				sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+				destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+
+			} else {
+				throw IllegalArgumentException("Unsupported layout transition")
+			}
+			val commandBuffer: VkCommandBuffer = model.beginSingleTimeCommands(device, this)
+			vkCmdPipelineBarrier(
+				commandBuffer,
+				sourceStage, destinationStage,
+				0,
+				null,
+				null,
+				barrier
+			)
+			model.endSingleTimeCommands(commandBuffer, device, this)
+		}
+	}
+
+	private fun findSupportedFormat(formatCandidates: IntBuffer, tiling: Int, features: Int): Int {
+		stackPush().use { stack ->
+			val props = VkFormatProperties.callocStack(stack)
+			for (i in 0 until formatCandidates.capacity()) {
+				val format = formatCandidates[i]
+				vkGetPhysicalDeviceFormatProperties(device.physicalDevice, format, props)
+				if (tiling == VK_IMAGE_TILING_LINEAR && props.linearTilingFeatures() and features == features) {
+					return format
+				} else if (tiling == VK_IMAGE_TILING_OPTIMAL && props.optimalTilingFeatures() and features == features) {
+					return format
+				}
+			}
+		}
+		throw RuntimeException("Failed to find supported format")
+	}
+
+
+	fun findDepthFormat(): Int {
+		return findSupportedFormat(
+			stackGet().ints(VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT),
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+		)
+	}
+
+	fun hasStencilComponent(format: Int): Boolean {
+		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT
 	}
 
 	private fun createDescriptorSets() {
@@ -247,7 +421,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 	private fun createFramebuffers() {
 		swapChain.swapChainFramebuffers = ArrayList<Long>(swapChain.swapChainImageViews.size)
 		stackPush().use { stack ->
-			val attachments = stack.mallocLong(1)
+			val attachments = stack.longs(VK_NULL_HANDLE, depthImageView)
 			val pFramebuffer = stack.mallocLong(1)
 			val framebufferInfo = VkFramebufferCreateInfo.callocStack(stack)
 			framebufferInfo.sType(VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO)
@@ -264,14 +438,14 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		}
 	}
 
-	fun createImageView(image: Long, format: Int): Long {
+	fun createImageView(image: Long, format: Int, aspectFlags: Int): Long {
 		stackPush().use { stack ->
 			val viewInfo = VkImageViewCreateInfo.callocStack(stack)
-			viewInfo.sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
-			viewInfo.image(image)
-			viewInfo.viewType(VK_IMAGE_VIEW_TYPE_2D)
-			viewInfo.format(format)
-			viewInfo.subresourceRange().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+			.sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
+			.image(image)
+			.viewType(VK_IMAGE_VIEW_TYPE_2D)
+			.format(format)
+			viewInfo.subresourceRange().aspectMask(aspectFlags)
 			viewInfo.subresourceRange().baseMipLevel(0)
 			viewInfo.subresourceRange().levelCount(1)
 			viewInfo.subresourceRange().baseArrayLayer(0)
@@ -291,7 +465,8 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 			(swapChain.swapChainImageViews as ArrayList<Long>).add(
 				createImageView(
 					swapChainImage,
-					swapChain.swapChainImageFormat
+					swapChain.swapChainImageFormat,
+					VK_IMAGE_ASPECT_COLOR_BIT
 				)
 			)
 		}
@@ -512,6 +687,12 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 	private fun destroySwapChain() {
 		vkDestroyDescriptorPool(device.device, descriptorPool, null)
+
+		// Free Depth Buffer
+		vkDestroyImageView(device.device, depthImageView, null)
+		vkDestroyImage(device.device, depthImage, null)
+		vkFreeMemory(device.device, depthImageMemory, null)
+
 		destroyUbos(device)
 
 		swapChain.swapChainFramebuffers.forEach { framebuffer ->
