@@ -29,17 +29,7 @@ import java.util.function.Consumer
 import java.util.stream.Collectors
 
 
-
-
-
-
-
-
-
-
-
 class Rosella(name: String, val enableValidationLayers: Boolean, internal val screen: Screen) {
-
 
 	private var depthImage: Long = 0
 	private var depthImageMemory: Long = 0
@@ -48,7 +38,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 	var descriptorSetLayout: Long = 0
 	var descriptorPool: Long = 0
 	var descriptorSets: List<Long> = ArrayList()
-	var model: Model = Model()
+	var model: Model = Model("models/chalet.obj")
 
 	private var inFlightFrames: List<Frame>? = null
 	private var imagesInFlight: MutableMap<Int, Frame>? = null
@@ -441,10 +431,10 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 	fun createImageView(image: Long, format: Int, aspectFlags: Int): Long {
 		stackPush().use { stack ->
 			val viewInfo = VkImageViewCreateInfo.callocStack(stack)
-			.sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
-			.image(image)
-			.viewType(VK_IMAGE_VIEW_TYPE_2D)
-			.format(format)
+				.sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
+				.image(image)
+				.viewType(VK_IMAGE_VIEW_TYPE_2D)
+				.format(format)
 			viewInfo.subresourceRange().aspectMask(aspectFlags)
 			viewInfo.subresourceRange().baseMipLevel(0)
 			viewInfo.subresourceRange().levelCount(1)

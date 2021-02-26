@@ -5,37 +5,24 @@ import me.hydos.rosella.core.Rosella
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memcpy
 import me.hydos.rosella.util.ok
-import org.joml.Vector2f
 import org.joml.Vector3f
+import org.joml.Vector3fc
 import org.lwjgl.PointerBuffer
+import org.lwjgl.assimp.Assimp
 import org.lwjgl.stb.STBImage.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
+import java.io.File
 import java.lang.ClassLoader.getSystemClassLoader
 import java.nio.ByteBuffer
 
 
-class Model {
-	private val vertices = arrayOf(
-		// Top Square
-		Vertex(Vector3f(-0.5f, -0.5f, 0.0f), Vector3f(1.0f, 0.0f, 0.0f), Vector2f(0.0f, 0.0f)),
-		Vertex(Vector3f(0.5f, -0.5f, 0.0f), Vector3f(0.0f, 1.0f, 0.0f), Vector2f(1.0f, 0.0f)),
-		Vertex(Vector3f(0.5f, 0.5f, 0.0f), Vector3f(0.0f, 0.0f, 1.0f), Vector2f(1.0f, 1.0f)),
-		Vertex(Vector3f(-0.5f, 0.5f, 0.0f), Vector3f(1.0f, 1.0f, 1.0f), Vector2f(0.0f, 1.0f)),
+class Model(val modelLocation: String) {
 
-		// Bottom Square
-		Vertex(Vector3f(-0.5f, -0.5f, -0.5f), Vector3f(1.0f, 0.0f, 0.0f), Vector2f(0.0f, 0.0f)),
-		Vertex(Vector3f(0.5f, -0.5f, -0.5f), Vector3f(0.0f, 1.0f, 0.0f), Vector2f(1.0f, 0.0f)),
-		Vertex(Vector3f(0.5f, 0.5f, -0.5f), Vector3f(0.0f, 0.0f, 1.0f), Vector2f(1.0f, 1.0f)),
-		Vertex(Vector3f(-0.5f, 0.5f, -0.5f), Vector3f(1.0f, 1.0f, 1.0f), Vector2f(0.0f, 1.0f))
-	)
-
-	internal val indices = shortArrayOf(
-		0, 1, 2, 2, 3, 0,
-		4, 5, 6, 6, 7, 4
-	)
+	private var vertices: ArrayList<Vertex> = ArrayList()
+	var indices: ArrayList<Int> = ArrayList()
 
 	var vertexBuffer: Long = 0
 	var vertexBufferMemory: Long = 0
@@ -87,11 +74,11 @@ class Model {
 
 	private fun createIndexBuffer(device: Device, engine: Rosella) {
 		stackPush().use { stack ->
-			val bufferSize: Long = (java.lang.Short.BYTES * indices.size).toLong()
+			val bufferSize: Int = (Integer.BYTES * indices.size)
 			val pBuffer = stack.mallocLong(1)
 			val pBufferMemory = stack.mallocLong(1)
 			createBuffer(
-				bufferSize.toInt(),
+				bufferSize,
 				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				pBuffer,
@@ -101,11 +88,11 @@ class Model {
 			val stagingBuffer = pBuffer[0]
 			val stagingBufferMemory = pBufferMemory[0]
 			val data = stack.mallocPointer(1)
-			vkMapMemory(device.device, stagingBufferMemory, 0, bufferSize, 0, data)
-			run { memcpy(data.getByteBuffer(0, bufferSize.toInt()), indices) }
+			vkMapMemory(device.device, stagingBufferMemory, 0, bufferSize.toLong(), 0, data)
+			run { memcpy(data.getByteBuffer(0, bufferSize), indices) }
 			vkUnmapMemory(device.device, stagingBufferMemory)
 			createBuffer(
-				bufferSize.toInt(),
+				bufferSize,
 				VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 				VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
 				pBuffer,
@@ -168,11 +155,38 @@ class Model {
 	}
 
 	fun create(device: Device, engine: Rosella) {
+		loadModelFile()
 		createVertexBuffer(device, engine)
 		createIndexBuffer(device, engine)
 		createTextureImage(device, engine)
 		createTextureImageView(engine)
 		createTextureSampler(device, engine)
+	}
+
+	private fun loadModelFile() {
+		val modelFile = File(getSystemClassLoader().getResource(modelLocation).file)
+		val model: ModelLoader.SimpleModel =
+			ModelLoader.loadModel(modelFile, Assimp.aiProcess_FlipUVs or Assimp.aiProcess_DropNormals)
+		val vertexCount: Int = model.positions.size
+
+		vertices = ArrayList()
+
+		val color: Vector3fc = Vector3f(1.0f, 1.0f, 1.0f)
+		for (i in 0 until vertexCount) {
+			vertices.add(
+				Vertex(
+					model.positions[i],
+					color,
+					model.texCoords[i]
+				)
+			)
+		}
+
+		indices = ArrayList(model.indices.size)
+
+		for (i in 0 until model.indices.size) {
+			indices.add(model.indices[i])
+		}
 	}
 
 	private fun createTextureSampler(device: Device, engine: Rosella) {
@@ -206,7 +220,7 @@ class Model {
 	private fun createTextureImage(device: Device, engine: Rosella) {
 		stackPush().use { stack ->
 			val filename =
-				getSystemClassLoader().getResource("textures/texture.jpg").toExternalForm().replace("file:", "")
+				getSystemClassLoader().getResource("textures/chalet.jpg").toExternalForm().replace("file:", "")
 			val pWidth = stack.mallocInt(1)
 			val pHeight = stack.mallocInt(1)
 			val pChannels = stack.mallocInt(1)

@@ -101,7 +101,7 @@ fun createBuffer(
 	}
 }
 
-fun memcpy(buffer: ByteBuffer, vertices: Array<Vertex>) {
+fun memcpy(buffer: ByteBuffer, vertices: List<Vertex>) {
 	for (vertex in vertices) {
 		buffer.putFloat(vertex.pos.x())
 		buffer.putFloat(vertex.pos.y())
@@ -116,9 +116,9 @@ fun memcpy(buffer: ByteBuffer, vertices: Array<Vertex>) {
 	}
 }
 
-fun memcpy(buffer: ByteBuffer, indices: ShortArray) {
+fun memcpy(buffer: ByteBuffer, indices: ArrayList<Int>) {
 	for (index in indices) {
-		buffer.putShort(index)
+		buffer.putInt(index)
 	}
 	buffer.rewind()
 }
@@ -128,12 +128,6 @@ fun memcpy(buffer: ByteBuffer, ubo: UniformBufferObject) {
 	ubo.model[0, buffer]
 	ubo.view.get(alignas(mat4Size, alignof(ubo.view)), buffer)
 	ubo.proj.get(alignas(mat4Size * 2, alignof(ubo.view)), buffer)
-}
-
-fun memcpy(dst: ByteBuffer, src: ByteBuffer, size: Long) {
-	src.limit(size.toInt())
-	dst.put(src)
-	src.limit(src.capacity()).rewind()
 }
 
 fun findMemoryType(typeFilter: Int, properties: Int, device: Device): Int {
