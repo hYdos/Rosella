@@ -1,6 +1,8 @@
 package me.hydos.rosella.util
 
 import me.hydos.rosella.core.Device
+import me.hydos.rosella.core.QueueFamilyIndices
+import me.hydos.rosella.core.Rosella
 import me.hydos.rosella.model.Vertex
 import me.hydos.rosella.model.ubo.UniformBufferObject
 import org.joml.Matrix4f
@@ -12,9 +14,6 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties
 import java.nio.ByteBuffer
 import java.nio.LongBuffer
-
-
-
 
 
 private val map = mutableMapOf<Int, String>().apply {
@@ -134,6 +133,34 @@ fun memcpy(buffer: ByteBuffer, ubo: UniformBufferObject) {
 	ubo.model[0, buffer]
 	ubo.view.get(alignas(mat4Size, alignof(ubo.view)), buffer)
 	ubo.proj.get(alignas(mat4Size * 2, alignof(ubo.view)), buffer)
+}
+
+
+fun findQueueFamilies(device: VkPhysicalDevice, engine: Rosella): QueueFamilyIndices {
+	val indices = QueueFamilyIndices()
+
+	MemoryStack.stackPush().use { stack ->
+		val queueFamilyCount = stack.ints(0)
+		VK10.vkGetPhysicalDeviceQueueFamilyProperties(device, queueFamilyCount, null)
+
+		val queueFamilies = VkQueueFamilyProperties.mallocStack(queueFamilyCount[0], stack)
+		VK10.vkGetPhysicalDeviceQueueFamilyProperties(device, queueFamilyCount, queueFamilies)
+
+		val presentSupport = stack.ints(VK10.VK_FALSE)
+
+		var i = 0
+		while (i < queueFamilies.capacity() || !indices.isComplete) {
+			if (queueFamilies[i].queueFlags() and VK10.VK_QUEUE_GRAPHICS_BIT != 0) {
+				indices.graphicsFamily = i
+			}
+			KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(device, i, engine.surface, presentSupport)
+			if (presentSupport.get(0) == VK10.VK_TRUE) {
+				indices.presentFamily = i
+			}
+			i++
+		}
+		return indices
+	}
 }
 
 fun findMemoryType(typeFilter: Int, properties: Int, device: Device): Int {

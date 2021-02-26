@@ -2,6 +2,7 @@ package me.hydos.rosella.core
 
 import me.hydos.rosella.core.swapchain.SwapChainSupportDetails
 import me.hydos.rosella.core.swapchain.querySwapChainSupport
+import me.hydos.rosella.util.findQueueFamilies
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack.stackPush
@@ -115,32 +116,5 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 			return true
 //			TODO("something broke here. based workaround")
 		}
-	}
-}
-
-internal fun findQueueFamilies(device: VkPhysicalDevice, engine: Rosella): QueueFamilyIndices {
-	val indices = QueueFamilyIndices()
-
-	stackPush().use { stack ->
-		val queueFamilyCount = stack.ints(0)
-		vkGetPhysicalDeviceQueueFamilyProperties(device, queueFamilyCount, null)
-
-		val queueFamilies = VkQueueFamilyProperties.mallocStack(queueFamilyCount[0], stack)
-		vkGetPhysicalDeviceQueueFamilyProperties(device, queueFamilyCount, queueFamilies)
-
-		val presentSupport = stack.ints(VK_FALSE)
-
-		var i = 0
-		while (i < queueFamilies.capacity() || !indices.isComplete) {
-			if (queueFamilies[i].queueFlags() and VK_QUEUE_GRAPHICS_BIT != 0) {
-				indices.graphicsFamily = i
-			}
-			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, engine.surface, presentSupport)
-			if (presentSupport.get(0) == VK_TRUE) {
-				indices.presentFamily = i
-			}
-			i++
-		}
-		return indices
 	}
 }

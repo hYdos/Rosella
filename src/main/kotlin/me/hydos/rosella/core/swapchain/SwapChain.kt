@@ -2,8 +2,8 @@ package me.hydos.rosella.core.swapchain
 
 import me.hydos.rosella.core.QueueFamilyIndices
 import me.hydos.rosella.core.Rosella
-import me.hydos.rosella.core.findQueueFamilies
 import me.hydos.rosella.io.Screen
+import me.hydos.rosella.util.findQueueFamilies
 import me.hydos.rosella.util.ok
 import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
 import org.lwjgl.system.MemoryStack
@@ -16,7 +16,7 @@ import java.nio.IntBuffer
 import java.nio.LongBuffer
 
 
-class Swapchain(
+class SwapChain(
 	engine: Rosella,
 	device: VkDevice,
 	physicalDevice: VkPhysicalDevice,

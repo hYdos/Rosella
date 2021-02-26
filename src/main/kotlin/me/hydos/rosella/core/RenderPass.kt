@@ -1,6 +1,6 @@
 package me.hydos.rosella.core
 
-import me.hydos.rosella.core.swapchain.Swapchain
+import me.hydos.rosella.core.swapchain.SwapChain
 import me.hydos.rosella.util.ok
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
@@ -9,7 +9,7 @@ import org.lwjgl.vulkan.VK10.*
 import java.nio.LongBuffer
 
 
-class RenderPass(val device: Device, private val swapchain: Swapchain, private val engine: Rosella) {
+class RenderPass(val device: Device, private val swapchain: SwapChain, private val engine: Rosella) {
 	var renderPass: Long = 0
 
 	init {

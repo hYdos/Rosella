@@ -1,11 +1,8 @@
 package me.hydos.rosella.core
 
-import me.hydos.rosella.core.swapchain.Swapchain
+import me.hydos.rosella.core.swapchain.SwapChain
 import me.hydos.rosella.model.Vertex
-import me.hydos.rosella.util.ShaderType
-import me.hydos.rosella.util.SpirV
-import me.hydos.rosella.util.compileShaderFile
-import me.hydos.rosella.util.ok
+import me.hydos.rosella.util.*
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryStack.stackPush
@@ -24,7 +21,7 @@ class Pipeline() {
 
 	fun createPipeline(
 		device: Device,
-		swapchain: Swapchain,
+		swapchain: SwapChain,
 		renderPass: RenderPass,
 		descriptorSetLayout: Long
 	) {
@@ -199,7 +196,7 @@ class Pipeline() {
 	}
 
 	fun createCommandBuffers(
-		swapchain: Swapchain,
+		swapchain: SwapChain,
 		renderPass: RenderPass,
 		pipeline: Pipeline,
 		engine: Rosella
@@ -268,7 +265,7 @@ class Pipeline() {
 						VK_PIPELINE_BIND_POINT_GRAPHICS,
 						pipeline.pipelineLayout,
 						0,
-						stack.longs(engine.descriptorSets[i]),
+						stack.longs(engine.uboManager.descriptorSets[i]),
 						null
 					)
 

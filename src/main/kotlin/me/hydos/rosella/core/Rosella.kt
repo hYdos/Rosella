@@ -1,9 +1,9 @@
 package me.hydos.rosella.core
 
-import me.hydos.rosella.core.swapchain.Swapchain
+import me.hydos.rosella.core.swapchain.SwapChain
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.model.Model
-import me.hydos.rosella.model.ubo.*
+import me.hydos.rosella.model.ubo.UboManager
 import me.hydos.rosella.resource.ResourceLoader
 import me.hydos.rosella.util.findMemoryType
 import me.hydos.rosella.util.ok
@@ -14,7 +14,6 @@ import org.lwjgl.glfw.GLFWVulkan.glfwCreateWindowSurface
 import org.lwjgl.system.MemoryStack.stackGet
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.system.MemoryUtil.NULL
-import org.lwjgl.system.Pointer
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR
 import org.lwjgl.vulkan.KHRSwapchain.*
@@ -25,13 +24,16 @@ import java.util.function.Consumer
 import java.util.stream.Collectors
 
 
-class Rosella(name: String, val enableValidationLayers: Boolean, internal val screen: Screen, val resources: ResourceLoader) {
+class Rosella(
+	name: String,
+	val enableValidationLayers: Boolean,
+	internal val screen: Screen,
+	val resources: ResourceLoader
+) {
 
+	val uboManager: UboManager = UboManager()
 	var depthBuffer = DepthBuffer()
 
-	var descriptorSetLayout: Long = 0
-	var descriptorPool: Long = 0
-	var descriptorSets: List<Long> = ArrayList()
 	var model: Model = Model("models/chalet.obj")
 
 	private var inFlightFrames: List<Frame>? = null
@@ -40,7 +42,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 	private var framebufferResize: Boolean = false
 
-	lateinit var swapChain: Swapchain
+	lateinit var swapChain: SwapChain
 	private lateinit var renderPass: RenderPass
 	internal lateinit var vulkanInstance: VkInstance
 	var pipeline: Pipeline = Pipeline()
@@ -79,48 +81,19 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 	private fun createModels() {
 		model.create(device, this)
-		createDescriptorSetLayout()
-	}
-
-	private fun createDescriptorSetLayout() {
-		stackPush().use {
-			val bindings = VkDescriptorSetLayoutBinding.callocStack(2, it)
-
-			// Ubo Layout
-			bindings[0]
-				.binding(0)
-				.descriptorCount(1)
-				.descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-				.pImmutableSamplers(null)
-				.stageFlags(VK_SHADER_STAGE_VERTEX_BIT)
-
-			// Sampler Layout
-			bindings[1]
-				.binding(1)
-				.descriptorCount(1)
-				.descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-				.pImmutableSamplers(null)
-				.stageFlags(VK_SHADER_STAGE_FRAGMENT_BIT)
-
-			val layoutInfo = VkDescriptorSetLayoutCreateInfo.callocStack(it)
-			layoutInfo.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
-			layoutInfo.pBindings(bindings)
-			val pDescriptorSetLayout = it.mallocLong(1)
-			vkCreateDescriptorSetLayout(device.device, layoutInfo, null, pDescriptorSetLayout).ok("Failed to create descriptor set layout")
-			descriptorSetLayout = pDescriptorSetLayout[0]
-		}
+		uboManager.createDescriptorSetLayout(device)
 	}
 
 	private fun createFullSwapChain() {
-		this.swapChain = Swapchain(this, device.device, device.physicalDevice, surface)
+		this.swapChain = SwapChain(this, device.device, device.physicalDevice, surface)
 		this.renderPass = RenderPass(device, swapChain, this)
 		createImgViews()
-		this.pipeline.createPipeline(device, swapChain, renderPass, descriptorSetLayout)
+		this.pipeline.createPipeline(device, swapChain, renderPass, uboManager.descriptorSetLayout)
 		depthBuffer.createDepthResources(this)
 		createFramebuffers()
-		createUniformBuffers(swapChain, device)
-		createDescriptorPool()
-		createDescriptorSets()
+		uboManager.createUniformBuffers(swapChain, device)
+		uboManager.createDescriptorPool(swapChain, device)
+		uboManager.createDescriptorSets(model, swapChain, device)
 		this.pipeline.createCommandBuffers(swapChain, renderPass, pipeline, this)
 		createSyncObjects()
 	}
@@ -144,18 +117,14 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 				.usage(usage)
 				.samples(VK_SAMPLE_COUNT_1_BIT)
 				.sharingMode(VK_SHARING_MODE_EXCLUSIVE)
-			if (vkCreateImage(device.device, imageInfo, null, pTextureImage) !== VK_SUCCESS) {
-				throw RuntimeException("Failed to create image")
-			}
+			vkCreateImage(device.device, imageInfo, null, pTextureImage).ok("Failed to allocate image memory")
 			val memRequirements = VkMemoryRequirements.mallocStack(stack)
 			vkGetImageMemoryRequirements(device.device, pTextureImage[0], memRequirements)
 			val allocInfo = VkMemoryAllocateInfo.callocStack(stack)
 				.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
 				.allocationSize(memRequirements.size())
 				.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), memProperties, device))
-			if (vkAllocateMemory(device.device, allocInfo, null, pTextureImageMemory) !== VK_SUCCESS) {
-				throw RuntimeException("Failed to allocate image memory")
-			}
+			vkAllocateMemory(device.device, allocInfo, null, pTextureImageMemory).ok("Failed to allocate image memory")
 			vkBindImageMemory(device.device, pTextureImage[0], pTextureImageMemory[0], 0)
 		}
 	}
@@ -205,11 +174,11 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 				destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
 			} else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 
-				barrier.srcAccessMask(0);
+				barrier.srcAccessMask(0)
 				barrier.dstAccessMask(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT or VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
 
-				sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-				destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+				sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+				destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
 
 			} else {
 				throw IllegalArgumentException("Unsupported layout transition")
@@ -224,81 +193,6 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 				barrier
 			)
 			model.endSingleTimeCommands(commandBuffer, device, this)
-		}
-	}
-
-	private fun createDescriptorSets() {
-		stackPush().use { stack ->
-			val layouts = stack.mallocLong(swapChain.swapChainImages.size)
-			for (i in 0 until layouts.capacity()) {
-				layouts.put(i, descriptorSetLayout)
-			}
-			val allocInfo = VkDescriptorSetAllocateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
-				.descriptorPool(descriptorPool)
-				.pSetLayouts(layouts)
-			val pDescriptorSets = stack.mallocLong(swapChain.swapChainImages.size)
-			if (vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets) !== VK_SUCCESS) {
-				throw RuntimeException("Failed to allocate descriptor sets")
-			}
-			descriptorSets = ArrayList(pDescriptorSets.capacity())
-			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
-				.offset(0)
-				.range(UniformBufferObject.SIZEOF.toLong())
-			val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
-				.imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-				.imageView(model.textureImageView)
-				.sampler(model.textureSampler)
-			val descriptorWrites = VkWriteDescriptorSet.callocStack(2, stack)
-			val uboDescriptorWrite = descriptorWrites[0]
-				.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-				.dstBinding(0)
-				.dstArrayElement(0)
-				.descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-				.descriptorCount(1)
-				.pBufferInfo(bufferInfo)
-			val samplerDescriptorWrite = descriptorWrites[1]
-				.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-				.dstBinding(1)
-				.dstArrayElement(0)
-				.descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-				.descriptorCount(1)
-				.pImageInfo(imageInfo)
-			for (i in 0 until pDescriptorSets.capacity()) {
-				val descriptorSet = pDescriptorSets[i]
-				bufferInfo.buffer(uniformBuffers[i])
-				uboDescriptorWrite.dstSet(descriptorSet)
-				samplerDescriptorWrite.dstSet(descriptorSet)
-				vkUpdateDescriptorSets(device.device, descriptorWrites, null)
-				(descriptorSets as ArrayList<Long>).add(descriptorSet)
-			}
-		}
-	}
-
-	private fun createDescriptorPool() {
-		stackPush().use { stack ->
-			val poolSizes = VkDescriptorPoolSize.callocStack(2, stack)
-
-			// Uniform Buffer Pool Size
-			poolSizes[0]
-				.type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-				.descriptorCount(swapChain.swapChainImages.size)
-
-			// Texture Sampler Pool Size
-			poolSizes[1]
-				.type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-				.descriptorCount(swapChain.swapChainImages.size)
-
-			val poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
-				.pPoolSizes(poolSizes)
-				.maxSets(swapChain.swapChainImages.size)
-
-			val pDescriptorPool = stack.mallocLong(1)
-			if (vkCreateDescriptorPool(device.device, poolInfo, null, pDescriptorPool) !== VK_SUCCESS) {
-				throw RuntimeException("Failed to create descriptor pool")
-			}
-			descriptorPool = pDescriptorPool[0]
 		}
 	}
 
@@ -377,9 +271,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 			viewInfo.subresourceRange().baseArrayLayer(0)
 			viewInfo.subresourceRange().layerCount(1)
 			val pImageView = stack.mallocLong(1)
-			if (vkCreateImageView(device.device, viewInfo, null, pImageView) !== VK_SUCCESS) {
-				throw RuntimeException("Failed to create texture image view")
-			}
+			vkCreateImageView(device.device, viewInfo, null, pImageView).ok("Failed to create texture image view")
 			return pImageView[0]
 		}
 	}
@@ -519,13 +411,6 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		return buffer.rewind()
 	}
 
-	private fun asPtrBuffer(list: List<Pointer>): PointerBuffer {
-		val stack = stackGet()
-		val buffer = stack.mallocPointer(list.size)
-		list.forEach { pointer: Pointer? -> buffer.put(pointer!!) }
-		return buffer.rewind()
-	}
-
 	private fun validationLayersSupported(validationLayers: Set<String>): Boolean {
 		stackPush().use { stack ->
 			val layerCount = stack.ints(0)
@@ -561,7 +446,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 
 			val imageIndex = pImageIndex[0]
 
-			updateUniformBuffer(imageIndex, swapChain, device)
+			uboManager.updateUniformBuffer(imageIndex, swapChain, device)
 
 			if (imagesInFlight!!.containsKey(imageIndex)) {
 				vkWaitForFences(device.device, imagesInFlight!![imageIndex]!!.fence(), true, UINT64_MAX)
@@ -612,12 +497,12 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 	}
 
 	private fun freeSwapChain() {
-		vkDestroyDescriptorPool(device.device, descriptorPool, null)
+		vkDestroyDescriptorPool(device.device, uboManager.descriptorPool, null)
 
 		// Free Depth Buffer
 		depthBuffer.free(device)
 
-		freeUbos(device)
+		uboManager.freeUbos(device)
 
 		swapChain.swapChainFramebuffers.forEach { framebuffer ->
 			vkDestroyFramebuffer(
