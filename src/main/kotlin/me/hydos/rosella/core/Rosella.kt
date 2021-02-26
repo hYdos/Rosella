@@ -82,9 +82,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 	}
 
 	private fun createModels() {
-		model.createVertexBuffer(device, this)
-		model.createIndexBuffer(device, this)
-
+		model.create(device, this)
 		createDescriptorSetLayout()
 	}
 

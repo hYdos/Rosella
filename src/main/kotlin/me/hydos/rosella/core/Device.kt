@@ -93,11 +93,11 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 			stackPush().use {
 				val swapChainSupport: SwapChainSupportDetails = querySwapChainSupport(device, it, engine.surface)
 				swapChainAdequate =
-					swapChainSupport.formats!!.hasRemaining() && swapChainSupport.presentModes!!.hasRemaining();
+					swapChainSupport.formats!!.hasRemaining() && swapChainSupport.presentModes!!.hasRemaining()
 			}
 		}
 
-		return indices.isComplete && extensionsSupported && swapChainAdequate;
+		return indices.isComplete && extensionsSupported && swapChainAdequate
 	}
 
 	private fun checkDeviceExtensionsSupport(device: VkPhysicalDevice): Boolean {
