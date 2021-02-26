@@ -11,8 +11,7 @@ import me.hydos.rosella.resource.ResourceLoader
 import me.hydos.rosella.util.findMemoryType
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
-import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
-import org.lwjgl.glfw.GLFW.glfwWaitEvents
+import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.glfw.GLFWVulkan.glfwCreateWindowSurface
 import org.lwjgl.system.MemoryStack.stackGet
@@ -82,6 +81,7 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		createModels()
 		createFullSwapChain()
 
+		glfwShowWindow(screen.windowPtr)
 		state = State.READY
 	}
 
