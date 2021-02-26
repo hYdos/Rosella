@@ -7,6 +7,7 @@ import me.hydos.rosella.core.swapchain.Swapchain
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.model.Model
 import me.hydos.rosella.model.ubo.*
+import me.hydos.rosella.resource.ResourceLoader
 import me.hydos.rosella.util.findMemoryType
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
@@ -29,7 +30,7 @@ import java.util.function.Consumer
 import java.util.stream.Collectors
 
 
-class Rosella(name: String, val enableValidationLayers: Boolean, internal val screen: Screen) {
+class Rosella(name: String, val enableValidationLayers: Boolean, internal val screen: Screen, val resources: ResourceLoader) {
 
 	private var depthImage: Long = 0
 	private var depthImageMemory: Long = 0

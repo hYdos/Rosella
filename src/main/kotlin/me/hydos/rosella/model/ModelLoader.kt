@@ -87,14 +87,8 @@ object ModelLoader {
 	}
 
 	class SimpleModel {
-		val positions: MutableList<Vector3fc>
-		val texCoords: MutableList<Vector2fc>
-		val indices: MutableList<Int>
-
-		init {
-			positions = ArrayList()
-			texCoords = ArrayList()
-			this.indices = ArrayList()
-		}
+		val positions: MutableList<Vector3fc> = ArrayList()
+		val texCoords: MutableList<Vector2fc> = ArrayList()
+		val indices: MutableList<Int> = ArrayList()
 	}
 }

@@ -10,7 +10,7 @@ import org.lwjgl.vulkan.VK10.*
 import java.nio.LongBuffer
 
 
-class RenderPass(val device: Device, val swapchain: Swapchain, val engine: Rosella) {
+class RenderPass(val device: Device, private val swapchain: Swapchain, private val engine: Rosella) {
 	var renderPass: Long = 0
 
 	init {

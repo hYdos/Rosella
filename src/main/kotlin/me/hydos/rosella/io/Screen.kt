@@ -34,6 +34,7 @@ class Screen(title: String, width: Int, height: Int, windowResizable: Boolean = 
 			throw RuntimeException("Cannot Initialize GLFW")
 		}
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API)
+		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE)
 		glfwWindowHint(GLFW_RESIZABLE, windowResizable.asGlfw())
 		windowPtr = glfwCreateWindow(width, height, title, 0, 0)
 
