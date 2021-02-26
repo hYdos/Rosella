@@ -8,7 +8,9 @@ import me.hydos.rosella.util.memcpy
 import me.hydos.rosella.util.ok
 import org.joml.Vector2f
 import org.joml.Vector3f
+import org.lwjgl.PointerBuffer
 import org.lwjgl.stb.STBImage.*
+import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
@@ -111,18 +113,8 @@ class Model {
 
 	private fun copyBuffer(srcBuffer: Long, dstBuffer: Long, size: Int, engine: Rosella, device: Device) {
 		stackPush().use { stack ->
-			val allocInfo = VkCommandBufferAllocateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
-				.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-				.commandPool(engine.commandBuffers.commandPool)
-				.commandBufferCount(1)
 			val pCommandBuffer = stack.mallocPointer(1)
-			vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffer)
-			val commandBuffer = VkCommandBuffer(pCommandBuffer[0], device.device)
-			val beginInfo = VkCommandBufferBeginInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
-				.flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
-			vkBeginCommandBuffer(commandBuffer, beginInfo)
+			val commandBuffer = beginCmdBuffer(stack, engine, device, pCommandBuffer)
 			run {
 				val copyRegion = VkBufferCopy.callocStack(1, stack)
 				copyRegion.size(size.toLong())
@@ -136,6 +128,26 @@ class Model {
 			vkQueueWaitIdle(engine.graphicsQueue)
 			vkFreeCommandBuffers(device.device, engine.commandBuffers.commandPool, pCommandBuffer)
 		}
+	}
+
+	private fun beginCmdBuffer(
+		stack: MemoryStack,
+		engine: Rosella,
+		device: Device,
+		pCommandBuffer: PointerBuffer
+	): VkCommandBuffer {
+		val allocInfo = VkCommandBufferAllocateInfo.callocStack(stack)
+			.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
+			.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+			.commandPool(engine.commandBuffers.commandPool)
+			.commandBufferCount(1)
+		vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffer)
+		val commandBuffer = VkCommandBuffer(pCommandBuffer[0], device.device)
+		val beginInfo = VkCommandBufferBeginInfo.callocStack(stack)
+			.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
+			.flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
+		vkBeginCommandBuffer(commandBuffer, beginInfo)
+		return commandBuffer
 	}
 
 	fun destroy(device: Device) {
@@ -337,37 +349,22 @@ class Model {
 				.size(size)
 				.usage(usage)
 				.sharingMode(VK_SHARING_MODE_EXCLUSIVE)
-			if (vkCreateBuffer(device.device, bufferInfo, null, pBuffer) !== VK10.VK_SUCCESS) {
-				throw RuntimeException("Failed to create vertex buffer")
-			}
+			vkCreateBuffer(device.device, bufferInfo, null, pBuffer).ok()
 			val memRequirements = VkMemoryRequirements.mallocStack(stack)
 			vkGetBufferMemoryRequirements(device.device, pBuffer[0], memRequirements)
 			val allocInfo = VkMemoryAllocateInfo.callocStack(stack)
 				.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
 				.allocationSize(memRequirements.size())
 				.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), properties, device))
-			if (vkAllocateMemory(device.device, allocInfo, null, pBufferMemory) !== VK10.VK_SUCCESS) {
-				throw RuntimeException("Failed to allocate vertex buffer memory")
-			}
+			vkAllocateMemory(device.device, allocInfo, null, pBufferMemory).ok()
 			vkBindBufferMemory(device.device, pBuffer[0], pBufferMemory[0], 0)
 		}
 	}
 
 	private fun beginSingleTimeCommands(device: Device, engine: Rosella): VkCommandBuffer {
 		stackPush().use { stack ->
-			val allocInfo = VkCommandBufferAllocateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
-				.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-				.commandPool(engine.commandBuffers.commandPool)
-				.commandBufferCount(1)
 			val pCommandBuffer = stack.mallocPointer(1)
-			vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffer)
-			val commandBuffer = VkCommandBuffer(pCommandBuffer[0], device.device)
-			val beginInfo = VkCommandBufferBeginInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
-				.flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
-			vkBeginCommandBuffer(commandBuffer, beginInfo)
-			return commandBuffer
+			return beginCmdBuffer(stack, engine, device, pCommandBuffer)
 		}
 	}
 
@@ -380,16 +377,6 @@ class Model {
 			vkQueueSubmit(engine.graphicsQueue, submitInfo, VK_NULL_HANDLE)
 			vkQueueWaitIdle(engine.graphicsQueue)
 			vkFreeCommandBuffers(device.device, engine.commandBuffers.commandPool, commandBuffer)
-		}
-	}
-
-	private fun copyBuffer(srcBuffer: Long, dstBuffer: Long, size: Long, device: Device, engine: Rosella) {
-		stackPush().use { stack ->
-			val commandBuffer = beginSingleTimeCommands(device, engine)
-			val copyRegion = VkBufferCopy.callocStack(1, stack)
-			copyRegion.size(size)
-			vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, copyRegion)
-			endSingleTimeCommands(commandBuffer, device, engine)
 		}
 	}
 }
