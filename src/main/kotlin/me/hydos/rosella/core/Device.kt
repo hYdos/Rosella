@@ -49,20 +49,20 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 			val queueCreateInfos = VkDeviceQueueCreateInfo.callocStack(uniqueQueueFamilies.size, it)
 
 			for (i in uniqueQueueFamilies.indices) {
-				val queueCreateInfo = queueCreateInfos[i]
-				queueCreateInfo.sType(VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
-				queueCreateInfo.queueFamilyIndex(uniqueQueueFamilies[i])
-				queueCreateInfo.pQueuePriorities(it.floats(1.0f))
+				queueCreateInfos[i]
+					.sType(VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
+					.queueFamilyIndex(uniqueQueueFamilies[i])
+					.pQueuePriorities(it.floats(1.0f))
 			}
 
 			val deviceFeatures: VkPhysicalDeviceFeatures = VkPhysicalDeviceFeatures.callocStack(it)
+				.samplerAnisotropy(true)
+
 			val createInfo: VkDeviceCreateInfo = VkDeviceCreateInfo.callocStack(it)
-
-			createInfo.sType(VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
-			createInfo.pQueueCreateInfos(queueCreateInfos)
-			createInfo.pEnabledFeatures(deviceFeatures)
-
-			createInfo.ppEnabledExtensionNames(engine.asPtrBuffer(DEVICE_EXTENSIONS))
+				.sType(VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
+				.pQueueCreateInfos(queueCreateInfos)
+				.pEnabledFeatures(deviceFeatures)
+				.ppEnabledExtensionNames(engine.asPtrBuffer(DEVICE_EXTENSIONS))
 
 			if (engine.enableValidationLayers) {
 				createInfo.ppEnabledLayerNames(engine.asPtrBuffer(layers))
@@ -89,23 +89,28 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 
 		val extensionsSupported = checkDeviceExtensionsSupport(device)
 		var swapChainAdequate = false
+		var anisotropySupported = false
+
 		if (extensionsSupported) {
 			stackPush().use {
 				val swapChainSupport: SwapChainSupportDetails = querySwapChainSupport(device, it, engine.surface)
 				swapChainAdequate =
-					swapChainSupport.formats!!.hasRemaining() && swapChainSupport.presentModes!!.hasRemaining();
+					swapChainSupport.formats!!.hasRemaining() && swapChainSupport.presentModes!!.hasRemaining()
+				val supportedFeatures: VkPhysicalDeviceFeatures = VkPhysicalDeviceFeatures.mallocStack(it)
+				vkGetPhysicalDeviceFeatures(device, supportedFeatures)
+				anisotropySupported = supportedFeatures.samplerAnisotropy()
 			}
 		}
 
-		return indices.isComplete && extensionsSupported && swapChainAdequate;
+		return indices.isComplete && extensionsSupported && swapChainAdequate && anisotropySupported
 	}
 
 	private fun checkDeviceExtensionsSupport(device: VkPhysicalDevice): Boolean {
 		stackPush().use { stack ->
 			val extensionCount = stack.ints(0)
 			vkEnumerateDeviceExtensionProperties(device, null as String?, extensionCount, null)
-			val availableExtensions =
-				VkExtensionProperties.mallocStack(extensionCount[0], stack)
+//			val availableExtensions =
+			VkExtensionProperties.mallocStack(extensionCount[0], stack)
 //			return availableExtensions.stream().collect(toSet()).containsAll(DEVICE_EXTENSIONS)
 			return true
 //			TODO("something broke here. based workaround")

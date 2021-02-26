@@ -90,7 +90,7 @@ class Swapchain(
 
 	private fun chooseSwapSurfaceFormat(availableFormats: VkSurfaceFormatKHR.Buffer): VkSurfaceFormatKHR? {
 		return availableFormats.stream()
-			.filter { availableFormat: VkSurfaceFormatKHR -> availableFormat.format() == VK_FORMAT_B8G8R8_UNORM }
+			.filter { availableFormat: VkSurfaceFormatKHR -> availableFormat.format() == VK_FORMAT_B8G8R8_SRGB }
 			.filter { availableFormat: VkSurfaceFormatKHR -> availableFormat.colorSpace() == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR }
 			.findAny()
 			.orElse(availableFormats[0])

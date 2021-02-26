@@ -72,8 +72,9 @@ class CommandBuffers(
 
 			renderPassInfo.renderArea(renderArea)
 
-			val clearValues = VkClearValue.callocStack(1, stack)
-			clearValues.color().float32(stack.floats(0xef / 255f, 0x32 / 255f, 0x3d / 255f, 1.0f))
+			val clearValues = VkClearValue.callocStack(2, stack)
+			clearValues[0].color().float32(stack.floats(0xef / 255f, 0x32 / 255f, 0x3d / 255f, 1.0f))
+			clearValues[1].depthStencil().set(1.0f, 0)
 
 			renderPassInfo.pClearValues(clearValues)
 

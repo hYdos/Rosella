@@ -1,6 +1,7 @@
 package me.hydos.rosella.core.swapchain
 
 import me.hydos.rosella.core.Device
+import me.hydos.rosella.core.Rosella
 import me.hydos.rosella.util.ok
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
@@ -9,12 +10,15 @@ import org.lwjgl.vulkan.VK10.*
 import java.nio.LongBuffer
 
 
-class RenderPass(val device: Device, val swapchain: Swapchain) {
+class RenderPass(val device: Device, val swapchain: Swapchain, val engine: Rosella) {
 	var renderPass: Long = 0
 
 	init {
 		stackPush().use {
-			val colorAttachment = VkAttachmentDescription.callocStack(1, it)
+			val attachments = VkAttachmentDescription.callocStack(2, it)
+			val attachmentRefs = VkAttachmentReference.callocStack(2, it)
+
+			val colorAttachment = attachments[0]
 				.format(swapchain.swapChainImageFormat)
 				.samples(VK_SAMPLE_COUNT_1_BIT)
 				.loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
@@ -24,14 +28,31 @@ class RenderPass(val device: Device, val swapchain: Swapchain) {
 				.initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 				.finalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 
-			val colorAttachmentRef = VkAttachmentReference.callocStack(1, it)
+			val y = attachments[0].samples()
+
+			val colorAttachmentRef = attachmentRefs[0]
 				.attachment(0)
 				.layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+
+			attachments[1]
+				.format(engine.findDepthFormat())
+				.samples(VK_SAMPLE_COUNT_1_BIT)
+				.loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
+				.storeOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
+				.stencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+				.stencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
+				.initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+				.finalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+
+			val depthAttachmentRef = attachmentRefs[1]
+			depthAttachmentRef.attachment(1)
+			depthAttachmentRef.layout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
 
 			val subpass = VkSubpassDescription.callocStack(1, it)
 				.pipelineBindPoint(VK_PIPELINE_BIND_POINT_GRAPHICS)
 				.colorAttachmentCount(1)
-				.pColorAttachments(colorAttachmentRef)
+				.pColorAttachments(VkAttachmentReference.callocStack(1, it).put(0, colorAttachmentRef))
+				.pDepthStencilAttachment(depthAttachmentRef)
 
 			val dependency = VkSubpassDependency.callocStack(1, it)
 				.srcSubpass(VK_SUBPASS_EXTERNAL)
@@ -43,7 +64,7 @@ class RenderPass(val device: Device, val swapchain: Swapchain) {
 
 			val renderPassInfo: VkRenderPassCreateInfo = VkRenderPassCreateInfo.callocStack(it)
 				.sType(VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO)
-				.pAttachments(colorAttachment)
+				.pAttachments(attachments)
 				.pSubpasses(subpass)
 				.pDependencies(dependency)
 

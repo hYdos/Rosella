@@ -1,6 +1,3 @@
 package me.hydos.rosella.util
 
-class MathHelper {
-
-
-}
+class MathHelper
