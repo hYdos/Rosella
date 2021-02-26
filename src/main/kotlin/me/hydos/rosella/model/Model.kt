@@ -36,11 +36,14 @@ class Model {
 
 	private var textureImage: Long = 0
 	private var textureImageMemory: Long = 0
+	private var textureImageView: Long = 0
+	private var textureSampler: Long = 0
+
 
 	var indexBuffer: Long = 0
 	var indexBufferMemory: Long = 0
 
-	fun createVertexBuffer(device: Device, rosella: Rosella) {
+	private fun createVertexBuffer(device: Device, rosella: Rosella) {
 		stackPush().use { stack ->
 			val bufferSize: Int = Vertex.SIZEOF * vertices.size
 			val pBuffer = stack.mallocLong(1)
@@ -76,7 +79,7 @@ class Model {
 	}
 
 
-	internal fun createIndexBuffer(device: Device, engine: Rosella) {
+	private fun createIndexBuffer(device: Device, engine: Rosella) {
 		stackPush().use { stack ->
 			val bufferSize: Long = (java.lang.Short.BYTES * indices.size).toLong()
 			val pBuffer = stack.mallocLong(1)
@@ -162,6 +165,36 @@ class Model {
 		createVertexBuffer(device, engine)
 		createIndexBuffer(device, engine)
 		createTextureImage(device, engine)
+		createTextureImageView(engine)
+		createTextureSampler(device, engine)
+	}
+
+	private fun createTextureSampler(device: Device, engine: Rosella) {
+		stackPush().use { stack ->
+			val samplerInfo = VkSamplerCreateInfo.callocStack(stack)
+				.sType(VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO)
+				.magFilter(VK_FILTER_LINEAR)
+				.minFilter(VK_FILTER_LINEAR)
+				.addressModeU(VK_SAMPLER_ADDRESS_MODE_REPEAT)
+				.addressModeV(VK_SAMPLER_ADDRESS_MODE_REPEAT)
+				.addressModeW(VK_SAMPLER_ADDRESS_MODE_REPEAT)
+				.anisotropyEnable(true)
+				.maxAnisotropy(16.0f)
+				.borderColor(VK_BORDER_COLOR_INT_OPAQUE_BLACK)
+				.unnormalizedCoordinates(false)
+				.compareEnable(false)
+				.compareOp(VK_COMPARE_OP_ALWAYS)
+				.mipmapMode(VK_SAMPLER_MIPMAP_MODE_LINEAR)
+			val pTextureSampler = stack.mallocLong(1)
+			if (vkCreateSampler(device.device, samplerInfo, null, pTextureSampler) !== VK_SUCCESS) {
+				throw RuntimeException("Failed to create texture sampler")
+			}
+			textureSampler = pTextureSampler[0]
+		}
+	}
+
+	private fun createTextureImageView(engine: Rosella) {
+		textureImageView = engine.createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB)
 	}
 
 	private fun createTextureImage(device: Device, engine: Rosella) {
@@ -246,7 +279,7 @@ class Model {
 				.usage(usage)
 				.samples(VK_SAMPLE_COUNT_1_BIT)
 				.sharingMode(VK_SHARING_MODE_EXCLUSIVE)
-			if (vkCreateImage(device.device, imageInfo, null, pTextureImage) !== VK10.VK_SUCCESS) {
+			if (vkCreateImage(device.device, imageInfo, null, pTextureImage) !== VK_SUCCESS) {
 				throw RuntimeException("Failed to create image")
 			}
 			val memRequirements = VkMemoryRequirements.mallocStack(stack)
@@ -255,7 +288,7 @@ class Model {
 				.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
 				.allocationSize(memRequirements.size())
 				.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), memProperties, device))
-			if (vkAllocateMemory(device.device, allocInfo, null, pTextureImageMemory) !== VK10.VK_SUCCESS) {
+			if (vkAllocateMemory(device.device, allocInfo, null, pTextureImageMemory) !== VK_SUCCESS) {
 				throw RuntimeException("Failed to allocate image memory")
 			}
 			vkBindImageMemory(device.device, pTextureImage[0], pTextureImageMemory[0], 0)
@@ -333,32 +366,6 @@ class Model {
 		src.limit(size.toInt())
 		dst.put(src)
 		src.limit(src.capacity()).rewind()
-	}
-
-	private fun createBuffer(
-		size: Long,
-		usage: Int,
-		properties: Int,
-		pBuffer: LongBuffer,
-		pBufferMemory: LongBuffer,
-		device: Device
-	) {
-		stackPush().use { stack ->
-			val bufferInfo = VkBufferCreateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
-				.size(size)
-				.usage(usage)
-				.sharingMode(VK_SHARING_MODE_EXCLUSIVE)
-			vkCreateBuffer(device.device, bufferInfo, null, pBuffer).ok()
-			val memRequirements = VkMemoryRequirements.mallocStack(stack)
-			vkGetBufferMemoryRequirements(device.device, pBuffer[0], memRequirements)
-			val allocInfo = VkMemoryAllocateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-				.allocationSize(memRequirements.size())
-				.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), properties, device))
-			vkAllocateMemory(device.device, allocInfo, null, pBufferMemory).ok()
-			vkBindBufferMemory(device.device, pBuffer[0], pBufferMemory[0], 0)
-		}
 	}
 
 	private fun beginSingleTimeCommands(device: Device, engine: Rosella): VkCommandBuffer {

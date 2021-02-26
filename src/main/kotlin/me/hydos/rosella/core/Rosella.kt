@@ -30,6 +30,9 @@ import java.util.stream.Collectors
 
 
 
+
+
+
 class Rosella(name: String, val enableValidationLayers: Boolean, internal val screen: Screen) {
 
 	var descriptorSetLayout: Long = 0
@@ -234,30 +237,31 @@ class Rosella(name: String, val enableValidationLayers: Boolean, internal val sc
 		}
 	}
 
+	fun createImageView(image: Long, format: Int): Long {
+		stackPush().use { stack ->
+			val viewInfo = VkImageViewCreateInfo.callocStack(stack)
+			viewInfo.sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
+			viewInfo.image(image)
+			viewInfo.viewType(VK_IMAGE_VIEW_TYPE_2D)
+			viewInfo.format(format)
+			viewInfo.subresourceRange().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+			viewInfo.subresourceRange().baseMipLevel(0)
+			viewInfo.subresourceRange().levelCount(1)
+			viewInfo.subresourceRange().baseArrayLayer(0)
+			viewInfo.subresourceRange().layerCount(1)
+			val pImageView = stack.mallocLong(1)
+			if (vkCreateImageView(device.device, viewInfo, null, pImageView) !== VK_SUCCESS) {
+				throw RuntimeException("Failed to create texture image view")
+			}
+			return pImageView[0]
+		}
+	}
+
 	private fun createImgViews() {
 		swapChain.swapChainImageViews = ArrayList(swapChain.swapChainImages.size)
 
-		stackPush().use {
-			val pImageView: LongBuffer = it.mallocLong(1)
-
-			for (swapChainImage in swapChain.swapChainImages) {
-				val createInfo: VkImageViewCreateInfo = VkImageViewCreateInfo.callocStack(it)
-				createInfo.sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
-					.image(swapChainImage)
-					.viewType(VK_IMAGE_VIEW_TYPE_2D)
-					.format(swapChain.swapChainImageFormat)
-				createInfo.components().r(VK_COMPONENT_SWIZZLE_IDENTITY)
-					.g(VK_COMPONENT_SWIZZLE_IDENTITY)
-					.b(VK_COMPONENT_SWIZZLE_IDENTITY)
-					.a(VK_COMPONENT_SWIZZLE_IDENTITY)
-				createInfo.subresourceRange().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-					.baseMipLevel(0)
-					.levelCount(1)
-					.baseArrayLayer(0)
-					.layerCount(1)
-				vkCreateImageView(device.device, createInfo, null, pImageView).ok()
-				(swapChain.swapChainImageViews as ArrayList<Long>).add(pImageView[0])
-			}
+		for (swapChainImage in swapChain.swapChainImages) {
+			(swapChain.swapChainImageViews as ArrayList<Long>).add(createImageView(swapChainImage, VK_FORMAT_R8G8B8A8_SRGB))
 		}
 	}
 
