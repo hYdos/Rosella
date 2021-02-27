@@ -4,6 +4,7 @@ import me.hydos.rosella.core.Rosella
 import me.hydos.rosella.core.device.Device
 import me.hydos.rosella.core.device.QueueFamilyIndices
 import me.hydos.rosella.model.Vertex
+import me.hydos.rosella.model.ubo.ModelPushConstant
 import me.hydos.rosella.model.ubo.ModelUbo
 import org.joml.Matrix4f
 import org.joml.Vector2f
@@ -135,6 +136,9 @@ fun memcpy(buffer: ByteBuffer, ubo: ModelUbo) {
 	ubo.proj.get(alignas(mat4Size * 2, alignof(ubo.view)), buffer)
 }
 
+fun memcpy(buffer: ByteBuffer, pushConstant: ModelPushConstant) {
+	pushConstant.position[0, buffer]
+}
 
 fun findQueueFamilies(device: VkPhysicalDevice, engine: Rosella): QueueFamilyIndices {
 	val indices = QueueFamilyIndices()

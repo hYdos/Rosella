@@ -3,6 +3,8 @@ package me.hydos.rosella.core
 import me.hydos.rosella.core.device.Device
 import me.hydos.rosella.core.swapchain.SwapChain
 import me.hydos.rosella.model.Vertex
+import me.hydos.rosella.model.ubo.ModelPushConstant
+import me.hydos.rosella.model.ubo.ModelUbo
 import me.hydos.rosella.util.*
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
@@ -138,17 +140,21 @@ class Pipeline() {
 					.blendConstants(it.floats(0.0f, 0.0f, 0.0f, 0.0f))
 
 			/**
+			 * Create Push Constants
+			 */
+			val pushConstantRange = VkPushConstantRange.Buffer(it.bytes(1))
+				.offset(0)
+				.size(ModelUbo.MAT4f_SIZE)
+				.stageFlags(VK_SHADER_STAGE_VERTEX_BIT)
+
+			/**
 			 * Pipeline Layout Creation
 			 */
 			val pipelineLayoutInfo: VkPipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.callocStack(it)
 				.sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
 				.pSetLayouts(it.longs(descriptorSetLayout))
+				.pPushConstantRanges(pushConstantRange)
 			val pPipelineLayout = it.longs(VK_NULL_HANDLE)
-
-			/**
-			 * Create Push Constants
-			 */
-
 			vkCreatePipelineLayout(device.device, pipelineLayoutInfo, null, pPipelineLayout).ok()
 			pipelineLayout = pPipelineLayout[0]
 
@@ -214,36 +220,41 @@ class Pipeline() {
 
 		commandBuffers = ArrayList(commandBuffersCount)
 
-		stackPush().use { stack ->
+		stackPush().use {
 			// Allocate
-			val allocInfo = VkCommandBufferAllocateInfo.callocStack(stack)
+			val allocInfo = VkCommandBufferAllocateInfo.callocStack(it)
 			allocInfo.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
 			allocInfo.commandPool(commandPool)
 			allocInfo.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
 			allocInfo.commandBufferCount(commandBuffersCount)
-			val pCommandBuffers = stack.mallocPointer(commandBuffersCount)
+			val pCommandBuffers = it.mallocPointer(commandBuffersCount)
 			if (vkAllocateCommandBuffers(engine.device.device, allocInfo, pCommandBuffers) != VK_SUCCESS) {
 				throw RuntimeException("Failed to allocate command buffers")
 			}
 
 			for (i in 0 until commandBuffersCount) {
-				(commandBuffers as ArrayList<VkCommandBuffer>).add(VkCommandBuffer(pCommandBuffers[i], engine.device.device))
+				(commandBuffers as ArrayList<VkCommandBuffer>).add(
+					VkCommandBuffer(
+						pCommandBuffers[i],
+						engine.device.device
+					)
+				)
 			}
-			val beginInfo = VkCommandBufferBeginInfo.callocStack(stack)
+			val beginInfo = VkCommandBufferBeginInfo.callocStack(it)
 				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
 
-			val renderPassInfo = VkRenderPassBeginInfo.callocStack(stack)
+			val renderPassInfo = VkRenderPassBeginInfo.callocStack(it)
 				.sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
 				.renderPass(renderPass.renderPass)
 
-			val renderArea = VkRect2D.callocStack(stack)
-				.offset(VkOffset2D.callocStack(stack).set(0, 0))
+			val renderArea = VkRect2D.callocStack(it)
+				.offset(VkOffset2D.callocStack(it).set(0, 0))
 				.extent(swapchain.swapChainExtent!!)
 
 			renderPassInfo.renderArea(renderArea)
 
-			val clearValues = VkClearValue.callocStack(2, stack)
-			clearValues[0].color().float32(stack.floats(0xef / 255f, 0x32 / 255f, 0x3d / 255f, 1.0f))
+			val clearValues = VkClearValue.callocStack(2, it)
+			clearValues[0].color().float32(it.floats(0xef / 255f, 0x32 / 255f, 0x3d / 255f, 1.0f))
 			clearValues[1].depthStencil().set(1.0f, 0)
 
 			renderPassInfo.pClearValues(clearValues)
@@ -261,9 +272,9 @@ class Pipeline() {
 						VK_PIPELINE_BIND_POINT_GRAPHICS,
 						pipeline.graphicsPipeline
 					)
-					val offsets = stack.longs(0)
+					val offsets = it.longs(0)
 
-					val vertexBuffers = stack.longs(engine.model.vertexBuffer)
+					val vertexBuffers = it.longs(engine.model.vertexBuffer)
 					vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets)
 					vkCmdBindIndexBuffer(commandBuffer, engine.model.indexBuffer, 0, VK_INDEX_TYPE_UINT32)
 					vkCmdBindDescriptorSets(
@@ -271,8 +282,41 @@ class Pipeline() {
 						VK_PIPELINE_BIND_POINT_GRAPHICS,
 						pipeline.pipelineLayout,
 						0,
-						stack.longs(engine.uboManager.descriptorSets[i]),
+						it.longs(engine.shaderDataManager.descriptorSets[i]),
 						null
+					)
+
+					//TODO: push constants are the way to make multiple objects work. Valoghese remind me after i get them working to make multiple models work. :)
+					// Load the push constant into memory
+					val data = it.mallocPointer(1)
+					val modelPushConstant = ModelPushConstant()
+					modelPushConstant.position.add(0f, 1f, 0f)
+					val size = sizeof(modelPushConstant.position)
+					vkMapMemory(
+						engine.device.device,
+						engine.shaderDataManager.pushConstantBuffersMemory[0], // Hardcoded to 0 for the 1 model
+						0,
+						size.toLong(),
+						0,
+						data
+					)
+					run {
+						memcpy(data.getByteBuffer(0, size), modelPushConstant)
+					}
+					vkUnmapMemory(
+						engine.device.device,
+						engine.shaderDataManager.pushConstantBuffersMemory[0]
+					)// Hardcoded to 0 for the 1 model
+
+					val buffer = it.longs(1)
+					buffer.put(engine.shaderDataManager.pushConstantBuffers[0])
+
+					vkCmdPushConstants(
+						commandBuffer,
+						engine.pipeline.pipelineLayout,
+						VK_SHADER_STAGE_VERTEX_BIT,
+						0,
+						data.getByteBuffer(0, size)
 					)
 
 					vkCmdDrawIndexed(commandBuffer, engine.model.indices.size, 1, 0, 0, 0)

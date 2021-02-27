@@ -6,12 +6,15 @@ import me.hydos.rosella.model.Model
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memcpy
 import me.hydos.rosella.util.ok
+import me.hydos.rosella.util.sizeof
+import org.joml.Matrix4f
+import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import java.util.*
 import java.util.function.Consumer
 
-class UboManager {
+class ShaderDataManager {
 	var descriptorSetLayout: Long = 0
 	var descriptorPool: Long = 0
 	var descriptorSets: List<Long> = ArrayList()
@@ -19,7 +22,10 @@ class UboManager {
 	var uniformBuffers: List<Long> = ArrayList()
 	var uniformBuffersMemory: List<Long> = ArrayList()
 
-	fun freeUbos(device: Device) {
+	var pushConstantBuffers: List<Long> = ArrayList()
+	var pushConstantBuffersMemory: List<Long> = ArrayList()
+
+	fun free(device: Device) {
 		uniformBuffers.forEach(Consumer { ubo: Long? -> VK10.vkDestroyBuffer(device.device, ubo!!, null) })
 		uniformBuffersMemory.forEach(Consumer { uboMemory: Long? ->
 			VK10.vkFreeMemory(
@@ -29,9 +35,12 @@ class UboManager {
 		})
 	}
 
+	var model: Matrix4f = Matrix4f() //TODO: unhardcode. here for testing
+
 	fun updateUniformBuffer(currentImage: Int, swapchain: SwapChain, device: Device) {
 		MemoryStack.stackPush().use {
 			val ubo = ModelUbo()
+			ubo.model.rotate((GLFW.glfwGetTime() * Math.toRadians(90.0)).toFloat(), 0.0f, 0.0f, 1.0f)
 			ubo.view.lookAt(2.0f, 2.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)
 			ubo.proj.perspective(
 				Math.toRadians(45.0).toFloat(),
@@ -40,6 +49,7 @@ class UboManager {
 				10.0f
 			)
 			ubo.proj.m11(ubo.proj.m11() * -1)
+
 			val data = it.mallocPointer(1)
 			VK10.vkMapMemory(
 				device.device,
@@ -74,6 +84,24 @@ class UboManager {
 				(uniformBuffers as ArrayList<Long>).add(pBuffer[0])
 				(uniformBuffersMemory as ArrayList<Long>).add(pBufferMemory[0])
 			}
+		}
+	}
+
+	fun createPushConstantBuffer(device: Device) {
+		MemoryStack.stackPush().use {
+			val pBuffer = it.mallocLong(1)
+			val pBufferMemory = it.mallocLong(1)
+			createBuffer(
+				sizeof(ModelPushConstant().position), //TODO: unhardcode
+				VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				pBuffer,
+				pBufferMemory,
+				device
+			)
+			(pushConstantBuffers as ArrayList<Long>).add(pBuffer[0])
+			(pushConstantBuffersMemory as ArrayList<Long>).add(pBufferMemory[0])
+
 		}
 	}
 
@@ -122,7 +150,8 @@ class UboManager {
 				.descriptorPool(descriptorPool)
 				.pSetLayouts(layouts)
 			val pDescriptorSets = stack.mallocLong(swapChain.swapChainImages.size)
-			VK10.vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets).ok("Failed to allocate descriptor sets")
+			VK10.vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets)
+				.ok("Failed to allocate descriptor sets")
 			descriptorSets = ArrayList(pDescriptorSets.capacity())
 			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
 				.offset(0)

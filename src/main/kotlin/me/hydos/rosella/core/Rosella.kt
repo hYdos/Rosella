@@ -5,7 +5,7 @@ import me.hydos.rosella.core.device.Queues
 import me.hydos.rosella.core.swapchain.SwapChain
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.model.Model
-import me.hydos.rosella.model.ubo.UboManager
+import me.hydos.rosella.model.ubo.ShaderDataManager
 import me.hydos.rosella.resource.ResourceLoader
 import me.hydos.rosella.util.findMemoryType
 import me.hydos.rosella.util.ok
@@ -33,7 +33,7 @@ class Rosella(
 	val resources: ResourceLoader
 ) {
 
-	val uboManager: UboManager = UboManager()
+	val shaderDataManager: ShaderDataManager = ShaderDataManager()
 	var depthBuffer = DepthBuffer()
 
 	var model: Model = Model("models/chalet.obj")
@@ -83,19 +83,20 @@ class Rosella(
 
 	private fun createModels() {
 		model.create(device, this)
-		uboManager.createDescriptorSetLayout(device)
+		shaderDataManager.createDescriptorSetLayout(device)
 	}
 
 	private fun createFullSwapChain() {
 		this.swapChain = SwapChain(this, device.device, device.physicalDevice, surface)
 		this.renderPass = RenderPass(device, swapChain, this)
 		createImgViews()
-		this.pipeline.createPipeline(device, swapChain, renderPass, uboManager.descriptorSetLayout)
+		this.pipeline.createPipeline(device, swapChain, renderPass, shaderDataManager.descriptorSetLayout)
 		depthBuffer.createDepthResources(this)
 		createFramebuffers()
-		uboManager.createUniformBuffers(swapChain, device)
-		uboManager.createDescriptorPool(swapChain, device)
-		uboManager.createDescriptorSets(model, swapChain, device)
+		shaderDataManager.createUniformBuffers(swapChain, device)
+		shaderDataManager.createPushConstantBuffer(device) //TODO
+		shaderDataManager.createDescriptorPool(swapChain, device)
+		shaderDataManager.createDescriptorSets(model, swapChain, device)
 		this.pipeline.createCommandBuffers(swapChain, renderPass, pipeline, this)
 		createSyncObjects()
 	}
@@ -449,7 +450,7 @@ class Rosella(
 
 			val imageIndex = pImageIndex[0]
 
-			uboManager.updateUniformBuffer(imageIndex, swapChain, device)
+			shaderDataManager.updateUniformBuffer(imageIndex, swapChain, device)
 
 			if (imagesInFlight!!.containsKey(imageIndex)) {
 				vkWaitForFences(device.device, imagesInFlight!![imageIndex]!!.fence(), true, UINT64_MAX)
@@ -500,12 +501,12 @@ class Rosella(
 	}
 
 	private fun freeSwapChain() {
-		vkDestroyDescriptorPool(device.device, uboManager.descriptorPool, null)
+		vkDestroyDescriptorPool(device.device, shaderDataManager.descriptorPool, null)
 
 		// Free Depth Buffer
 		depthBuffer.free(device)
 
-		uboManager.freeUbos(device)
+		shaderDataManager.free(device)
 
 		swapChain.swapChainFramebuffers.forEach { framebuffer ->
 			vkDestroyFramebuffer(
