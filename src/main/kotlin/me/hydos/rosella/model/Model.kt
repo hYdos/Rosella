@@ -19,19 +19,21 @@ import java.lang.ClassLoader.getSystemClassLoader
 import java.nio.ByteBuffer
 
 
-class Model(val modelLocation: String) {
+class Model(val modelLocation: String, val textureLocation: String) {
 
 	private var vertices: ArrayList<Vertex> = ArrayList()
 	var indices: ArrayList<Int> = ArrayList()
+
+	var descriptorSets: List<Long> = java.util.ArrayList()
 
 	var vertexBuffer: Long = 0
 	var vertexBufferMemory: Long = 0
 
 	private var textureImage: Long = 0
 	private var textureImageMemory: Long = 0
+
 	var textureImageView: Long = 0
 	var textureSampler: Long = 0
-
 
 	var indexBuffer: Long = 0
 	var indexBufferMemory: Long = 0
@@ -220,7 +222,7 @@ class Model(val modelLocation: String) {
 	private fun createTextureImage(device: Device, engine: Rosella) {
 		stackPush().use { stack ->
 			val filename =
-				getSystemClassLoader().getResource("textures/chalet.jpg").toExternalForm().replace("file:", "")
+				getSystemClassLoader().getResource(textureLocation).toExternalForm().replace("file:", "")
 			val pWidth = stack.mallocInt(1)
 			val pHeight = stack.mallocInt(1)
 			val pChannels = stack.mallocInt(1)

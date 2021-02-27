@@ -36,7 +36,7 @@ class Rosella(
 	val shaderDataManager: ShaderDataManager = ShaderDataManager()
 	var depthBuffer = DepthBuffer()
 
-	var model: Model = Model("models/chalet.obj")
+	var model: Model = Model("models/fact_core.gltf", "textures/fact_core_0.png")
 
 	private var inFlightFrames: List<Frame>? = null
 	private var imagesInFlight: MutableMap<Int, Frame>? = null

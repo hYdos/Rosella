@@ -17,7 +17,6 @@ import java.util.function.Consumer
 class ShaderDataManager {
 	var descriptorSetLayout: Long = 0
 	var descriptorPool: Long = 0
-	var descriptorSets: List<Long> = ArrayList()
 
 	var uniformBuffers: List<Long> = ArrayList()
 	var uniformBuffersMemory: List<Long> = ArrayList()
@@ -41,12 +40,12 @@ class ShaderDataManager {
 		MemoryStack.stackPush().use {
 			val ubo = ModelUbo()
 			ubo.model.rotate((GLFW.glfwGetTime() * Math.toRadians(90.0)).toFloat(), 0.0f, 0.0f, 1.0f)
-			ubo.view.lookAt(2.0f, 2.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)
+			ubo.view.lookAt(2.0f, -40.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)
 			ubo.proj.perspective(
 				Math.toRadians(45.0).toFloat(),
 				swapchain.swapChainExtent!!.width().toFloat() / swapchain.swapChainExtent!!.height().toFloat(),
 				0.1f,
-				10.0f
+				1000.0f
 			)
 			ubo.proj.m11(ubo.proj.m11() * -1)
 
@@ -139,49 +138,53 @@ class ShaderDataManager {
 		}
 	}
 
-	fun createDescriptorSets(model: Model, swapChain: SwapChain, device: Device) {
+	fun createDescriptorSets(models: List<Model>, swapChain: SwapChain, device: Device) {
 		MemoryStack.stackPush().use { stack ->
-			val layouts = stack.mallocLong(swapChain.swapChainImages.size)
-			for (i in 0 until layouts.capacity()) {
-				layouts.put(i, descriptorSetLayout)
-			}
-			val allocInfo = VkDescriptorSetAllocateInfo.callocStack(stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
-				.descriptorPool(descriptorPool)
-				.pSetLayouts(layouts)
-			val pDescriptorSets = stack.mallocLong(swapChain.swapChainImages.size)
-			VK10.vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets)
-				.ok("Failed to allocate descriptor sets")
-			descriptorSets = ArrayList(pDescriptorSets.capacity())
-			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
-				.offset(0)
-				.range(ModelUbo.SIZEOF.toLong())
-			val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
-				.imageLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-				.imageView(model.textureImageView)
-				.sampler(model.textureSampler)
-			val descriptorWrites = VkWriteDescriptorSet.callocStack(2, stack)
-			val uboDescriptorWrite = descriptorWrites[0]
-				.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-				.dstBinding(0)
-				.dstArrayElement(0)
-				.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-				.descriptorCount(1)
-				.pBufferInfo(bufferInfo)
-			val samplerDescriptorWrite = descriptorWrites[1]
-				.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-				.dstBinding(1)
-				.dstArrayElement(0)
-				.descriptorType(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-				.descriptorCount(1)
-				.pImageInfo(imageInfo)
-			for (i in 0 until pDescriptorSets.capacity()) {
-				val descriptorSet = pDescriptorSets[i]
-				bufferInfo.buffer(uniformBuffers[i])
-				uboDescriptorWrite.dstSet(descriptorSet)
-				samplerDescriptorWrite.dstSet(descriptorSet)
-				VK10.vkUpdateDescriptorSets(device.device, descriptorWrites, null)
-				(descriptorSets as ArrayList<Long>).add(descriptorSet)
+			models.forEach {
+				val layouts = stack.mallocLong(swapChain.swapChainImages.size)
+				for (i in 0 until layouts.capacity()) {
+					layouts.put(i, descriptorSetLayout)
+				}
+				val allocInfo = VkDescriptorSetAllocateInfo.callocStack(stack)
+					.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
+					.descriptorPool(descriptorPool)
+					.pSetLayouts(layouts)
+				val pDescriptorSets = stack.mallocLong(swapChain.swapChainImages.size)
+				VK10.vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets)
+					.ok("Failed to allocate descriptor sets")
+				it.descriptorSets = ArrayList(pDescriptorSets.capacity())
+				val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
+					.offset(0)
+					.range(ModelUbo.SIZEOF.toLong())
+
+				val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
+					.imageLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+					.imageView(it.textureImageView)
+					.sampler(it.textureSampler)
+
+				val descriptorWrites = VkWriteDescriptorSet.callocStack(2, stack)
+				val uboDescriptorWrite = descriptorWrites[0]
+					.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+					.dstBinding(0)
+					.dstArrayElement(0)
+					.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+					.descriptorCount(1)
+					.pBufferInfo(bufferInfo)
+				val samplerDescriptorWrite = descriptorWrites[1]
+					.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+					.dstBinding(1)
+					.dstArrayElement(0)
+					.descriptorType(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+					.descriptorCount(1)
+					.pImageInfo(imageInfo)
+				for (i in 0 until pDescriptorSets.capacity()) {
+					val descriptorSet = pDescriptorSets[i]
+					bufferInfo.buffer(uniformBuffers[i])
+					uboDescriptorWrite.dstSet(descriptorSet)
+					samplerDescriptorWrite.dstSet(descriptorSet)
+					VK10.vkUpdateDescriptorSets(device.device, descriptorWrites, null)
+					(it.descriptorSets as ArrayList<Long>).add(descriptorSet)
+				}
 			}
 		}
 	}

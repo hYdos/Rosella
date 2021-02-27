@@ -282,7 +282,7 @@ class Pipeline() {
 						VK_PIPELINE_BIND_POINT_GRAPHICS,
 						pipeline.pipelineLayout,
 						0,
-						it.longs(engine.shaderDataManager.descriptorSets[i]),
+						it.longs(engine.model.descriptorSets[i]),
 						null
 					)
 
