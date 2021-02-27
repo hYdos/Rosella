@@ -1,5 +1,6 @@
 package me.hydos.rosella.core
 
+import me.hydos.rosella.core.device.Device
 import me.hydos.rosella.core.swapchain.SwapChain
 import me.hydos.rosella.model.Vertex
 import me.hydos.rosella.util.*
@@ -143,6 +144,11 @@ class Pipeline() {
 				.sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
 				.pSetLayouts(it.longs(descriptorSetLayout))
 			val pPipelineLayout = it.longs(VK_NULL_HANDLE)
+
+			/**
+			 * Create Push Constants
+			 */
+
 			vkCreatePipelineLayout(device.device, pipelineLayoutInfo, null, pPipelineLayout).ok()
 			pipelineLayout = pPipelineLayout[0]
 

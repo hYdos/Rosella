@@ -1,5 +1,7 @@
 package me.hydos.rosella.core
 
+import me.hydos.rosella.core.device.Device
+import me.hydos.rosella.core.device.Queues
 import me.hydos.rosella.core.swapchain.SwapChain
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.model.Model
@@ -325,7 +327,7 @@ class Rosella(
 		}
 	}
 
-	fun destroy() {
+	fun free() {
 		this.state = State.STOPPING
 
 		//TODO: less temporary model system
@@ -342,7 +344,8 @@ class Rosella(
 
 		vkDestroyCommandPool(device.device, pipeline.commandPool, null)
 
-		vkDestroySwapchainKHR(device.device, swapChain.swapChain, null)
+		swapChain.free(device.device)
+
 		vkDestroyDevice(device.device, null)
 
 		if (vkGetInstanceProcAddr(vulkanInstance, "vkDestroyDebugUtilsMessengerEXT") != NULL) {

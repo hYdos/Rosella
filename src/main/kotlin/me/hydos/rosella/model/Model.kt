@@ -1,7 +1,7 @@
 package me.hydos.rosella.model
 
-import me.hydos.rosella.core.Device
 import me.hydos.rosella.core.Rosella
+import me.hydos.rosella.core.device.Device
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memcpy
 import me.hydos.rosella.util.ok

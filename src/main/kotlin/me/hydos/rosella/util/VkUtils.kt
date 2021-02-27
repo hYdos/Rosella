@@ -1,10 +1,10 @@
 package me.hydos.rosella.util
 
-import me.hydos.rosella.core.Device
-import me.hydos.rosella.core.QueueFamilyIndices
 import me.hydos.rosella.core.Rosella
+import me.hydos.rosella.core.device.Device
+import me.hydos.rosella.core.device.QueueFamilyIndices
 import me.hydos.rosella.model.Vertex
-import me.hydos.rosella.model.ubo.UniformBufferObject
+import me.hydos.rosella.model.ubo.ModelUbo
 import org.joml.Matrix4f
 import org.joml.Vector2f
 import org.joml.Vector3f
@@ -128,7 +128,7 @@ fun memcpy(buffer: ByteBuffer, indices: ArrayList<Int>) {
 	buffer.rewind()
 }
 
-fun memcpy(buffer: ByteBuffer, ubo: UniformBufferObject) {
+fun memcpy(buffer: ByteBuffer, ubo: ModelUbo) {
 	val mat4Size = 16 * java.lang.Float.BYTES
 	ubo.model[0, buffer]
 	ubo.view.get(alignas(mat4Size, alignof(ubo.view)), buffer)

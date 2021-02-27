@@ -1,5 +1,6 @@
-package me.hydos.rosella.core
+package me.hydos.rosella.core.device
 
+import me.hydos.rosella.core.Rosella
 import me.hydos.rosella.core.swapchain.SwapChainSupportDetails
 import me.hydos.rosella.core.swapchain.querySwapChainSupport
 import me.hydos.rosella.util.findQueueFamilies
@@ -18,7 +19,7 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 
 	internal var device: VkDevice
 
-	internal val physicalDevice: VkPhysicalDevice = stackPush().use {
+	val physicalDevice: VkPhysicalDevice = stackPush().use {
 		val deviceCount = run {
 			val count = it.ints(0)
 			vkEnumeratePhysicalDevices(engine.vulkanInstance, count, null).ok()

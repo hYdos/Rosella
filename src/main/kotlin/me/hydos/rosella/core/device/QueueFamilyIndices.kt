@@ -1,4 +1,4 @@
-package me.hydos.rosella.core
+package me.hydos.rosella.core.device
 
 import java.util.stream.IntStream
 

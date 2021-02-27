@@ -1,7 +1,7 @@
 package me.hydos.rosella.core.swapchain
 
-import me.hydos.rosella.core.QueueFamilyIndices
 import me.hydos.rosella.core.Rosella
+import me.hydos.rosella.core.device.QueueFamilyIndices
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.util.findQueueFamilies
 import me.hydos.rosella.util.ok
@@ -121,6 +121,10 @@ class SwapChain(
 		actualExtent.width(minExtent.width().coerceIn(maxExtent.width(), actualExtent.width()))
 		actualExtent.height(minExtent.height().coerceIn(maxExtent.height(), actualExtent.height()))
 		return actualExtent
+	}
+
+	fun free(device: VkDevice) {
+		vkDestroySwapchainKHR(device, swapChain, null)
 	}
 
 	companion object {

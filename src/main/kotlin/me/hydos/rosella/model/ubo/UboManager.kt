@@ -1,12 +1,11 @@
 package me.hydos.rosella.model.ubo
 
-import me.hydos.rosella.core.Device
+import me.hydos.rosella.core.device.Device
 import me.hydos.rosella.core.swapchain.SwapChain
 import me.hydos.rosella.model.Model
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memcpy
 import me.hydos.rosella.util.ok
-import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import java.util.*
@@ -32,8 +31,7 @@ class UboManager {
 
 	fun updateUniformBuffer(currentImage: Int, swapchain: SwapChain, device: Device) {
 		MemoryStack.stackPush().use {
-			val ubo = UniformBufferObject()
-			ubo.model.rotate((GLFW.glfwGetTime() * Math.toRadians(90.0)).toFloat(), 0.0f, 0.0f, 1.0f)
+			val ubo = ModelUbo()
 			ubo.view.lookAt(2.0f, 2.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)
 			ubo.proj.perspective(
 				Math.toRadians(45.0).toFloat(),
@@ -47,12 +45,12 @@ class UboManager {
 				device.device,
 				uniformBuffersMemory[currentImage],
 				0,
-				UniformBufferObject.SIZEOF.toLong(),
+				ModelUbo.SIZEOF.toLong(),
 				0,
 				data
 			)
 			run {
-				memcpy(data.getByteBuffer(0, UniformBufferObject.SIZEOF), ubo)
+				memcpy(data.getByteBuffer(0, ModelUbo.SIZEOF), ubo)
 			}
 			VK10.vkUnmapMemory(device.device, uniformBuffersMemory[currentImage])
 		}
@@ -66,7 +64,7 @@ class UboManager {
 			val pBufferMemory = stack.mallocLong(1)
 			for (i in swapchain.swapChainImages.indices) {
 				createBuffer(
-					UniformBufferObject.SIZEOF,
+					ModelUbo.SIZEOF,
 					VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 					VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 					pBuffer,
@@ -128,7 +126,7 @@ class UboManager {
 			descriptorSets = ArrayList(pDescriptorSets.capacity())
 			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
 				.offset(0)
-				.range(UniformBufferObject.SIZEOF.toLong())
+				.range(ModelUbo.SIZEOF.toLong())
 			val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
 				.imageLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 				.imageView(model.textureImageView)

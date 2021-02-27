@@ -17,7 +17,7 @@ object Example {
 		}
 		screen.onWindowClose {
 			vkDeviceWaitIdle(engine.device.device) // The 1 vulkan method that needs to be called from the program using our engine
-			engine.destroy()
+			engine.free()
 		}
 
 		// Start the screens main loop.
