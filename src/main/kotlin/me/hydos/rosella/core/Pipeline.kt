@@ -274,15 +274,15 @@ class Pipeline() {
 					)
 					val offsets = it.longs(0)
 
-					val vertexBuffers = it.longs(engine.model.vertexBuffer)
+					val vertexBuffers = it.longs(engine.models[0].vertexBuffer)
 					vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets)
-					vkCmdBindIndexBuffer(commandBuffer, engine.model.indexBuffer, 0, VK_INDEX_TYPE_UINT32)
+					vkCmdBindIndexBuffer(commandBuffer, engine.models[0].indexBuffer, 0, VK_INDEX_TYPE_UINT32)
 					vkCmdBindDescriptorSets(
 						commandBuffer,
 						VK_PIPELINE_BIND_POINT_GRAPHICS,
 						pipeline.pipelineLayout,
 						0,
-						it.longs(engine.model.descriptorSets[i]),
+						it.longs(engine.models[0].descriptorSets[i]),
 						null
 					)
 
@@ -319,7 +319,7 @@ class Pipeline() {
 						data.getByteBuffer(0, size)
 					)
 
-					vkCmdDrawIndexed(commandBuffer, engine.model.indices.size, 1, 0, 0, 0)
+					vkCmdDrawIndexed(commandBuffer, engine.models[0].indices.size, 1, 0, 0, 0)
 				}
 				vkCmdEndRenderPass(commandBuffer)
 				vkEndCommandBuffer(commandBuffer).ok()

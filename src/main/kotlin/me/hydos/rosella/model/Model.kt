@@ -156,13 +156,15 @@ class Model(val modelLocation: String, val textureLocation: String) {
 		vkFreeMemory(device.device, indexBufferMemory, null)
 	}
 
-	fun create(device: Device, engine: Rosella) {
+	fun create(device: Device, engine: Rosella): Model {
 		loadModelFile()
 		createVertexBuffer(device, engine)
 		createIndexBuffer(device, engine)
 		createTextureImage(device, engine)
 		createTextureImageView(engine)
 		createTextureSampler(device, engine)
+
+		return this
 	}
 
 	private fun loadModelFile() {

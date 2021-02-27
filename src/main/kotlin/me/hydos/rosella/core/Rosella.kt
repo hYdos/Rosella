@@ -24,6 +24,7 @@ import java.nio.LongBuffer
 import java.util.*
 import java.util.function.Consumer
 import java.util.stream.Collectors
+import kotlin.collections.ArrayList
 
 
 class Rosella(
@@ -36,7 +37,7 @@ class Rosella(
 	val shaderDataManager: ShaderDataManager = ShaderDataManager()
 	var depthBuffer = DepthBuffer()
 
-	var model: Model = Model("models/fact_core.gltf", "textures/fact_core_0.png")
+	var models: ArrayList<Model> = ArrayList()
 
 	private var inFlightFrames: List<Frame>? = null
 	private var imagesInFlight: MutableMap<Int, Frame>? = null
@@ -58,6 +59,9 @@ class Rosella(
 
 	init {
 		state = State.STARTING
+
+		// Do model things
+		models.add(Model("models/fact_core.gltf", "textures/fact_core_0.png"))
 
 		// Setup Validation Layers
 		val validationLayers = defaultValidationLayers.toSet()
@@ -82,7 +86,9 @@ class Rosella(
 	}
 
 	private fun createModels() {
-		model.create(device, this)
+		models.forEach {
+			it.create(device, this)
+		}
 		shaderDataManager.createDescriptorSetLayout(device)
 	}
 
@@ -96,7 +102,7 @@ class Rosella(
 		shaderDataManager.createUniformBuffers(swapChain, device)
 		shaderDataManager.createPushConstantBuffer(device) //TODO
 		shaderDataManager.createDescriptorPool(swapChain, device)
-		shaderDataManager.createDescriptorSets(model, swapChain, device)
+		shaderDataManager.createDescriptorSets(models, swapChain, device)
 		this.pipeline.createCommandBuffers(swapChain, renderPass, pipeline, this)
 		createSyncObjects()
 	}
@@ -186,7 +192,7 @@ class Rosella(
 			} else {
 				throw IllegalArgumentException("Unsupported layout transition")
 			}
-			val commandBuffer: VkCommandBuffer = model.beginSingleTimeCommands(device, this)
+			val commandBuffer: VkCommandBuffer = models[0].beginSingleTimeCommands(device, this)
 			vkCmdPipelineBarrier(
 				commandBuffer,
 				sourceStage, destinationStage,
@@ -195,7 +201,7 @@ class Rosella(
 				null,
 				barrier
 			)
-			model.endSingleTimeCommands(commandBuffer, device, this)
+			models[0].endSingleTimeCommands(commandBuffer, device, this)
 		}
 	}
 
@@ -332,7 +338,9 @@ class Rosella(
 		this.state = State.STOPPING
 
 		//TODO: less temporary model system
-		model.destroy(device)
+		models.forEach {
+			it.destroy(device)
+		}
 
 		freeSwapChain()
 
