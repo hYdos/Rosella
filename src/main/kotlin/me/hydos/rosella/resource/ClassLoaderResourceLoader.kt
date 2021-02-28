@@ -12,6 +12,9 @@ class ClassLoaderResourceLoader(private val loader: ClassLoader) : ResourceLoade
 				override val identifier: Identifier
 					get() = id
 
+				override val loader: ResourceLoader
+					get() = this@ClassLoaderResourceLoader
+
 				override fun openStream(): InputStream = stream
 			}
 		} else {

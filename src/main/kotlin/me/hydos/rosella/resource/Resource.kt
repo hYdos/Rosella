@@ -7,6 +7,8 @@ interface Resource {
 
 	val identifier: Identifier
 
+	val loader: ResourceLoader
+
 	fun openStream(): InputStream
 
 	fun readAllBytes(native: Boolean = false): ByteBuffer {

@@ -7,7 +7,10 @@ class CascadingResourceLoader(private val loaders: Collection<ResourceLoader>) :
 			val resource = loader.loadResource(id)
 
 			if (resource != null) {
-				return resource
+				return object : Resource by resource {
+					override val loader: ResourceLoader
+						get() = this@CascadingResourceLoader
+				}
 			}
 		}
 
