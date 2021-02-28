@@ -4,11 +4,11 @@ import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.Queues
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.model.Model
+import me.hydos.rosella.model.ubo.ModelPushConstant
 import me.hydos.rosella.model.ubo.ShaderDataManager
 import me.hydos.rosella.resource.ResourceLoader
 import me.hydos.rosella.swapchain.SwapChain
-import me.hydos.rosella.util.findMemoryType
-import me.hydos.rosella.util.ok
+import me.hydos.rosella.util.*
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWVulkan
@@ -37,7 +37,7 @@ class Rosella(
 	val shaderDataManager: ShaderDataManager = ShaderDataManager()
 	var depthBuffer = DepthBuffer()
 
-	var models: ArrayList<Model> = ArrayList()
+	var model: Model = Model("models/fact_core.gltf", "textures/fact_core_0.png")
 
 	private var inFlightFrames: List<Frame>? = null
 	private var imagesInFlight: MutableMap<Int, Frame>? = null
@@ -48,7 +48,6 @@ class Rosella(
 	lateinit var swapChain: SwapChain
 	private lateinit var renderPass: RenderPass
 	internal lateinit var vulkanInstance: VkInstance
-	var pipeline: Pipeline = Pipeline()
 
 	internal val device: Device
 	private var state: State
@@ -59,9 +58,6 @@ class Rosella(
 
 	init {
 		state = State.STARTING
-
-		// Do model things
-		models.add(Model("models/fact_core.gltf", "textures/fact_core_0.png"))
 
 		// Setup Validation Layers
 		val validationLayers = defaultValidationLayers.toSet()
@@ -77,7 +73,7 @@ class Rosella(
 
 		createSurface()
 		this.device = Device(this, validationLayers)
-		this.pipeline.createCmdPool(this)
+		this.createCmdPool(this)
 		createModels()
 		createFullSwapChain()
 
@@ -86,9 +82,7 @@ class Rosella(
 	}
 
 	private fun createModels() {
-		models.forEach {
-			it.create(device, this)
-		}
+		model.create(device, this)
 		shaderDataManager.createDescriptorSetLayout(device)
 	}
 
@@ -96,14 +90,14 @@ class Rosella(
 		this.swapChain = SwapChain(this, device.device, device.physicalDevice, surface)
 		this.renderPass = RenderPass(device, swapChain, this)
 		createImgViews()
-		this.pipeline.createPipeline(device, swapChain, renderPass, shaderDataManager.descriptorSetLayout)
+		model.material.createPipeline(device, swapChain, renderPass, shaderDataManager.descriptorSetLayout)
 		depthBuffer.createDepthResources(this)
 		createFramebuffers()
 		shaderDataManager.createUniformBuffers(swapChain, device)
 		shaderDataManager.createPushConstantBuffer(device) //TODO
 		shaderDataManager.createDescriptorPool(swapChain, device)
-		shaderDataManager.createDescriptorSets(models, swapChain, device)
-		this.pipeline.createCommandBuffers(swapChain, renderPass, pipeline, this)
+		shaderDataManager.createDescriptorSets(model, swapChain, device)
+		createCommandBuffers(swapChain, renderPass)
 		createSyncObjects()
 	}
 
@@ -135,6 +129,139 @@ class Rosella(
 				.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), memProperties, device))
 			vkAllocateMemory(device.device, allocInfo, null, pTextureImageMemory).ok("Failed to allocate image memory")
 			vkBindImageMemory(device.device, pTextureImage[0], pTextureImageMemory[0], 0)
+		}
+	}
+
+	var commandPool: Long = 0
+	var commandBuffers: ArrayList<VkCommandBuffer> = ArrayList()
+
+	fun createCmdPool(engine: Rosella) {
+		stackPush().use { stack ->
+			val queueFamilyIndices = findQueueFamilies(engine.device.physicalDevice, engine)
+			val poolInfo = VkCommandPoolCreateInfo.callocStack(stack)
+			poolInfo.sType(VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO)
+			poolInfo.queueFamilyIndex(queueFamilyIndices.graphicsFamily!!)
+			val pCommandPool = stack.mallocLong(1)
+			vkCreateCommandPool(engine.device.device, poolInfo, null, pCommandPool).ok()
+			commandPool = pCommandPool[0]
+		}
+	}
+
+	fun createCommandBuffers(
+		swapchain: SwapChain,
+		renderPass: RenderPass
+	) {
+		/**
+		 * Create the Command Buffers
+		 */
+		val commandBuffersCount: Int = swapchain.swapChainFramebuffers.size
+
+		commandBuffers = java.util.ArrayList(commandBuffersCount)
+
+		stackPush().use {
+			// Allocate
+			val allocInfo = VkCommandBufferAllocateInfo.callocStack(it)
+			allocInfo.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
+			allocInfo.commandPool(commandPool)
+			allocInfo.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+			allocInfo.commandBufferCount(commandBuffersCount)
+			val pCommandBuffers = it.mallocPointer(commandBuffersCount)
+			if (vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffers) != VK_SUCCESS) {
+				throw RuntimeException("Failed to allocate command buffers")
+			}
+
+			for (i in 0 until commandBuffersCount) {
+				commandBuffers.add(
+					VkCommandBuffer(
+						pCommandBuffers[i],
+						device.device
+					)
+				)
+			}
+			val beginInfo = VkCommandBufferBeginInfo.callocStack(it)
+				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
+
+			val renderPassInfo = VkRenderPassBeginInfo.callocStack(it)
+				.sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
+				.renderPass(renderPass.renderPass)
+
+			val renderArea = VkRect2D.callocStack(it)
+				.offset(VkOffset2D.callocStack(it).set(0, 0))
+				.extent(swapchain.swapChainExtent!!)
+
+			renderPassInfo.renderArea(renderArea)
+
+			val clearValues = VkClearValue.callocStack(2, it)
+			clearValues[0].color().float32(it.floats(0xef / 255f, 0x32 / 255f, 0x3d / 255f, 1.0f))
+			clearValues[1].depthStencil().set(1.0f, 0)
+
+			renderPassInfo.pClearValues(clearValues)
+
+			for (i in 0 until commandBuffersCount) {
+				val commandBuffer = commandBuffers[i]
+				vkBeginCommandBuffer(commandBuffer, beginInfo).ok()
+				renderPassInfo.framebuffer(swapchain.swapChainFramebuffers[i])
+
+				// Draw stuff
+				vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE)
+				run {
+					vkCmdBindPipeline(
+						commandBuffer,
+						VK_PIPELINE_BIND_POINT_GRAPHICS,
+						model.material.graphicsPipeline
+					)
+					val offsets = it.longs(0)
+
+					val vertexBuffers = it.longs(model.vertexBuffer)
+					vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets)
+					vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32)
+					vkCmdBindDescriptorSets(
+						commandBuffer,
+						VK_PIPELINE_BIND_POINT_GRAPHICS,
+						model.material.pipelineLayout,
+						0,
+						it.longs(model.descriptorSets[i]),
+						null
+					)
+
+					//TODO: push constants are the way to make multiple objects work. Valoghese remind me after i get them working to make multiple models work. :)
+					// Load the push constant into memory
+					val data = it.mallocPointer(1)
+					val modelPushConstant = ModelPushConstant()
+					modelPushConstant.position.add(0f, 1f, 0f)
+					val size = sizeof(modelPushConstant.position)
+					vkMapMemory(
+						device.device,
+						shaderDataManager.pushConstantBuffersMemory[0], // Hardcoded to 0 for the 1 model
+						0,
+						size.toLong(),
+						0,
+						data
+					)
+					run {
+						memcpy(data.getByteBuffer(0, size), modelPushConstant)
+					}
+					vkUnmapMemory(
+						device.device,
+						shaderDataManager.pushConstantBuffersMemory[0]
+					)// Hardcoded to 0 for the 1 model
+
+					val buffer = it.longs(1)
+					buffer.put(shaderDataManager.pushConstantBuffers[0])
+
+					vkCmdPushConstants(
+						commandBuffer,
+						model.material.pipelineLayout,
+						VK_SHADER_STAGE_VERTEX_BIT,
+						0,
+						data.getByteBuffer(0, size)
+					)
+
+					vkCmdDrawIndexed(commandBuffer, model.indices.size, 1, 0, 0, 0)
+				}
+				vkCmdEndRenderPass(commandBuffer)
+				vkEndCommandBuffer(commandBuffer).ok()
+			}
 		}
 	}
 
@@ -192,7 +319,7 @@ class Rosella(
 			} else {
 				throw IllegalArgumentException("Unsupported layout transition")
 			}
-			val commandBuffer: VkCommandBuffer = models[0].beginSingleTimeCommands(device, this)
+			val commandBuffer: VkCommandBuffer = model.beginSingleTimeCommands(device, this)
 			vkCmdPipelineBarrier(
 				commandBuffer,
 				sourceStage, destinationStage,
@@ -201,7 +328,7 @@ class Rosella(
 				null,
 				barrier
 			)
-			models[0].endSingleTimeCommands(commandBuffer, device, this)
+			model.endSingleTimeCommands(commandBuffer, device, this)
 		}
 	}
 
@@ -337,10 +464,7 @@ class Rosella(
 	fun free() {
 		this.state = State.STOPPING
 
-		//TODO: less temporary model system
-		models.forEach {
-			it.destroy(device)
-		}
+		model.destroy(device)
 
 		freeSwapChain()
 
@@ -351,7 +475,7 @@ class Rosella(
 		})
 		imagesInFlight = null
 
-		vkDestroyCommandPool(device.device, pipeline.commandPool, null)
+		vkDestroyCommandPool(device.device, commandPool, null)
 
 		swapChain.free(device.device)
 
@@ -465,20 +589,20 @@ class Rosella(
 			}
 			imagesInFlight!![imageIndex] = thisFrame
 			val submitInfo = VkSubmitInfo.callocStack(stack)
-			submitInfo.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
-			submitInfo.waitSemaphoreCount(1)
-			submitInfo.pWaitSemaphores(thisFrame.pImageAvailableSemaphore())
-			submitInfo.pWaitDstStageMask(stack.ints(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT))
-			submitInfo.pSignalSemaphores(thisFrame.pRenderFinishedSemaphore())
-			submitInfo.pCommandBuffers(stack.pointers(pipeline.commandBuffers[imageIndex]))
+				.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
+				.waitSemaphoreCount(1)
+				.pWaitSemaphores(thisFrame.pImageAvailableSemaphore())
+				.pWaitDstStageMask(stack.ints(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT))
+				.pSignalSemaphores(thisFrame.pRenderFinishedSemaphore())
+				.pCommandBuffers(stack.pointers(commandBuffers[imageIndex]))
 			vkResetFences(device.device, thisFrame.pFence())
 			vkQueueSubmit(queues.graphicsQueue, submitInfo, thisFrame.fence()).ok()
 			val presentInfo = VkPresentInfoKHR.callocStack(stack)
-			presentInfo.sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
-			presentInfo.pWaitSemaphores(thisFrame.pRenderFinishedSemaphore())
-			presentInfo.swapchainCount(1)
-			presentInfo.pSwapchains(stack.longs(swapChain.swapChain))
-			presentInfo.pImageIndices(pImageIndex)
+				.sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
+				.pWaitSemaphores(thisFrame.pRenderFinishedSemaphore())
+				.swapchainCount(1)
+				.pSwapchains(stack.longs(swapChain.swapChain))
+				.pImageIndices(pImageIndex)
 
 			vkResult = vkQueuePresentKHR(queues.presentQueue, presentInfo)
 
@@ -523,7 +647,7 @@ class Rosella(
 				null
 			)
 		}
-		pipeline.free(device)
+		model.material.free(device, this)
 		vkDestroyRenderPass(device.device, renderPass.renderPass, null)
 		swapChain.swapChainImageViews.forEach { imageView -> vkDestroyImageView(device.device, imageView, null) }
 		vkDestroySwapchainKHR(device.device, swapChain.swapChain, null)

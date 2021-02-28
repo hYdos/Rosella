@@ -2,6 +2,7 @@ package me.hydos.rosella.model
 
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
+import me.hydos.rosella.material.Material
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memcpy
 import me.hydos.rosella.util.ok
@@ -37,6 +38,8 @@ class Model(val modelLocation: String, val textureLocation: String) {
 
 	var indexBuffer: Long = 0
 	var indexBufferMemory: Long = 0
+
+	var material: Material = Material("shaders/base.v.glsl", "shaders/base.f.glsl")
 
 	private fun createVertexBuffer(device: Device, rosella: Rosella) {
 		stackPush().use { stack ->
@@ -124,7 +127,7 @@ class Model(val modelLocation: String, val textureLocation: String) {
 				.pCommandBuffers(pCommandBuffer)
 			vkQueueSubmit(engine.queues.graphicsQueue, submitInfo, VK_NULL_HANDLE).ok()
 			vkQueueWaitIdle(engine.queues.graphicsQueue)
-			vkFreeCommandBuffers(device.device, engine.pipeline.commandPool, pCommandBuffer)
+			vkFreeCommandBuffers(device.device, engine.commandPool, pCommandBuffer)
 		}
 	}
 
@@ -137,7 +140,7 @@ class Model(val modelLocation: String, val textureLocation: String) {
 		val allocInfo = VkCommandBufferAllocateInfo.callocStack(stack)
 			.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
 			.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-			.commandPool(engine.pipeline.commandPool)
+			.commandPool(engine.commandPool)
 			.commandBufferCount(1)
 		vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffer)
 		val commandBuffer = VkCommandBuffer(pCommandBuffer[0], device.device)
@@ -162,7 +165,7 @@ class Model(val modelLocation: String, val textureLocation: String) {
 		createIndexBuffer(device, engine)
 		createTextureImage(device, engine)
 		createTextureImageView(engine)
-		createTextureSampler(device, engine)
+		createTextureSampler(device)
 
 		return this
 	}
@@ -193,7 +196,7 @@ class Model(val modelLocation: String, val textureLocation: String) {
 		}
 	}
 
-	private fun createTextureSampler(device: Device, engine: Rosella) {
+	private fun createTextureSampler(device: Device) {
 		stackPush().use { stack ->
 			val samplerInfo = VkSamplerCreateInfo.callocStack(stack)
 				.sType(VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO)
@@ -317,7 +320,7 @@ class Model(val modelLocation: String, val textureLocation: String) {
 				.pCommandBuffers(stack.pointers(commandBuffer))
 			vkQueueSubmit(engine.queues.graphicsQueue, submitInfo, VK_NULL_HANDLE)
 			vkQueueWaitIdle(engine.queues.graphicsQueue)
-			vkFreeCommandBuffers(device.device, engine.pipeline.commandPool, commandBuffer)
+			vkFreeCommandBuffers(device.device, engine.commandPool, commandBuffer)
 		}
 	}
 }
