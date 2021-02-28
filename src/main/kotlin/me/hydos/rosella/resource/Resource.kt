@@ -15,6 +15,7 @@ interface Resource {
 		if (native) {
 			val buffer = ByteBuffer.allocateDirect(bytes.size)
 			buffer.put(bytes)
+			buffer.rewind()
 			return buffer
 		}
 
