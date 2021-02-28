@@ -1,35 +1,72 @@
 package me.hydos.rosella.model
 
+import me.hydos.rosella.resource.Resource
 import org.joml.Vector2f
 import org.joml.Vector2fc
 import org.joml.Vector3f
 import org.joml.Vector3fc
-import org.lwjgl.assimp.AIMesh
-import org.lwjgl.assimp.AINode
-import org.lwjgl.assimp.AIScene
-import org.lwjgl.assimp.AIVector3D
+import org.lwjgl.assimp.*
 import org.lwjgl.assimp.Assimp.aiGetErrorString
-import org.lwjgl.assimp.Assimp.aiImportFile
-import java.io.File
+import org.lwjgl.assimp.Assimp.aiImportFileEx
+import org.lwjgl.system.MemoryUtil
+import java.nio.ByteBuffer
 import java.util.*
 import java.util.Objects.requireNonNull
 import java.util.logging.Logger
 
-
 object ModelLoader {
-	fun loadModel(file: File, flags: Int): SimpleModel {
-		aiImportFile(file.absolutePath, flags).use { scene ->
+	fun loadModel(resource: Resource, flags: Int): SimpleModel {
+		aiImportFileEx(resource.identifier.file, flags, createResourceIO(resource.readAllBytes(true))).use { scene ->
 			val logger: Logger = Logger.getLogger(ModelLoader::class.java.simpleName)
-			logger.info("Loading model " + file.path)
+			logger.info("Loading model " + resource.identifier)
+
 			if (scene?.mRootNode() == null) {
 				throw RuntimeException("Could not load model " + aiGetErrorString())
 			}
+
 			val model = SimpleModel()
 			val startTime = System.nanoTime()
 			processNode(scene.mRootNode()!!, scene, model)
 			logger.info("mdl loaded in " + (System.nanoTime() - startTime) / 1e6 + "ms")
 			return model
 		}
+	}
+
+	private fun createResourceIO(data: ByteBuffer): AIFileIO {
+		val fileIo = AIFileIO.create()
+
+		fileIo.set({ _, _, _ ->
+			AIFile.create().apply {
+				ReadProc { _: Long, pBuffer: Long, size: Long, count: Long ->
+					val max = data.remaining().toLong().coerceAtMost(size * count)
+					MemoryUtil.memCopy(MemoryUtil.memAddress(data), pBuffer, max)
+					max
+				}
+
+				SeekProc { _, offset, origin ->
+					when (origin) {
+						Assimp.aiOrigin_CUR -> {
+							data.position(data.position() + offset.toInt())
+						}
+						Assimp.aiOrigin_SET -> {
+							data.position(offset.toInt())
+						}
+						Assimp.aiOrigin_END -> {
+							data.position(data.limit() + offset.toInt())
+						}
+					}
+
+					0
+				}
+
+				FileSizeProc {
+					data.limit().toLong()
+				}
+			}.address()
+		}, { _, _ ->
+		}, MemoryUtil.NULL)
+
+		return fileIo
 	}
 
 	private fun processNode(node: AINode, scene: AIScene, model: SimpleModel) {

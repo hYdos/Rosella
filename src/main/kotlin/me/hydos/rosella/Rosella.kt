@@ -5,6 +5,8 @@ import me.hydos.rosella.device.Queues
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.model.Model
 import me.hydos.rosella.model.ubo.ShaderDataManager
+import me.hydos.rosella.resource.GlobalResourceLoader
+import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.resource.ResourceLoader
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.findMemoryType
@@ -61,7 +63,7 @@ class Rosella(
 		state = State.STARTING
 
 		// Do model things
-		models.add(Model("models/fact_core.gltf", "textures/fact_core_0.png"))
+		models.add(Model(GlobalResourceLoader.assertResource(Identifier("rosella", "models/fact_core.gltf")), GlobalResourceLoader.assertResource(Identifier("rosella", "textures/fact_core_0.png"))))
 
 		// Setup Validation Layers
 		val validationLayers = defaultValidationLayers.toSet()

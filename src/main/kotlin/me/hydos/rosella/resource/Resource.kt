@@ -9,7 +9,15 @@ interface Resource {
 
 	fun openStream(): InputStream
 
-	fun readAllBytes(): ByteBuffer {
-		return ByteBuffer.wrap(openStream().readBytes())
+	fun readAllBytes(native: Boolean = false): ByteBuffer {
+		val bytes = openStream().readBytes()
+
+		if (native) {
+			val buffer = ByteBuffer.allocateDirect(bytes.size)
+			buffer.put(bytes)
+			return buffer
+		}
+
+		return ByteBuffer.wrap(bytes)
 	}
 }

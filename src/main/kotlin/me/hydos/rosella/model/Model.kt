@@ -2,6 +2,7 @@ package me.hydos.rosella.model
 
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
+import me.hydos.rosella.resource.Resource
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memcpy
 import me.hydos.rosella.util.ok
@@ -14,12 +15,9 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
-import java.io.File
-import java.lang.ClassLoader.getSystemClassLoader
 import java.nio.ByteBuffer
 
-
-class Model(val modelLocation: String, val textureLocation: String) {
+class Model(val model: Resource, val texture: Resource) {
 
 	private var vertices: ArrayList<Vertex> = ArrayList()
 	var indices: ArrayList<Int> = ArrayList()
@@ -168,9 +166,8 @@ class Model(val modelLocation: String, val textureLocation: String) {
 	}
 
 	private fun loadModelFile() {
-		val modelFile = File(getSystemClassLoader().getResource(modelLocation).file)
 		val model: ModelLoader.SimpleModel =
-			ModelLoader.loadModel(modelFile, Assimp.aiProcess_FlipUVs or Assimp.aiProcess_DropNormals)
+			ModelLoader.loadModel(model, Assimp.aiProcess_FlipUVs or Assimp.aiProcess_DropNormals)
 		val vertexCount: Int = model.positions.size
 
 		vertices = ArrayList()
@@ -223,15 +220,13 @@ class Model(val modelLocation: String, val textureLocation: String) {
 
 	private fun createTextureImage(device: Device, engine: Rosella) {
 		stackPush().use { stack ->
-			val filename =
-				getSystemClassLoader().getResource(textureLocation).toExternalForm().replace("file:", "")
 			val pWidth = stack.mallocInt(1)
 			val pHeight = stack.mallocInt(1)
 			val pChannels = stack.mallocInt(1)
-			val pixels: ByteBuffer? = stbi_load(filename, pWidth, pHeight, pChannels, STBI_rgb_alpha)
+			val pixels: ByteBuffer? = stbi_load_from_memory(texture.readAllBytes(), pWidth, pHeight, pChannels, STBI_rgb_alpha)
 			val imageSize = (pWidth[0] * pHeight[0] * 4).toLong()
 			if (pixels == null) {
-				throw RuntimeException("Failed to load texture image $filename")
+				throw RuntimeException("Failed to load texture image ${texture.identifier}")
 			}
 			val pStagingBuffer = stack.mallocLong(1)
 			val pStagingBufferMemory = stack.mallocLong(1)

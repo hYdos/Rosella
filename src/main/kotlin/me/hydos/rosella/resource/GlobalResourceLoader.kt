@@ -5,4 +5,9 @@ import me.hydos.rosella.Rosella
 /**
  * Don't use this once [Rosella] get its own ResourceLoader field
  */
-object GlobalResourceLoader : ResourceLoader by ClassLoaderResourceLoader(ClassLoader.getSystemClassLoader())
+object GlobalResourceLoader : ResourceLoader by ClassLoaderResourceLoader(ClassLoader.getSystemClassLoader()) {
+
+	fun assertResource(id: Identifier): Resource {
+		return loadResource(id)!!
+	}
+}

@@ -5,6 +5,8 @@ import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.model.Vertex
 import me.hydos.rosella.model.ubo.ModelPushConstant
 import me.hydos.rosella.model.ubo.ModelUbo
+import me.hydos.rosella.resource.GlobalResourceLoader
+import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.util.*
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
@@ -29,8 +31,8 @@ class Pipeline() {
 		descriptorSetLayout: Long
 	) {
 		stackPush().use {
-			val vertShaderSPIRV: SpirV = compileShaderFile("shaders/base.v.glsl", ShaderType.VERTEX_SHADER)
-			val fragShaderSPIRV: SpirV = compileShaderFile("shaders/base.f.glsl", ShaderType.FRAGMENT_SHADER)
+			val vertShaderSPIRV: SpirV = compileShaderFile(GlobalResourceLoader.assertResource(Identifier("rosella", "shaders/base.v.glsl")), ShaderType.VERTEX_SHADER)
+			val fragShaderSPIRV: SpirV = compileShaderFile(GlobalResourceLoader.assertResource(Identifier("rosella", "shaders/base.f.glsl")), ShaderType.FRAGMENT_SHADER)
 			val vertShaderModule = createShaderModule(vertShaderSPIRV.bytecode(), device)
 			val fragShaderModule = createShaderModule(fragShaderSPIRV.bytecode(), device)
 			val entryPoint: ByteBuffer = it.UTF8("main")
