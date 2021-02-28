@@ -1,22 +1,21 @@
-package me.hydos.rosella.model.ubo
+package me.hydos.rosella.shader
 
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.material.Material
+import me.hydos.rosella.shader.ubo.ModelPushConstant
+import me.hydos.rosella.shader.ubo.ModelUbo
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memcpy
 import me.hydos.rosella.util.ok
 import me.hydos.rosella.util.sizeof
-import org.joml.Matrix4f
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import java.util.*
 import java.util.function.Consumer
 
-class ShaderDataManager {
-	var descriptorSetLayout: Long = 0
-	var descriptorPool: Long = 0
+class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val device: Device) {
 
 	var uniformBuffers: MutableList<Long> = ArrayList()
 	var uniformBuffersMemory: MutableList<Long> = ArrayList()
@@ -24,19 +23,42 @@ class ShaderDataManager {
 	var pushConstantBuffers: MutableList<Long> = ArrayList()
 	var pushConstantBuffersMemory: MutableList<Long> = ArrayList()
 
-	fun free(device: Device) {
-		uniformBuffers.forEach(Consumer { ubo: Long? -> VK10.vkDestroyBuffer(device.device, ubo!!, null) })
-		uniformBuffersMemory.forEach(Consumer { uboMemory: Long? ->
-			VK10.vkFreeMemory(
+	var descriptorPool: Long = 0
+	var descriptorSetLayout: Long = 0
+	var descriptorSets: MutableList<Long> = ArrayList()
+
+	fun createPool(valueMap: Map<Shader.ValueType, Int>, swapChain: SwapChain) {
+		MemoryStack.stackPush().use { stack ->
+			val poolSizes = VkDescriptorPoolSize.callocStack(2, stack)
+
+			// Uniform Buffer Pool Size
+			poolSizes[0]
+				.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+				.descriptorCount(swapChain.swapChainImages.size)
+
+			// Texture Sampler Pool Size
+			poolSizes[1]
+				.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				.descriptorCount(swapChain.swapChainImages.size)
+
+			val poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
+				.pPoolSizes(poolSizes)
+				.maxSets(swapChain.swapChainImages.size)
+
+			val pDescriptorPool = stack.mallocLong(1)
+			VK10.vkCreateDescriptorPool(
 				device.device,
-				uboMemory!!, null
-			)
-		})
+				poolInfo,
+				null,
+				pDescriptorPool
+			).ok("Failed to create descriptor pool")
+
+			descriptorPool = pDescriptorPool[0]
+		}
 	}
 
-	var model: Matrix4f = Matrix4f() //TODO: unhardcode. here for testing
-
-	fun updateUniformBuffer(currentImage: Int, swapchain: SwapChain, device: Device) {
+	fun updateUniformBuffer(currentImage: Int, swapchain: SwapChain) {
 		MemoryStack.stackPush().use {
 			val ubo = ModelUbo()
 			ubo.model.rotate((GLFW.glfwGetTime() * Math.toRadians(90.0)).toFloat(), 0.0f, 0.0f, 1.0f)
@@ -86,7 +108,7 @@ class ShaderDataManager {
 		}
 	}
 
-	fun createPushConstantBuffer(device: Device) {
+	fun createPushConstantBuffer() {
 		MemoryStack.stackPush().use {
 			val pBuffer = it.mallocLong(1)
 			val pBufferMemory = it.mallocLong(1)
@@ -104,7 +126,7 @@ class ShaderDataManager {
 		}
 	}
 
-	fun createDescriptorSetLayout(device: Device) {
+	fun createDescriptorSetLayout() {
 		MemoryStack.stackPush().use {
 			val bindings = VkDescriptorSetLayoutBinding.callocStack(2, it)
 
@@ -138,7 +160,7 @@ class ShaderDataManager {
 		}
 	}
 
-	fun createDescriptorSets(material: Material, swapChain: SwapChain, device: Device) {
+	fun createDescriptorSets(swapChain: SwapChain, material: Material) {
 		MemoryStack.stackPush().use { stack ->
 			val layouts = stack.mallocLong(swapChain.swapChainImages.size)
 			for (i in 0 until layouts.capacity()) {
@@ -149,9 +171,12 @@ class ShaderDataManager {
 				.descriptorPool(descriptorPool)
 				.pSetLayouts(layouts)
 			val pDescriptorSets = stack.mallocLong(swapChain.swapChainImages.size)
+
 			VK10.vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets)
 				.ok("Failed to allocate descriptor sets")
-			material.descriptorSets = ArrayList(pDescriptorSets.capacity())
+
+			descriptorSets = ArrayList(pDescriptorSets.capacity())
+
 			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
 				.offset(0)
 				.range(ModelUbo.SIZEOF.toLong())
@@ -162,6 +187,7 @@ class ShaderDataManager {
 				.sampler(material.textureSampler)
 
 			val descriptorWrites = VkWriteDescriptorSet.callocStack(2, stack)
+
 			val uboDescriptorWrite = descriptorWrites[0]
 				.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
 				.dstBinding(0)
@@ -169,6 +195,7 @@ class ShaderDataManager {
 				.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 				.descriptorCount(1)
 				.pBufferInfo(bufferInfo)
+
 			val samplerDescriptorWrite = descriptorWrites[1]
 				.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
 				.dstBinding(1)
@@ -176,44 +203,25 @@ class ShaderDataManager {
 				.descriptorType(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 				.descriptorCount(1)
 				.pImageInfo(imageInfo)
+
 			for (i in 0 until pDescriptorSets.capacity()) {
 				val descriptorSet = pDescriptorSets[i]
 				bufferInfo.buffer(uniformBuffers[i])
 				uboDescriptorWrite.dstSet(descriptorSet)
 				samplerDescriptorWrite.dstSet(descriptorSet)
 				VK10.vkUpdateDescriptorSets(device.device, descriptorWrites, null)
-				(material.descriptorSets as ArrayList<Long>).add(descriptorSet)
+				descriptorSets.add(descriptorSet)
 			}
 		}
 	}
 
-	fun createDescriptorPool(swapChain: SwapChain, device: Device) {
-		MemoryStack.stackPush().use { stack ->
-			val poolSizes = VkDescriptorPoolSize.callocStack(2, stack)
-
-			// Uniform Buffer Pool Size
-			poolSizes[0]
-				.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-				.descriptorCount(swapChain.swapChainImages.size)
-
-			// Texture Sampler Pool Size
-			poolSizes[1]
-				.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-				.descriptorCount(swapChain.swapChainImages.size)
-
-			val poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
-				.pPoolSizes(poolSizes)
-				.maxSets(swapChain.swapChainImages.size)
-
-			val pDescriptorPool = stack.mallocLong(1)
-			VK10.vkCreateDescriptorPool(
+	fun free(device: Device) {
+		uniformBuffers.forEach(Consumer { ubo: Long? -> VK10.vkDestroyBuffer(device.device, ubo!!, null) })
+		uniformBuffersMemory.forEach(Consumer { uboMemory: Long? ->
+			VK10.vkFreeMemory(
 				device.device,
-				poolInfo,
-				null,
-				pDescriptorPool
-			).ok("Failed to create descriptor pool")
-			descriptorPool = pDescriptorPool[0]
-		}
+				uboMemory!!, null
+			)
+		})
 	}
 }

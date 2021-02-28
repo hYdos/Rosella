@@ -4,9 +4,9 @@ import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.Queues
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.model.Model
-import me.hydos.rosella.model.ubo.ModelPushConstant
-import me.hydos.rosella.model.ubo.ShaderDataManager
 import me.hydos.rosella.resource.ResourceLoader
+import me.hydos.rosella.shader.Shader
+import me.hydos.rosella.shader.ubo.ModelPushConstant
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.*
 import org.lwjgl.PointerBuffer
@@ -22,11 +22,8 @@ import org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR
 import org.lwjgl.vulkan.KHRSwapchain.*
 import org.lwjgl.vulkan.VK10.*
 import java.nio.LongBuffer
-import java.util.*
 import java.util.function.Consumer
 import java.util.stream.Collectors
-import kotlin.collections.ArrayList
-
 
 class Rosella(
 	name: String,
@@ -35,7 +32,6 @@ class Rosella(
 	val resources: ResourceLoader
 ) {
 
-	val shaderDataManager: ShaderDataManager = ShaderDataManager()
 	var depthBuffer = DepthBuffer()
 
 	var model: Model = Model("models/fact_core.gltf")
@@ -84,8 +80,9 @@ class Rosella(
 
 	private fun createModels() {
 		model.create(device, this)
+		model.material.loadShaders(device)
 		model.material.loadTextures(device, this)
-		shaderDataManager.createDescriptorSetLayout(device)
+		model.material.shaders.createDescriptorSetLayout()
 	}
 
 	fun beginCmdBuffer(stack: MemoryStack, pCommandBuffer: PointerBuffer): VkCommandBuffer {
@@ -104,16 +101,19 @@ class Rosella(
 	}
 
 	private fun createFullSwapChain() {
+		//TODO: for shaders
+		var shaderVariables: MutableMap<Shader.ValueType, Int> = HashMap()
+
 		this.swapChain = SwapChain(this, device.device, device.physicalDevice, surface)
 		this.renderPass = RenderPass(device, swapChain, this)
 		createImgViews()
-		model.material.createPipeline(device, swapChain, renderPass, shaderDataManager.descriptorSetLayout)
+		model.material.createPipeline(device, swapChain, renderPass, model.material.shaders.descriptorSetLayout)
 		depthBuffer.createDepthResources(this)
 		createFramebuffers()
-		shaderDataManager.createUniformBuffers(swapChain, device)
-		shaderDataManager.createPushConstantBuffer(device) //TODO
-		shaderDataManager.createDescriptorPool(swapChain, device)
-		shaderDataManager.createDescriptorSets(model.material, swapChain, device)
+		model.material.shaders.createUniformBuffers(swapChain, device)
+		model.material.shaders.createPushConstantBuffer() //TODO
+		model.material.shaders.createPool(shaderVariables, swapChain)
+		model.material.shaders.createDescriptorSets(swapChain, model.material)
 		createCommandBuffers(swapChain, renderPass)
 		createSyncObjects()
 	}
@@ -237,7 +237,7 @@ class Rosella(
 						VK_PIPELINE_BIND_POINT_GRAPHICS,
 						model.material.pipelineLayout,
 						0,
-						it.longs(model.material.descriptorSets[i]),
+						it.longs(model.material.shaders.descriptorSets[i]),
 						null
 					)
 
@@ -249,7 +249,7 @@ class Rosella(
 					val size = sizeof(modelPushConstant.position)
 					vkMapMemory(
 						device.device,
-						shaderDataManager.pushConstantBuffersMemory[0], // Hardcoded to 0 for the 1 model
+						model.material.shaders.pushConstantBuffersMemory[0], // Hardcoded to 0 for the 1 model
 						0,
 						size.toLong(),
 						0,
@@ -260,11 +260,11 @@ class Rosella(
 					}
 					vkUnmapMemory(
 						device.device,
-						shaderDataManager.pushConstantBuffersMemory[0]
+						model.material.shaders.pushConstantBuffersMemory[0]
 					)// Hardcoded to 0 for the 1 model
 
 					val buffer = it.longs(1)
-					buffer.put(shaderDataManager.pushConstantBuffers[0])
+					buffer.put(model.material.shaders.pushConstantBuffers[0])
 					vkCmdPushConstants(
 						commandBuffer,
 						model.material.pipelineLayout,
@@ -598,7 +598,7 @@ class Rosella(
 
 			val imageIndex = pImageIndex[0]
 
-			shaderDataManager.updateUniformBuffer(imageIndex, swapChain, device)
+			model.material.shaders.updateUniformBuffer(imageIndex, swapChain)
 
 			if (imagesInFlight!!.containsKey(imageIndex)) {
 				vkWaitForFences(device.device, imagesInFlight!![imageIndex]!!.fence(), true, UINT64_MAX)
@@ -649,12 +649,12 @@ class Rosella(
 	}
 
 	private fun freeSwapChain() {
-		vkDestroyDescriptorPool(device.device, shaderDataManager.descriptorPool, null)
+		vkDestroyDescriptorPool(device.device, model.material.shaders.descriptorPool, null)
 
 		// Free Depth Buffer
 		depthBuffer.free(device)
 
-		shaderDataManager.free(device)
+		model.material.shaders.free(device)
 
 		swapChain.swapChainFramebuffers.forEach { framebuffer ->
 			vkDestroyFramebuffer(

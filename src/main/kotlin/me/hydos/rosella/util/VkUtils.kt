@@ -4,8 +4,8 @@ import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.QueueFamilyIndices
 import me.hydos.rosella.model.Vertex
-import me.hydos.rosella.model.ubo.ModelPushConstant
-import me.hydos.rosella.model.ubo.ModelUbo
+import me.hydos.rosella.shader.ubo.ModelPushConstant
+import me.hydos.rosella.shader.ubo.ModelUbo
 import org.joml.Matrix4f
 import org.joml.Vector2f
 import org.joml.Vector3f

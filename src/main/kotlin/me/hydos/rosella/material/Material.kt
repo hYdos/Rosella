@@ -4,7 +4,9 @@ import me.hydos.rosella.RenderPass
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.model.Vertex
-import me.hydos.rosella.model.ubo.ModelPushConstant
+import me.hydos.rosella.shader.Shader
+import me.hydos.rosella.shader.ShaderPair
+import me.hydos.rosella.shader.ubo.ModelPushConstant
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.*
 import org.lwjgl.PointerBuffer
@@ -25,13 +27,17 @@ class Material(private val vertexShaderFile: String, private val fragmentShaderF
 	var pipelineLayout: Long = 0
 	var graphicsPipeline: Long = 0
 
-	var descriptorSets: List<Long> = java.util.ArrayList()
-
 	private var textureImage: Long = 0
 	private var textureImageMemory: Long = 0
 
+	lateinit var shaders: ShaderPair
+
 	var textureImageView: Long = 0
 	var textureSampler: Long = 0
+
+	fun loadShaders(device: Device) {
+		this.shaders = ShaderPair(Shader(vertexShaderFile), Shader(fragmentShaderFile), device)
+	}
 
 	fun loadTextures(device: Device, engine: Rosella) {
 		createTextureImage(device, engine)
