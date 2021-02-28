@@ -4,12 +4,9 @@ import me.hydos.rosella.RenderPass
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.model.Vertex
-import me.hydos.rosella.model.ubo.ModelUbo
+import me.hydos.rosella.model.ubo.ModelPushConstant
 import me.hydos.rosella.swapchain.SwapChain
-import me.hydos.rosella.util.ShaderType
-import me.hydos.rosella.util.SpirV
-import me.hydos.rosella.util.compileShaderFile
-import me.hydos.rosella.util.ok
+import me.hydos.rosella.util.*
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.Pointer
@@ -155,7 +152,7 @@ class Material(val vertexShaderFile: String, val fragmentShaderFile: String) {
 			 */
 			val pushConstantRange = VkPushConstantRange.Buffer(it.bytes(1))
 				.offset(0)
-				.size(ModelUbo.MAT4f_SIZE)
+				.size(sizeof(ModelPushConstant().position))
 				.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
 
 			/**
