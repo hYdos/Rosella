@@ -8,6 +8,7 @@ import me.hydos.rosella.model.ubo.ModelPushConstant
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.*
 import org.lwjgl.PointerBuffer
+import org.lwjgl.stb.STBImage
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.Pointer
 import org.lwjgl.vulkan.*
@@ -19,20 +20,35 @@ import java.nio.LongBuffer
  * similar to how unity works
  * guaranteed to change once and a while
  */
-class Material(val vertexShaderFile: String, val fragmentShaderFile: String) {
+class Material(private val vertexShaderFile: String, private val fragmentShaderFile: String, private val textureLocation: String? = null) {
 
 	var pipelineLayout: Long = 0
 	var graphicsPipeline: Long = 0
+
+	var descriptorSets: List<Long> = java.util.ArrayList()
+
+	private var textureImage: Long = 0
+	private var textureImageMemory: Long = 0
+
+	var textureImageView: Long = 0
+	var textureSampler: Long = 0
+
+	fun loadTextures(device: Device, engine: Rosella) {
+		createTextureImage(device, engine)
+		createTextureImageView(engine)
+		createTextureSampler(device)
+	}
 
 	/**
 	 * The main rendering pipeline of this material
 	 */
 	fun createPipeline(
 		device: Device,
-		swapchain: SwapChain,
+		swapChain: SwapChain,
 		renderPass: RenderPass,
 		descriptorSetLayout: Long
 	) {
+		//TODO: optimise pipeline creation. could make it work better in some ways. i should write this stuff down
 		MemoryStack.stackPush().use {
 			val vertShaderSPIRV: SpirV = compileShaderFile(vertexShaderFile, ShaderType.VERTEX_SHADER)
 			val fragShaderSPIRV: SpirV = compileShaderFile(fragmentShaderFile, ShaderType.FRAGMENT_SHADER)
@@ -78,8 +94,8 @@ class Material(val vertexShaderFile: String, val fragmentShaderFile: String) {
 			val viewport = VkViewport.callocStack(1, it)
 				.x(0.0f)
 				.y(0.0f)
-				.width(swapchain.swapChainExtent!!.width().toFloat())
-				.height(swapchain.swapChainExtent!!.height().toFloat())
+				.width(swapChain.swapChainExtent!!.width().toFloat())
+				.height(swapChain.swapChainExtent!!.height().toFloat())
 				.minDepth(0.0f)
 				.maxDepth(1.0f)
 
@@ -88,7 +104,7 @@ class Material(val vertexShaderFile: String, val fragmentShaderFile: String) {
 			 */
 			val scissor = VkRect2D.callocStack(1, it)
 				.offset(VkOffset2D.callocStack(it).set(0, 0))
-				.extent(swapchain.swapChainExtent!!)
+				.extent(swapChain.swapChainExtent!!)
 
 			/**
 			 * Viewport State
@@ -151,9 +167,9 @@ class Material(val vertexShaderFile: String, val fragmentShaderFile: String) {
 			 * Create Push Constants
 			 */
 			val pushConstantRange = VkPushConstantRange.Buffer(it.bytes(1))
+				.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
 				.offset(0)
 				.size(sizeof(ModelPushConstant().position))
-				.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
 
 			/**
 			 * Pipeline Layout Creation
@@ -162,6 +178,7 @@ class Material(val vertexShaderFile: String, val fragmentShaderFile: String) {
 				.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
 				.pSetLayouts(it.longs(descriptorSetLayout))
 				.pPushConstantRanges(pushConstantRange)
+
 			val pPipelineLayout = it.longs(VK10.VK_NULL_HANDLE)
 			VK10.vkCreatePipelineLayout(device.device, pipelineLayoutInfo, null, pPipelineLayout).ok()
 			pipelineLayout = pPipelineLayout[0]
@@ -226,5 +243,136 @@ class Material(val vertexShaderFile: String, val fragmentShaderFile: String) {
 		VK10.vkFreeCommandBuffers(device.device, engine.commandPool, asPtrBuffer(engine.commandBuffers))
 		VK10.vkDestroyPipeline(device.device, graphicsPipeline, null)
 		VK10.vkDestroyPipelineLayout(device.device, pipelineLayout, null)
+	}
+
+	private fun createTextureSampler(device: Device) {
+		MemoryStack.stackPush().use { stack ->
+			val samplerInfo = VkSamplerCreateInfo.callocStack(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO)
+				.magFilter(VK10.VK_FILTER_LINEAR)
+				.minFilter(VK10.VK_FILTER_LINEAR)
+				.addressModeU(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT)
+				.addressModeV(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT)
+				.addressModeW(VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT)
+				.anisotropyEnable(true)
+				.maxAnisotropy(16.0f)
+				.borderColor(VK10.VK_BORDER_COLOR_INT_OPAQUE_BLACK)
+				.unnormalizedCoordinates(false)
+				.compareEnable(false)
+				.compareOp(VK10.VK_COMPARE_OP_ALWAYS)
+				.mipmapMode(VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR)
+			val pTextureSampler = stack.mallocLong(1)
+			if (VK10.vkCreateSampler(device.device, samplerInfo, null, pTextureSampler) !== VK10.VK_SUCCESS) {
+				throw RuntimeException("Failed to create texture sampler")
+			}
+			textureSampler = pTextureSampler[0]
+		}
+	}
+
+	private fun createTextureImageView(engine: Rosella) {
+		textureImageView = engine.createImageView(textureImage,
+			VK10.VK_FORMAT_R8G8B8A8_SRGB,
+			VK10.VK_IMAGE_ASPECT_COLOR_BIT
+		)
+	}
+
+	private fun createTextureImage(device: Device, engine: Rosella) {
+		MemoryStack.stackPush().use { stack ->
+			val filename =
+				ClassLoader.getSystemClassLoader().getResource(textureLocation).toExternalForm().replace("file:", "")
+			val pWidth = stack.mallocInt(1)
+			val pHeight = stack.mallocInt(1)
+			val pChannels = stack.mallocInt(1)
+			val pixels: ByteBuffer? = STBImage.stbi_load(filename, pWidth, pHeight, pChannels, STBImage.STBI_rgb_alpha)
+			val imageSize = (pWidth[0] * pHeight[0] * 4).toLong()
+			if (pixels == null) {
+				throw RuntimeException("Failed to load texture image $filename")
+			}
+			val pStagingBuffer = stack.mallocLong(1)
+			val pStagingBufferMemory = stack.mallocLong(1)
+			createBuffer(
+				imageSize.toInt(),
+				VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+				VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				pStagingBuffer,
+				pStagingBufferMemory,
+				device
+			)
+			val data = stack.mallocPointer(1)
+			VK10.vkMapMemory(device.device, pStagingBufferMemory[0], 0, imageSize, 0, data)
+			run { memcpy(data.getByteBuffer(0, imageSize.toInt()), pixels, imageSize) }
+			VK10.vkUnmapMemory(device.device, pStagingBufferMemory[0])
+			STBImage.stbi_image_free(pixels)
+			val pTextureImage = stack.mallocLong(1)
+			val pTextureImageMemory = stack.mallocLong(1)
+			engine.createImage(
+				pWidth[0], pHeight[0],
+				VK10.VK_FORMAT_R8G8B8A8_SRGB, VK10.VK_IMAGE_TILING_OPTIMAL,
+				VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK10.VK_IMAGE_USAGE_SAMPLED_BIT,
+				VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				pTextureImage,
+				pTextureImageMemory
+			)
+			textureImage = pTextureImage[0]
+			textureImageMemory = pTextureImageMemory[0]
+			engine.transitionImageLayout(
+				textureImage,
+				VK10.VK_FORMAT_R8G8B8A8_SRGB,
+				VK10.VK_IMAGE_LAYOUT_UNDEFINED,
+				VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+			)
+			copyBufferToImage(pStagingBuffer[0], textureImage, pWidth[0], pHeight[0], device, engine)
+			engine.transitionImageLayout(
+				textureImage,
+				VK10.VK_FORMAT_R8G8B8A8_SRGB,
+				VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+			)
+			VK10.vkDestroyBuffer(device.device, pStagingBuffer[0], null)
+			VK10.vkFreeMemory(device.device, pStagingBufferMemory[0], null)
+		}
+	}
+
+	private fun copyBufferToImage(buffer: Long, image: Long, width: Int, height: Int, device: Device, engine: Rosella) {
+		MemoryStack.stackPush().use { stack ->
+			val commandBuffer: VkCommandBuffer = beginSingleTimeCommands(engine)
+			val region = VkBufferImageCopy.callocStack(1, stack)
+				.bufferOffset(0)
+				.bufferRowLength(0)
+				.bufferImageHeight(0)
+			region.imageSubresource().aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT)
+			region.imageSubresource().mipLevel(0)
+			region.imageSubresource().baseArrayLayer(0)
+			region.imageSubresource().layerCount(1)
+			region.imageOffset()[0, 0] = 0
+			region.imageExtent(VkExtent3D.callocStack(stack).set(width, height, 1))
+			VK10.vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region)
+			endSingleTimeCommands(commandBuffer, device, engine)
+		}
+	}
+
+	private fun memcpy(dst: ByteBuffer, src: ByteBuffer, size: Long) {
+		src.limit(size.toInt())
+		dst.put(src)
+		src.limit(src.capacity()).rewind()
+	}
+
+	fun beginSingleTimeCommands(engine: Rosella): VkCommandBuffer {
+		MemoryStack.stackPush().use { stack ->
+			val pCommandBuffer = stack.mallocPointer(1)
+			return engine.beginCmdBuffer(stack, pCommandBuffer)
+		}
+	}
+
+	fun endSingleTimeCommands(commandBuffer: VkCommandBuffer, device: Device, engine: Rosella) {
+		MemoryStack.stackPush().use { stack ->
+			VK10.vkEndCommandBuffer(commandBuffer)
+			val submitInfo = VkSubmitInfo.callocStack(1, stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO)
+				.pCommandBuffers(stack.pointers(commandBuffer))
+			VK10.vkQueueSubmit(engine.queues.graphicsQueue, submitInfo, VK10.VK_NULL_HANDLE)
+			VK10.vkQueueWaitIdle(engine.queues.graphicsQueue)
+			VK10.vkFreeCommandBuffers(device.device, engine.commandPool, commandBuffer)
+		}
 	}
 }

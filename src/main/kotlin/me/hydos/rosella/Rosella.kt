@@ -13,6 +13,7 @@ import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.glfw.GLFWVulkan.glfwCreateWindowSurface
+import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryStack.stackGet
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.system.MemoryUtil.NULL
@@ -37,9 +38,9 @@ class Rosella(
 	val shaderDataManager: ShaderDataManager = ShaderDataManager()
 	var depthBuffer = DepthBuffer()
 
-	var model: Model = Model("models/fact_core.gltf", "textures/fact_core_0.png")
+	var model: Model = Model("models/fact_core.gltf")
 
-	private var inFlightFrames: List<Frame>? = null
+	private var inFlightFrames: MutableList<Frame>? = null
 	private var imagesInFlight: MutableMap<Int, Frame>? = null
 	private var currentFrame = 0
 
@@ -83,7 +84,23 @@ class Rosella(
 
 	private fun createModels() {
 		model.create(device, this)
+		model.material.loadTextures(device, this)
 		shaderDataManager.createDescriptorSetLayout(device)
+	}
+
+	fun beginCmdBuffer(stack: MemoryStack, pCommandBuffer: PointerBuffer): VkCommandBuffer {
+		val allocInfo = VkCommandBufferAllocateInfo.callocStack(stack)
+			.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
+			.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+			.commandPool(commandPool)
+			.commandBufferCount(1)
+		vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffer)
+		val commandBuffer = VkCommandBuffer(pCommandBuffer[0], device.device)
+		val beginInfo = VkCommandBufferBeginInfo.callocStack(stack)
+			.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
+			.flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
+		vkBeginCommandBuffer(commandBuffer, beginInfo)
+		return commandBuffer
 	}
 
 	private fun createFullSwapChain() {
@@ -96,7 +113,7 @@ class Rosella(
 		shaderDataManager.createUniformBuffers(swapChain, device)
 		shaderDataManager.createPushConstantBuffer(device) //TODO
 		shaderDataManager.createDescriptorPool(swapChain, device)
-		shaderDataManager.createDescriptorSets(model, swapChain, device)
+		shaderDataManager.createDescriptorSets(model.material, swapChain, device)
 		createCommandBuffers(swapChain, renderPass)
 		createSyncObjects()
 	}
@@ -220,7 +237,7 @@ class Rosella(
 						VK_PIPELINE_BIND_POINT_GRAPHICS,
 						model.material.pipelineLayout,
 						0,
-						it.longs(model.descriptorSets[i]),
+						it.longs(model.material.descriptorSets[i]),
 						null
 					)
 
@@ -248,7 +265,6 @@ class Rosella(
 
 					val buffer = it.longs(1)
 					buffer.put(shaderDataManager.pushConstantBuffers[0])
-
 					vkCmdPushConstants(
 						commandBuffer,
 						model.material.pipelineLayout,
@@ -319,7 +335,7 @@ class Rosella(
 			} else {
 				throw IllegalArgumentException("Unsupported layout transition")
 			}
-			val commandBuffer: VkCommandBuffer = model.beginSingleTimeCommands(device, this)
+			val commandBuffer: VkCommandBuffer = model.material.beginSingleTimeCommands(this)
 			vkCmdPipelineBarrier(
 				commandBuffer,
 				sourceStage, destinationStage,
@@ -328,7 +344,7 @@ class Rosella(
 				null,
 				barrier
 			)
-			model.endSingleTimeCommands(commandBuffer, device, this)
+			model.material.endSingleTimeCommands(commandBuffer, device, this)
 		}
 	}
 
@@ -359,7 +375,7 @@ class Rosella(
 					pRenderFinishedSemaphore
 				).ok()
 				vkCreateFence(device.device, fenceInfo, null, pFence).ok()
-				(inFlightFrames as ArrayList<Frame>).add(
+				inFlightFrames!!.add(
 					Frame(
 						pImageAvailableSemaphore[0],
 						pRenderFinishedSemaphore[0],
@@ -375,7 +391,7 @@ class Rosella(
 	}
 
 	private fun createFramebuffers() {
-		swapChain.swapChainFramebuffers = ArrayList<Long>(swapChain.swapChainImageViews.size)
+		swapChain.swapChainFramebuffers = ArrayList(swapChain.swapChainImageViews.size)
 		stackPush().use { stack ->
 			val attachments = stack.longs(VK_NULL_HANDLE, depthBuffer.depthImageView)
 			val pFramebuffer = stack.mallocLong(1)
@@ -389,7 +405,7 @@ class Rosella(
 				attachments.put(0, imageView)
 				framebufferInfo.pAttachments(attachments)
 				vkCreateFramebuffer(device.device, framebufferInfo, null, pFramebuffer).ok()
-				(swapChain.swapChainFramebuffers as ArrayList<Long>).add(pFramebuffer[0])
+				swapChain.swapChainFramebuffers.add(pFramebuffer[0])
 			}
 		}
 	}
@@ -416,7 +432,7 @@ class Rosella(
 		swapChain.swapChainImageViews = ArrayList(swapChain.swapChainImages.size)
 
 		for (swapChainImage in swapChain.swapChainImages) {
-			(swapChain.swapChainImageViews as ArrayList<Long>).add(
+			swapChain.swapChainImageViews.add(
 				createImageView(
 					swapChainImage,
 					swapChain.swapChainImageFormat,

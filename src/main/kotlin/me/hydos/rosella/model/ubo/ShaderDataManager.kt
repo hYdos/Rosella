@@ -1,7 +1,7 @@
 package me.hydos.rosella.model.ubo
 
 import me.hydos.rosella.device.Device
-import me.hydos.rosella.model.Model
+import me.hydos.rosella.material.Material
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memcpy
@@ -18,11 +18,11 @@ class ShaderDataManager {
 	var descriptorSetLayout: Long = 0
 	var descriptorPool: Long = 0
 
-	var uniformBuffers: List<Long> = ArrayList()
-	var uniformBuffersMemory: List<Long> = ArrayList()
+	var uniformBuffers: MutableList<Long> = ArrayList()
+	var uniformBuffersMemory: MutableList<Long> = ArrayList()
 
-	var pushConstantBuffers: List<Long> = ArrayList()
-	var pushConstantBuffersMemory: List<Long> = ArrayList()
+	var pushConstantBuffers: MutableList<Long> = ArrayList()
+	var pushConstantBuffersMemory: MutableList<Long> = ArrayList()
 
 	fun free(device: Device) {
 		uniformBuffers.forEach(Consumer { ubo: Long? -> VK10.vkDestroyBuffer(device.device, ubo!!, null) })
@@ -80,8 +80,8 @@ class ShaderDataManager {
 					pBufferMemory,
 					device
 				)
-				(uniformBuffers as ArrayList<Long>).add(pBuffer[0])
-				(uniformBuffersMemory as ArrayList<Long>).add(pBufferMemory[0])
+				uniformBuffers.add(pBuffer[0])
+				uniformBuffersMemory.add(pBufferMemory[0])
 			}
 		}
 	}
@@ -98,9 +98,9 @@ class ShaderDataManager {
 				pBufferMemory,
 				device
 			)
-			(pushConstantBuffers as ArrayList<Long>).add(pBuffer[0])
-			(pushConstantBuffersMemory as ArrayList<Long>).add(pBufferMemory[0])
 
+			pushConstantBuffers.add(pBuffer[0])
+			pushConstantBuffersMemory.add(pBufferMemory[0])
 		}
 	}
 
@@ -138,7 +138,7 @@ class ShaderDataManager {
 		}
 	}
 
-	fun createDescriptorSets(model: Model, swapChain: SwapChain, device: Device) {
+	fun createDescriptorSets(material: Material, swapChain: SwapChain, device: Device) {
 		MemoryStack.stackPush().use { stack ->
 			val layouts = stack.mallocLong(swapChain.swapChainImages.size)
 			for (i in 0 until layouts.capacity()) {
@@ -151,15 +151,15 @@ class ShaderDataManager {
 			val pDescriptorSets = stack.mallocLong(swapChain.swapChainImages.size)
 			VK10.vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets)
 				.ok("Failed to allocate descriptor sets")
-			model.descriptorSets = ArrayList(pDescriptorSets.capacity())
+			material.descriptorSets = ArrayList(pDescriptorSets.capacity())
 			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
 				.offset(0)
 				.range(ModelUbo.SIZEOF.toLong())
 
 			val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
 				.imageLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-				.imageView(model.textureImageView)
-				.sampler(model.textureSampler)
+				.imageView(material.textureImageView)
+				.sampler(material.textureSampler)
 
 			val descriptorWrites = VkWriteDescriptorSet.callocStack(2, stack)
 			val uboDescriptorWrite = descriptorWrites[0]
@@ -182,7 +182,7 @@ class ShaderDataManager {
 				uboDescriptorWrite.dstSet(descriptorSet)
 				samplerDescriptorWrite.dstSet(descriptorSet)
 				VK10.vkUpdateDescriptorSets(device.device, descriptorWrites, null)
-				(model.descriptorSets as ArrayList<Long>).add(descriptorSet)
+				(material.descriptorSets as ArrayList<Long>).add(descriptorSet)
 			}
 		}
 	}
