@@ -1,6 +1,6 @@
-package me.hydos.rosella.core
+package me.hydos.rosella
 
-import me.hydos.rosella.core.device.Device
+import me.hydos.rosella.device.Device
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VkFormatProperties

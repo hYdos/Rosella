@@ -1,4 +1,4 @@
-package me.hydos.rosella.core.device
+package me.hydos.rosella.device
 
 import org.lwjgl.vulkan.VkQueue
 

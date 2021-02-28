@@ -1,7 +1,7 @@
 package me.hydos.rosella.model.ubo
 
-import me.hydos.rosella.core.device.Device
-import me.hydos.rosella.core.swapchain.SwapChain
+import me.hydos.rosella.device.Device
+import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.model.Model
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memcpy

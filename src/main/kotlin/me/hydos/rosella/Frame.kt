@@ -1,4 +1,4 @@
-package me.hydos.rosella.core
+package me.hydos.rosella
 
 import org.lwjgl.system.MemoryStack.stackGet
 import java.nio.LongBuffer

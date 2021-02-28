@@ -1,8 +1,8 @@
 package me.hydos.rosella.util
 
-import me.hydos.rosella.core.Rosella
-import me.hydos.rosella.core.device.Device
-import me.hydos.rosella.core.device.QueueFamilyIndices
+import me.hydos.rosella.Rosella
+import me.hydos.rosella.device.Device
+import me.hydos.rosella.device.QueueFamilyIndices
 import me.hydos.rosella.model.Vertex
 import me.hydos.rosella.model.ubo.ModelPushConstant
 import me.hydos.rosella.model.ubo.ModelUbo

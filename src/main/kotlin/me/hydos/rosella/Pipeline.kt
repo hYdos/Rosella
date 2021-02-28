@@ -1,7 +1,7 @@
-package me.hydos.rosella.core
+package me.hydos.rosella
 
-import me.hydos.rosella.core.device.Device
-import me.hydos.rosella.core.swapchain.SwapChain
+import me.hydos.rosella.device.Device
+import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.model.Vertex
 import me.hydos.rosella.model.ubo.ModelPushConstant
 import me.hydos.rosella.model.ubo.ModelUbo

@@ -1,12 +1,12 @@
-package me.hydos.rosella.core
+package me.hydos.rosella
 
-import me.hydos.rosella.core.device.Device
-import me.hydos.rosella.core.device.Queues
-import me.hydos.rosella.core.swapchain.SwapChain
+import me.hydos.rosella.device.Device
+import me.hydos.rosella.device.Queues
 import me.hydos.rosella.io.Screen
 import me.hydos.rosella.model.Model
 import me.hydos.rosella.model.ubo.ShaderDataManager
 import me.hydos.rosella.resource.ResourceLoader
+import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.findMemoryType
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
