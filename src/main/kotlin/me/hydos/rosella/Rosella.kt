@@ -133,7 +133,7 @@ class Rosella(
 	}
 
 	var commandPool: Long = 0
-	var commandBuffers: ArrayList<VkCommandBuffer> = ArrayList()
+	lateinit var commandBuffers: ArrayList<VkCommandBuffer>
 
 	fun createCmdPool(engine: Rosella) {
 		stackPush().use { stack ->
