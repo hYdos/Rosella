@@ -3,6 +3,7 @@ package me.hydos.rosella.util
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.QueueFamilyIndices
+import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.model.Vertex
 import me.hydos.rosella.shader.ubo.ModelPushConstant
 import me.hydos.rosella.shader.ubo.ModelUbo
@@ -11,6 +12,8 @@ import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.util.vma.Vma
+import org.lwjgl.util.vma.VmaAllocationCreateInfo
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties
 import java.nio.ByteBuffer
@@ -81,6 +84,7 @@ fun Int.ok(message: String): Int {
 	return this
 }
 
+@Deprecated("Please use the VMA based createBuffer method.")
 fun createBuffer(
 	size: Int,
 	usage: Int,
@@ -104,6 +108,40 @@ fun createBuffer(
 			.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), properties, device))
 		VK10.vkAllocateMemory(device.device, allocInfo, null, pBufferMemory).ok()
 		VK10.vkBindBufferMemory(device.device, pBuffer[0], pBufferMemory[0], 0)
+	}
+}
+
+
+fun createVmaBuffer(
+	size: Int,
+	usage: Int,
+	vmaUsage: Int,
+	pBuffer: LongBuffer,
+	memMan: MemMan
+) {
+	MemoryStack.stackPush().use {
+		val vulkanBufferInfo = VkBufferCreateInfo.callocStack(it)
+			.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
+			.size(size.toLong())
+			.usage(usage)
+			.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE)
+
+		val vmaBufferInfo: VmaAllocationCreateInfo = VmaAllocationCreateInfo.callocStack(it)
+			.usage(vmaUsage)
+
+		val allocation = it.mallocPointer(1)
+
+		Vma.vmaCreateBuffer(memMan.allocator, vulkanBufferInfo, vmaBufferInfo, pBuffer, allocation, null)
+
+//		VK10.vkCreateBuffer(device.device, vulkanBufferInfo, null, pBuffer).ok()
+//		val memRequirements = VkMemoryRequirements.mallocStack(it)
+//		VK10.vkGetBufferMemoryRequirements(device.device, pBuffer[0], memRequirements)
+//		val allocInfo = VkMemoryAllocateInfo.callocStack(it)
+//			.sType(VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
+//			.allocationSize(memRequirements.size())
+//			.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), properties, device))
+//		VK10.vkAllocateMemory(device.device, allocInfo, null, pBufferMemory).ok()
+//		VK10.vkBindBufferMemory(device.device, pBuffer[0], pBufferMemory[0], 0)
 	}
 }
 

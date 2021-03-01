@@ -3,6 +3,7 @@ package me.hydos.rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.Queues
 import me.hydos.rosella.io.Screen
+import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.model.Model
 import me.hydos.rosella.resource.ResourceLoader
 import me.hydos.rosella.shader.Shader
@@ -31,6 +32,8 @@ class Rosella(
 	internal val screen: Screen,
 	val resources: ResourceLoader
 ) {
+
+	var memMan: MemMan
 
 	var depthBuffer = DepthBuffer()
 
@@ -70,6 +73,9 @@ class Rosella(
 
 		createSurface()
 		this.device = Device(this, validationLayers)
+
+		this.memMan = MemMan(device, vulkanInstance)
+
 		this.createCmdPool(this)
 		createModels()
 		createFullSwapChain()
@@ -480,7 +486,7 @@ class Rosella(
 	fun free() {
 		this.state = State.STOPPING
 
-		model.destroy(device)
+		model.destroy(memMan, device)
 
 		freeSwapChain()
 
