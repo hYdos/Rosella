@@ -31,8 +31,8 @@ class Pipeline() {
 		descriptorSetLayout: Long
 	) {
 		stackPush().use {
-			val vertShaderSPIRV: SpirV = compileShaderFile(Global.assertResource(Identifier("rosella", "shaders/base.v.glsl")), ShaderType.VERTEX_SHADER)
-			val fragShaderSPIRV: SpirV = compileShaderFile(Global.assertResource(Identifier("rosella", "shaders/base.f.glsl")), ShaderType.FRAGMENT_SHADER)
+			val vertShaderSPIRV: SpirV = compileShaderFile(Global.ensureResource(Identifier("rosella", "shaders/base.v.glsl")), ShaderType.VERTEX_SHADER)
+			val fragShaderSPIRV: SpirV = compileShaderFile(Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl")), ShaderType.FRAGMENT_SHADER)
 			val vertShaderModule = createShaderModule(vertShaderSPIRV.bytecode(), device)
 			val fragShaderModule = createShaderModule(fragShaderSPIRV.bytecode(), device)
 			val entryPoint: ByteBuffer = it.UTF8("main")

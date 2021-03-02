@@ -1,6 +1,10 @@
-package me.hydos.rosella.resource
+package me.hydos.rosella.model
 
-import org.lwjgl.assimp.*
+import me.hydos.rosella.resource.Identifier
+import me.hydos.rosella.resource.Resource
+import org.lwjgl.assimp.AIFile
+import org.lwjgl.assimp.AIFileIO
+import org.lwjgl.assimp.AIScene
 import org.lwjgl.assimp.Assimp.*
 import org.lwjgl.system.MemoryUtil
 
@@ -14,7 +18,7 @@ fun loadScene(resource: Resource, flags: Int): AIScene? {
 		OpenProc { _, nFileName, _ ->
 			val fileName = MemoryUtil.memASCII(nFileName)
 			val id = Identifier(identifier.namespace, context + fileName)
-			val data = resource.loader.assertResource(id).readAllBytes(true)
+			val data = resource.loader.ensureResource(id).readAllBytes(true)
 
 			AIFile.create().apply {
 				ReadProc { _, pBuffer, size, count ->
@@ -64,23 +68,10 @@ fun loadScene(resource: Resource, flags: Int): AIScene? {
 		}
 	}
 
-	val logStream = AILogStream.create()
-
-	logStream.callback { message, _ ->
-		System.err.print(MemoryUtil.memASCII(message))
-	}
-	logStream.user(1)
-
-	aiAttachLogStream(logStream)
-	aiEnableVerboseLogging(true)
-
 	val scene = aiImportFileEx("/$name", flags, io)
-
-	aiDetachLogStream(logStream)
 
 	io.OpenProc().free()
 	io.CloseProc().free()
-	logStream.callback().free()
 
 	return scene
 }

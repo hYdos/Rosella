@@ -63,7 +63,7 @@ class Rosella(
 		state = State.STARTING
 
 		// Do model things
-		models.add(Model(Global.assertResource(Identifier("rosella", "models/fact_core.gltf")), Global.assertResource(Identifier("rosella", "textures/fact_core_0.png"))))
+		models.add(Model(Global.ensureResource(Identifier("rosella", "models/fact_core.gltf")), Global.ensureResource(Identifier("rosella", "textures/fact_core_0.png"))))
 
 		// Setup Validation Layers
 		val validationLayers = defaultValidationLayers.toSet()

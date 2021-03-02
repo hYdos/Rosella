@@ -1,7 +1,6 @@
 package me.hydos.rosella.model
 
 import me.hydos.rosella.resource.Resource
-import me.hydos.rosella.resource.loadScene
 import org.joml.Vector2f
 import org.joml.Vector2fc
 import org.joml.Vector3f
