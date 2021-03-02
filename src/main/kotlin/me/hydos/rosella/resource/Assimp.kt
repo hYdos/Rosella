@@ -7,7 +7,7 @@ import org.lwjgl.system.MemoryUtil
 fun loadScene(resource: Resource, flags: Int): AIScene? {
 	val identifier = resource.identifier
 
-	val context = identifier.path.run { substring(0, lastIndexOf('/') + 1) }
+	val context = identifier.path.run { substring(0, lastIndexOf('/')) }
 	val name = identifier.path.run { substring(lastIndexOf('/') + 1) }
 
 	val io = AIFileIO.create().apply {
@@ -18,7 +18,7 @@ fun loadScene(resource: Resource, flags: Int): AIScene? {
 
 			AIFile.create().apply {
 				ReadProc { _, pBuffer, size, count ->
-					val max = (data.remaining().toLong() * size).coerceAtMost(count)
+					val max = (data.remaining().toLong() / size).coerceAtMost(count)
 					MemoryUtil.memCopy(MemoryUtil.memAddress(data), pBuffer, max * size)
 					data.position(data.position() + (max * size).toInt())
 					max
@@ -74,7 +74,7 @@ fun loadScene(resource: Resource, flags: Int): AIScene? {
 	aiAttachLogStream(logStream)
 	aiEnableVerboseLogging(true)
 
-	val scene = aiImportFileEx(name, flags, io)
+	val scene = aiImportFileEx("/$name", flags, io)
 
 	aiDetachLogStream(logStream)
 

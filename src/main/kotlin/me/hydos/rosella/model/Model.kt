@@ -223,7 +223,7 @@ class Model(val model: Resource, val texture: Resource) {
 			val pWidth = stack.mallocInt(1)
 			val pHeight = stack.mallocInt(1)
 			val pChannels = stack.mallocInt(1)
-			val pixels: ByteBuffer? = stbi_load_from_memory(texture.readAllBytes(), pWidth, pHeight, pChannels, STBI_rgb_alpha)
+			val pixels: ByteBuffer? = stbi_load_from_memory(texture.readAllBytes(true), pWidth, pHeight, pChannels, STBI_rgb_alpha)
 			val imageSize = (pWidth[0] * pHeight[0] * 4).toLong()
 			if (pixels == null) {
 				throw RuntimeException("Failed to load texture image ${texture.identifier}")
