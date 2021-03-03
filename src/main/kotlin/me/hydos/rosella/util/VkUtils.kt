@@ -118,7 +118,7 @@ fun createVmaBuffer(
 	vmaUsage: Int,
 	pBuffer: LongBuffer,
 	memMan: MemMan
-) {
+): Long {
 	MemoryStack.stackPush().use {
 		val vulkanBufferInfo = VkBufferCreateInfo.callocStack(it)
 			.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
@@ -133,15 +133,7 @@ fun createVmaBuffer(
 
 		Vma.vmaCreateBuffer(memMan.allocator, vulkanBufferInfo, vmaBufferInfo, pBuffer, allocation, null)
 
-//		VK10.vkCreateBuffer(device.device, vulkanBufferInfo, null, pBuffer).ok()
-//		val memRequirements = VkMemoryRequirements.mallocStack(it)
-//		VK10.vkGetBufferMemoryRequirements(device.device, pBuffer[0], memRequirements)
-//		val allocInfo = VkMemoryAllocateInfo.callocStack(it)
-//			.sType(VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-//			.allocationSize(memRequirements.size())
-//			.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), properties, device))
-//		VK10.vkAllocateMemory(device.device, allocInfo, null, pBufferMemory).ok()
-//		VK10.vkBindBufferMemory(device.device, pBuffer[0], pBufferMemory[0], 0)
+		return allocation[0]
 	}
 }
 

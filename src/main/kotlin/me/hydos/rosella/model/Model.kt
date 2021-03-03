@@ -12,8 +12,7 @@ import org.joml.Vector3f
 import org.joml.Vector3fc
 import org.lwjgl.assimp.Assimp
 import org.lwjgl.system.MemoryStack.stackPush
-import org.lwjgl.util.vma.Vma.VMA_MEMORY_USAGE_CPU_TO_GPU
-import org.lwjgl.util.vma.Vma.vmaFreeMemory
+import org.lwjgl.util.vma.Vma.*
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VkBufferCopy
 import org.lwjgl.vulkan.VkSubmitInfo
@@ -35,16 +34,32 @@ class Model(private val modelLocation: String) {
 
 	private fun createVertexBuffer(rosella: Rosella) {
 		stackPush().use {
-			val bufferSize: Int = Vertex.SIZEOF * vertices.size
+			val size: Int = Vertex.SIZEOF * vertices.size
 			val pBuffer = it.mallocLong(1)
-			createVmaBuffer(
-				bufferSize,
+			val stagingBufferAllocation: Long = createVmaBuffer(
+				size,
 				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+				VMA_MEMORY_USAGE_CPU_ONLY,
+				pBuffer,
+				rosella.memMan
+			)
+			val stagingBuffer = pBuffer[0]
+			val data = it.mallocPointer(1)
+			vmaMapMemory(rosella.memMan.allocator, stagingBufferAllocation, data)
+			run { memcpy(data.getByteBuffer(0, size), vertices) }
+			vmaUnmapMemory(rosella.memMan.allocator, stagingBuffer)
+
+			createVmaBuffer(
+				size,
+				VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 				VMA_MEMORY_USAGE_CPU_TO_GPU,
 				pBuffer,
 				rosella.memMan
 			)
 			vertexBuffer = pBuffer[0]
+			copyBuffer(stagingBuffer, vertexBuffer, size, rosella, rosella.device)
+			vmaDestroyBuffer(rosella.memMan.allocator, stagingBuffer, stagingBufferAllocation)
+			vmaFreeMemory(rosella.memMan.allocator, stagingBuffer)
 		}
 	}
 
