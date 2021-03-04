@@ -11,6 +11,7 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties
 import java.nio.LongBuffer
+import kotlin.reflect.KClass
 
 
 private val map = mutableMapOf<Int, String>().apply {
@@ -53,6 +54,10 @@ private val SIZEOF_CACHE = mutableMapOf<Class<*>, Int>().apply {
 
 fun sizeof(obj: Any?): Int {
 	return if (obj == null) 0 else SIZEOF_CACHE[obj.javaClass] ?: 0
+}
+
+fun sizeof(kClass: KClass<*>): Int {
+	return SIZEOF_CACHE[kClass.java] ?: 0
 }
 
 fun alignof(obj: Any?): Int {
