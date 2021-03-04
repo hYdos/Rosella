@@ -6,9 +6,9 @@ import me.hydos.rosella.device.Device
 import me.hydos.rosella.model.Vertex
 import me.hydos.rosella.shader.Shader
 import me.hydos.rosella.shader.ShaderPair
-import me.hydos.rosella.shader.ubo.ModelPushConstant
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.*
+import org.joml.Vector3f
 import org.lwjgl.PointerBuffer
 import org.lwjgl.stb.STBImage
 import org.lwjgl.system.MemoryStack
@@ -175,7 +175,7 @@ class Material(private val vertexShaderFile: String, private val fragmentShaderF
 			val pushConstantRange = VkPushConstantRange.Buffer(it.bytes(1))
 				.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
 				.offset(0)
-				.size(sizeof(ModelPushConstant().position))
+				.size(sizeof(Vector3f::class))
 
 			/**
 			 * Pipeline Layout Creation

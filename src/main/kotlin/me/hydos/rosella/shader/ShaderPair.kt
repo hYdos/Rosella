@@ -3,12 +3,12 @@ package me.hydos.rosella.shader
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.material.Material
 import me.hydos.rosella.memory.memcpy
-import me.hydos.rosella.shader.ubo.ModelPushConstant
 import me.hydos.rosella.shader.ubo.ModelUbo
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.ok
 import me.hydos.rosella.util.sizeof
+import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
@@ -113,7 +113,7 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 			val pBuffer = it.mallocLong(1)
 			val pBufferMemory = it.mallocLong(1)
 			createBuffer(
-				sizeof(ModelPushConstant().position), //TODO: unhardcode
+				sizeof(Vector3f::class), //TODO: unhardcode
 				VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				pBuffer,
