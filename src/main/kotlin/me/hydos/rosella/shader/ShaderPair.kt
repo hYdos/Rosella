@@ -2,11 +2,11 @@ package me.hydos.rosella.shader
 
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.material.Material
+import me.hydos.rosella.memory.memcpy
 import me.hydos.rosella.shader.ubo.ModelPushConstant
 import me.hydos.rosella.shader.ubo.ModelUbo
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.createBuffer
-import me.hydos.rosella.util.memcpy
 import me.hydos.rosella.util.ok
 import me.hydos.rosella.util.sizeof
 import org.lwjgl.glfw.GLFW

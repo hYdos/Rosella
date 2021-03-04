@@ -3,20 +3,13 @@ package me.hydos.rosella.util
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.QueueFamilyIndices
-import me.hydos.rosella.memory.MemMan
-import me.hydos.rosella.model.Vertex
-import me.hydos.rosella.shader.ubo.ModelPushConstant
-import me.hydos.rosella.shader.ubo.ModelUbo
 import org.joml.Matrix4f
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.util.vma.Vma
-import org.lwjgl.util.vma.VmaAllocationCreateInfo
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties
-import java.nio.ByteBuffer
 import java.nio.LongBuffer
 
 
@@ -109,65 +102,6 @@ fun createBuffer(
 		VK10.vkAllocateMemory(device.device, allocInfo, null, pBufferMemory).ok()
 		VK10.vkBindBufferMemory(device.device, pBuffer[0], pBufferMemory[0], 0)
 	}
-}
-
-
-fun createVmaBuffer(
-	size: Int,
-	usage: Int,
-	vmaUsage: Int,
-	pBuffer: LongBuffer,
-	memMan: MemMan
-): Long {
-	MemoryStack.stackPush().use {
-		val vulkanBufferInfo = VkBufferCreateInfo.callocStack(it)
-			.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
-			.size(size.toLong())
-			.usage(usage)
-			.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE)
-
-		val vmaBufferInfo: VmaAllocationCreateInfo = VmaAllocationCreateInfo.callocStack(it)
-			.usage(vmaUsage)
-
-		val allocation = it.mallocPointer(1)
-
-		Vma.vmaCreateBuffer(memMan.allocator, vulkanBufferInfo, vmaBufferInfo, pBuffer, allocation, null)
-
-		return allocation[0]
-	}
-}
-
-fun memcpy(buffer: ByteBuffer, vertices: List<Vertex>) {
-	for (vertex in vertices) {
-		buffer.putFloat(vertex.pos.x())
-		buffer.putFloat(vertex.pos.y())
-		buffer.putFloat(vertex.pos.z())
-
-		buffer.putFloat(vertex.color.x())
-		buffer.putFloat(vertex.color.y())
-		buffer.putFloat(vertex.color.z())
-
-		buffer.putFloat(vertex.texCoords.x());
-		buffer.putFloat(vertex.texCoords.y());
-	}
-}
-
-fun memcpy(buffer: ByteBuffer, indices: ArrayList<Int>) {
-	for (index in indices) {
-		buffer.putInt(index)
-	}
-	buffer.rewind()
-}
-
-fun memcpy(buffer: ByteBuffer, ubo: ModelUbo) {
-	val mat4Size = 16 * java.lang.Float.BYTES
-	ubo.model[0, buffer]
-	ubo.view.get(alignas(mat4Size, alignof(ubo.view)), buffer)
-	ubo.proj.get(alignas(mat4Size * 2, alignof(ubo.view)), buffer)
-}
-
-fun memcpy(buffer: ByteBuffer, pushConstant: ModelPushConstant) {
-	pushConstant.position[0, buffer]
 }
 
 fun findQueueFamilies(device: VkPhysicalDevice, engine: Rosella): QueueFamilyIndices {

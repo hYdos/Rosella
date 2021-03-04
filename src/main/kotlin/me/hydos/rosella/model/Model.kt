@@ -4,9 +4,8 @@ import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.material.Material
 import me.hydos.rosella.memory.MemMan
+import me.hydos.rosella.memory.memcpy
 import me.hydos.rosella.util.createBuffer
-import me.hydos.rosella.util.createVmaBuffer
-import me.hydos.rosella.util.memcpy
 import me.hydos.rosella.util.ok
 import org.joml.Vector3f
 import org.joml.Vector3fc
@@ -32,34 +31,24 @@ class Model(private val modelLocation: String) {
 
 	var material: Material = Material("shaders/base.v.glsl", "shaders/base.f.glsl", "textures/fact_core_0.png")
 
-	private fun createVertexBuffer(rosella: Rosella) {
+	private fun createVertexBuffer(engine: Rosella) {
 		stackPush().use {
 			val size: Int = Vertex.SIZEOF * vertices.size
 			val pBuffer = it.mallocLong(1)
-			val stagingBufferAllocation: Long = createVmaBuffer(
-				size,
-				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-				VMA_MEMORY_USAGE_CPU_ONLY,
-				pBuffer,
-				rosella.memMan
-			)
-			val stagingBuffer = pBuffer[0]
-			val data = it.mallocPointer(1)
-			vmaMapMemory(rosella.memMan.allocator, stagingBufferAllocation, data)
-			run { memcpy(data.getByteBuffer(0, size), vertices) }
-			vmaUnmapMemory(rosella.memMan.allocator, stagingBuffer)
+			val stagingBufInfo = engine.memMan.createStagingBuf(size, pBuffer, it) { data ->
+				memcpy(data.getByteBuffer(0, size), vertices)
+			}
 
-			createVmaBuffer(
+			engine.memMan.createBuf(
 				size,
 				VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 				VMA_MEMORY_USAGE_CPU_TO_GPU,
-				pBuffer,
-				rosella.memMan
+				pBuffer
 			)
 			vertexBuffer = pBuffer[0]
-			copyBuffer(stagingBuffer, vertexBuffer, size, rosella, rosella.device)
-			vmaDestroyBuffer(rosella.memMan.allocator, stagingBuffer, stagingBufferAllocation)
-			vmaFreeMemory(rosella.memMan.allocator, stagingBuffer)
+			copyBuffer(stagingBufInfo.buffer, vertexBuffer, size, engine, engine.device)
+			vmaDestroyBuffer(engine.memMan.allocator, stagingBufInfo.buffer, stagingBufInfo.allocation)
+			vmaFreeMemory(engine.memMan.allocator, stagingBufInfo.buffer)
 		}
 	}
 
