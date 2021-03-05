@@ -6,15 +6,12 @@ import me.hydos.rosella.material.Material
 import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.memory.memcpy
 import me.hydos.rosella.util.createBuffer
-import me.hydos.rosella.util.ok
 import org.joml.Vector3f
 import org.joml.Vector3fc
 import org.lwjgl.assimp.Assimp
 import org.lwjgl.system.MemoryStack.stackPush
-import org.lwjgl.util.vma.Vma.*
+import org.lwjgl.util.vma.Vma.vmaFreeMemory
 import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.VkBufferCopy
-import org.lwjgl.vulkan.VkSubmitInfo
 import java.io.File
 import java.lang.ClassLoader.getSystemClassLoader
 
@@ -30,27 +27,6 @@ class Model(private val modelLocation: String) {
 	var indexBufferMemory: Long = 0
 
 	var material: Material = Material("shaders/base.v.glsl", "shaders/base.f.glsl", "textures/fact_core_0.png")
-
-	private fun createVertexBuffer(engine: Rosella) {
-		stackPush().use {
-			val size: Int = Vertex.SIZEOF * vertices.size
-			val pBuffer = it.mallocLong(1)
-			val stagingBufInfo = engine.memMan.createStagingBuf(size, pBuffer, it) { data ->
-				memcpy(data.getByteBuffer(0, size), vertices)
-			}
-
-			engine.memMan.createBuf(
-				size,
-				VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-				VMA_MEMORY_USAGE_CPU_TO_GPU,
-				pBuffer
-			)
-			vertexBuffer = pBuffer[0]
-			copyBuffer(stagingBufInfo.buffer, vertexBuffer, size, engine, engine.device)
-			vmaDestroyBuffer(engine.memMan.allocator, stagingBufInfo.buffer, stagingBufInfo.allocation)
-			vmaFreeMemory(engine.memMan.allocator, stagingBufInfo.buffer)
-		}
-	}
 
 	private fun createIndexBuffer(device: Device, engine: Rosella) {
 		stackPush().use { stack ->
@@ -81,28 +57,9 @@ class Model(private val modelLocation: String) {
 			)
 			indexBuffer = pBuffer[0]
 			indexBufferMemory = pBufferMemory[0]
-			copyBuffer(stagingBuffer, indexBuffer, bufferSize.toInt(), engine, device)
+			engine.memMan.copyBuffer(stagingBuffer, indexBuffer, bufferSize, engine, device)
 			vkDestroyBuffer(device.device, stagingBuffer, null)
 			vkFreeMemory(device.device, stagingBufferMemory, null)
-		}
-	}
-
-	private fun copyBuffer(srcBuffer: Long, dstBuffer: Long, size: Int, engine: Rosella, device: Device) {
-		stackPush().use { stack ->
-			val pCommandBuffer = stack.mallocPointer(1)
-			val commandBuffer = engine.beginCmdBuffer(stack, pCommandBuffer)
-			run {
-				val copyRegion = VkBufferCopy.callocStack(1, stack)
-				copyRegion.size(size.toLong())
-				vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, copyRegion)
-			}
-			vkEndCommandBuffer(commandBuffer)
-			val submitInfo = VkSubmitInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
-				.pCommandBuffers(pCommandBuffer)
-			vkQueueSubmit(engine.queues.graphicsQueue, submitInfo, VK_NULL_HANDLE).ok()
-			vkQueueWaitIdle(engine.queues.graphicsQueue)
-			vkFreeCommandBuffers(device.device, engine.commandPool, pCommandBuffer)
 		}
 	}
 
@@ -115,7 +72,7 @@ class Model(private val modelLocation: String) {
 
 	fun create(device: Device, engine: Rosella): Model {
 		loadModelFile()
-		createVertexBuffer(engine)
+		vertexBuffer = engine.memMan.createVertexBuffer(engine, vertices)
 		createIndexBuffer(device, engine)
 		return this
 	}

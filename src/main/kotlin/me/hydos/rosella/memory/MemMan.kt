@@ -1,11 +1,13 @@
 package me.hydos.rosella.memory
 
+import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.model.Vertex
 import me.hydos.rosella.shader.ubo.ModelPushConstant
 import me.hydos.rosella.shader.ubo.ModelUbo
 import me.hydos.rosella.util.alignas
 import me.hydos.rosella.util.alignof
+import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryStack.stackPush
@@ -13,9 +15,7 @@ import org.lwjgl.util.vma.Vma
 import org.lwjgl.util.vma.VmaAllocationCreateInfo
 import org.lwjgl.util.vma.VmaAllocatorCreateInfo
 import org.lwjgl.util.vma.VmaVulkanFunctions
-import org.lwjgl.vulkan.VK10
-import org.lwjgl.vulkan.VkBufferCreateInfo
-import org.lwjgl.vulkan.VkInstance
+import org.lwjgl.vulkan.*
 import java.nio.ByteBuffer
 import java.nio.LongBuffer
 
@@ -89,8 +89,55 @@ class MemMan(val device: Device, private val instance: VkInstance) {
 		}
 	}
 
-	data class BufferInfo(val buffer: Long, val allocation: Long)
+	/**
+	 * Copies a buffer from one place to another. usually used to copy a staging buffer into GPU mem
+	 */
+	fun copyBuffer(srcBuffer: Long, dstBuffer: Long, size: Int, engine: Rosella, device: Device) {
+		stackPush().use { stack ->
+			val pCommandBuffer = stack.mallocPointer(1)
+			val commandBuffer = engine.beginCmdBuffer(stack, pCommandBuffer)
+			run {
+				val copyRegion = VkBufferCopy.callocStack(1, stack)
+				copyRegion.size(size.toLong())
+				VK10.vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, copyRegion)
+			}
+			VK10.vkEndCommandBuffer(commandBuffer)
+			val submitInfo = VkSubmitInfo.callocStack(stack)
+				.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO)
+				.pCommandBuffers(pCommandBuffer)
+			VK10.vkQueueSubmit(engine.queues.graphicsQueue, submitInfo, VK10.VK_NULL_HANDLE).ok()
+			VK10.vkQueueWaitIdle(engine.queues.graphicsQueue)
+			VK10.vkFreeCommandBuffers(device.device, engine.commandPool, pCommandBuffer)
+		}
+	}
+
+	/**
+	 * Creates a vertex buffer from an List of Vertices
+	 */
+	fun createVertexBuffer(engine: Rosella, vertices: List<Vertex>): Long {
+		stackPush().use {
+			val size: Int = Vertex.SIZEOF * vertices.size
+			val pBuffer = it.mallocLong(1)
+			val stagingBufInfo = engine.memMan.createStagingBuf(size, pBuffer, it) { data ->
+				memcpy(data.getByteBuffer(0, size), vertices)
+			}
+
+			engine.memMan.createBuf(
+				size,
+				VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+				Vma.VMA_MEMORY_USAGE_CPU_TO_GPU,
+				pBuffer
+			)
+			val vertexBuffer = pBuffer[0]
+			copyBuffer(stagingBufInfo.buffer, vertexBuffer, size, engine, device)
+			Vma.vmaDestroyBuffer(allocator, stagingBufInfo.buffer, stagingBufInfo.allocation)
+			Vma.vmaFreeMemory(allocator, stagingBufInfo.buffer)
+			return vertexBuffer
+		}
+	}
 }
+
+data class BufferInfo(val buffer: Long, val allocation: Long)
 
 /**
  * Copies indices into the specified buffer
