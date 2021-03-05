@@ -89,7 +89,7 @@ class Rosella(
 	}
 
 	private fun createModels() {
-		model.create(device, this)
+		model.create(this)
 		model.material.loadShaders(device)
 		model.material.loadTextures(device, this)
 		model.material.shaders.createDescriptorSetLayout()
@@ -490,7 +490,7 @@ class Rosella(
 	fun free() {
 		this.state = State.STOPPING
 
-		model.destroy(memMan, device)
+		model.destroy(memMan)
 
 		freeSwapChain()
 

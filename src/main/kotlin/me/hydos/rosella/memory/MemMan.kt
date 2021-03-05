@@ -46,7 +46,12 @@ class MemMan(val device: Device, private val instance: VkInstance) {
 	/**
 	 * Used for creating the buffer written to before copied to the GPU
 	 */
-	fun createStagingBuf(size: Int, pBuffer: LongBuffer, stack: MemoryStack, callback: (data: PointerBuffer) -> Unit): BufferInfo {
+	fun createStagingBuf(
+		size: Int,
+		pBuffer: LongBuffer,
+		stack: MemoryStack,
+		callback: (data: PointerBuffer) -> Unit
+	): BufferInfo {
 		val stagingBufferAllocation: Long = createBuf(
 			size,
 			VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -111,6 +116,29 @@ class MemMan(val device: Device, private val instance: VkInstance) {
 		}
 	}
 
+	fun createIndexBuffer(engine: Rosella, indices: ArrayList<Int>): Long {
+		stackPush().use {
+			val size: Int = (Integer.BYTES * indices.size)
+			val pBuffer = it.mallocLong(1)
+			val stagingBuffer = engine.memMan.createStagingBuf(size, pBuffer, it) { data ->
+				memcpy(data.getByteBuffer(0, size), indices)
+			}
+
+			createBuf(
+				size,
+				VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+				Vma.VMA_MEMORY_USAGE_CPU_TO_GPU,
+				pBuffer
+			)
+			val indexBuffer = pBuffer[0]
+			copyBuffer(stagingBuffer.buffer, indexBuffer, size, engine, device)
+			Vma.vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation)
+			Vma.vmaFreeMemory(allocator, stagingBuffer.buffer)
+
+			return indexBuffer
+		}
+	}
+
 	/**
 	 * Creates a vertex buffer from an List of Vertices
 	 */
@@ -118,20 +146,20 @@ class MemMan(val device: Device, private val instance: VkInstance) {
 		stackPush().use {
 			val size: Int = Vertex.SIZEOF * vertices.size
 			val pBuffer = it.mallocLong(1)
-			val stagingBufInfo = engine.memMan.createStagingBuf(size, pBuffer, it) { data ->
+			val stagingBuffer = engine.memMan.createStagingBuf(size, pBuffer, it) { data ->
 				memcpy(data.getByteBuffer(0, size), vertices)
 			}
 
-			engine.memMan.createBuf(
+			createBuf(
 				size,
 				VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 				Vma.VMA_MEMORY_USAGE_CPU_TO_GPU,
 				pBuffer
 			)
 			val vertexBuffer = pBuffer[0]
-			copyBuffer(stagingBufInfo.buffer, vertexBuffer, size, engine, device)
-			Vma.vmaDestroyBuffer(allocator, stagingBufInfo.buffer, stagingBufInfo.allocation)
-			Vma.vmaFreeMemory(allocator, stagingBufInfo.buffer)
+			copyBuffer(stagingBuffer.buffer, vertexBuffer, size, engine, device)
+			Vma.vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation)
+			Vma.vmaFreeMemory(allocator, stagingBuffer.buffer)
 			return vertexBuffer
 		}
 	}
