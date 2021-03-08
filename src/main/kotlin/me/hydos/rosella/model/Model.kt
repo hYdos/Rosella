@@ -3,15 +3,15 @@ package me.hydos.rosella.model
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.material.Material
 import me.hydos.rosella.memory.MemMan
+import me.hydos.rosella.resource.Global
+import me.hydos.rosella.resource.Identifier
+import me.hydos.rosella.resource.Resource
 import org.joml.Vector3f
 import org.joml.Vector3fc
 import org.lwjgl.assimp.Assimp
 import org.lwjgl.util.vma.Vma.vmaFreeMemory
-import java.io.File
-import java.lang.ClassLoader.getSystemClassLoader
 
-
-class Model(private val modelLocation: String) {
+class Model(private val model: Resource) {
 
 	private var vertices: ArrayList<Vertex> = ArrayList()
 	var indices: ArrayList<Int> = ArrayList()
@@ -20,7 +20,11 @@ class Model(private val modelLocation: String) {
 
 	var indexBuffer: Long = 0
 
-	var material: Material = Material("shaders/base.v.glsl", "shaders/base.f.glsl", "textures/fact_core_0.png")
+	var material: Material = Material(
+		Global.ensureResource(Identifier("rosella", "shaders/base.v.glsl")),
+		Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl")),
+		Global.ensureResource(Identifier("rosella", "textures/fact_core_0.png"))
+	)
 
 	fun destroy(memMan: MemMan) {
 		vmaFreeMemory(memMan.allocator, vertexBuffer)
@@ -35,9 +39,8 @@ class Model(private val modelLocation: String) {
 	}
 
 	private fun loadModelFile() {
-		val modelFile = File(getSystemClassLoader().getResource(modelLocation).file)
 		val model: ModelLoader.SimpleModel =
-			ModelLoader.loadModel(modelFile, Assimp.aiProcess_FlipUVs or Assimp.aiProcess_DropNormals)
+			ModelLoader.loadModel(model, Assimp.aiProcess_FlipUVs or Assimp.aiProcess_DropNormals)
 		val vertexCount: Int = model.positions.size
 
 		vertices = ArrayList()

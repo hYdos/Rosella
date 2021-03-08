@@ -11,14 +11,14 @@ fun compileShaderFile(shader: Resource, shaderType: ShaderType): SpirV {
 	return compileShader(shader.identifier.file, source, shaderType)
 }
 
-fun compileShader(filename: String, source: String?, shaderType: ShaderType): SpirV {
+fun compileShader(filename: String, source: String, shaderType: ShaderType): SpirV {
 	val compiler = shaderc_compiler_initialize()
 
 	if (compiler == NULL) {
 		throw RuntimeException("Failed to create shader compiler")
 	}
 
-	val result: Long = shaderc_compile_into_spv(compiler, source!!, shaderType.kind, filename, "main", NULL)
+	val result: Long = shaderc_compile_into_spv(compiler, source, shaderType.kind, filename, "main", NULL)
 
 	if (result == NULL) {
 		throw RuntimeException("Failed to compile shader $filename into SPIR-V")
@@ -35,8 +35,7 @@ fun compileShader(filename: String, source: String?, shaderType: ShaderType): Sp
 	return SpirV(result, shaderc_result_get_bytes(result))
 }
 
-class SpirV(private val handle: Long, bytecode: ByteBuffer?) : NativeResource {
-	private var bytecode: ByteBuffer?
+class SpirV(private val handle: Long, private var bytecode: ByteBuffer?) : NativeResource {
 	fun bytecode(): ByteBuffer {
 		return bytecode!!
 	}
@@ -44,9 +43,5 @@ class SpirV(private val handle: Long, bytecode: ByteBuffer?) : NativeResource {
 	override fun free() {
 		shaderc_result_release(handle)
 		bytecode = null
-	}
-
-	init {
-		this.bytecode = bytecode
 	}
 }

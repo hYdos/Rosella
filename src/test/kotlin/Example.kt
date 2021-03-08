@@ -2,14 +2,13 @@ package me.hydos.example
 
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.io.Screen
-import me.hydos.rosella.resource.ClassLoaderResourceLoader
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 
 object Example {
 	@JvmStatic
 	fun main(args: Array<String>) {
 		val screen = Screen("Concerning Vulkan engine", 1280, 720)
-		val engine = Rosella("Thing Name Here", false, screen, ClassLoaderResourceLoader(ClassLoader.getSystemClassLoader()))
+		val engine = Rosella("Thing Name Here", false, screen)
 
 		// Register events so we can interact and run game logic
 		screen.onMainLoop {
