@@ -23,9 +23,9 @@ class SwapChain(
 	surface: Long
 ) {
 	var swapChain: Long = 0
-	var swapChainImageViews: List<Long> = ArrayList()
-	var swapChainFramebuffers: List<Long> = ArrayList()
-	var swapChainImages: List<Long> = ArrayList()
+	var swapChainImageViews: MutableList<Long> = ArrayList()
+	var swapChainFramebuffers: MutableList<Long> = ArrayList()
+	var swapChainImages: MutableList<Long> = ArrayList()
 	var swapChainImageFormat = 0
 	var swapChainExtent: VkExtent2D? = null
 
@@ -80,7 +80,7 @@ class SwapChain(
 			swapChainImages = ArrayList(imageCount[0])
 
 			for (i in 0 until pSwapchainImages.capacity()) {
-				(swapChainImages as ArrayList<Long>).add(pSwapchainImages[i])
+				swapChainImages.add(pSwapchainImages[i])
 			}
 
 			swapChainImageFormat = surfaceFormat.format()

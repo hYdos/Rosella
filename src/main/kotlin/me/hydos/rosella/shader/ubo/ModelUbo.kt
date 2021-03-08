@@ -1,4 +1,4 @@
-package me.hydos.rosella.model.ubo
+package me.hydos.rosella.shader.ubo
 
 import org.joml.Matrix4f
 
