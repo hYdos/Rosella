@@ -1,6 +1,7 @@
+.idea/
+run/
+target/
 *.log
 *.iml
-.idea/
-target/*
 *.class
 *.kotlin_module

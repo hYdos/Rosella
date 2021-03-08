@@ -6,7 +6,8 @@ import me.hydos.rosella.io.Screen
 import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.memory.memcpy
 import me.hydos.rosella.model.Model
-import me.hydos.rosella.resource.ResourceLoader
+import me.hydos.rosella.resource.Global
+import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.shader.Shader
 import me.hydos.rosella.shader.ubo.ModelPushConstant
 import me.hydos.rosella.swapchain.SwapChain
@@ -33,15 +34,14 @@ import java.util.stream.Collectors
 class Rosella(
 	name: String,
 	val enableValidationLayers: Boolean,
-	internal val screen: Screen,
-	val resources: ResourceLoader
+	internal val screen: Screen
 ) {
 
 	var memMan: MemMan
 
 	var depthBuffer = DepthBuffer()
 
-	var model: Model = Model("models/fact_core.gltf")
+	var model: Model = Model(Global.ensureResource(Identifier("rosella", "models/fact_core.gltf")))
 
 	private var inFlightFrames: MutableList<Frame>? = null
 	private var imagesInFlight: MutableMap<Int, Frame>? = null

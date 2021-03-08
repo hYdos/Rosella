@@ -4,6 +4,7 @@ import me.hydos.rosella.RenderPass
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.model.Vertex
+import me.hydos.rosella.resource.Resource
 import me.hydos.rosella.shader.Shader
 import me.hydos.rosella.shader.ShaderPair
 import me.hydos.rosella.swapchain.SwapChain
@@ -22,7 +23,7 @@ import java.nio.LongBuffer
  * similar to how unity works
  * guaranteed to change once and a while
  */
-class Material(private val vertexShaderFile: String, private val fragmentShaderFile: String, private val textureLocation: String? = null) {
+class Material(private val vertexShader: Resource, private val fragmentShader: Resource, private val texture: Resource) {
 
 	var pipelineLayout: Long = 0
 	var graphicsPipeline: Long = 0
@@ -36,7 +37,7 @@ class Material(private val vertexShaderFile: String, private val fragmentShaderF
 	var textureSampler: Long = 0
 
 	fun loadShaders(device: Device) {
-		this.shaders = ShaderPair(Shader(vertexShaderFile), Shader(fragmentShaderFile), device)
+		this.shaders = ShaderPair(Shader(vertexShader), Shader(fragmentShader), device)
 	}
 
 	fun loadTextures(device: Device, engine: Rosella) {
@@ -56,8 +57,8 @@ class Material(private val vertexShaderFile: String, private val fragmentShaderF
 	) {
 		//TODO: optimise pipeline creation. could make it work better in some ways. i should write this stuff down
 		MemoryStack.stackPush().use {
-			val vertShaderSPIRV: SpirV = compileShaderFile(vertexShaderFile, ShaderType.VERTEX_SHADER)
-			val fragShaderSPIRV: SpirV = compileShaderFile(fragmentShaderFile, ShaderType.FRAGMENT_SHADER)
+			val vertShaderSPIRV: SpirV = compileShaderFile(vertexShader, ShaderType.VERTEX_SHADER)
+			val fragShaderSPIRV: SpirV = compileShaderFile(fragmentShader, ShaderType.FRAGMENT_SHADER)
 			val vertShaderModule = createShader(vertShaderSPIRV.bytecode(), device)
 			val fragShaderModule = createShader(fragShaderSPIRV.bytecode(), device)
 			val entryPoint: ByteBuffer = it.UTF8("main")
@@ -284,15 +285,14 @@ class Material(private val vertexShaderFile: String, private val fragmentShaderF
 
 	private fun createTextureImage(device: Device, engine: Rosella) {
 		MemoryStack.stackPush().use { stack ->
-			val filename =
-				ClassLoader.getSystemClassLoader().getResource(textureLocation).toExternalForm().replace("file:", "")
+			val file = texture.readAllBytes(true)
 			val pWidth = stack.mallocInt(1)
 			val pHeight = stack.mallocInt(1)
 			val pChannels = stack.mallocInt(1)
-			val pixels: ByteBuffer? = STBImage.stbi_load(filename, pWidth, pHeight, pChannels, STBImage.STBI_rgb_alpha)
+			val pixels: ByteBuffer? = STBImage.stbi_load_from_memory(file, pWidth, pHeight, pChannels, STBImage.STBI_rgb_alpha)
 			val imageSize = (pWidth[0] * pHeight[0] * 4).toLong()
 			if (pixels == null) {
-				throw RuntimeException("Failed to load texture image $filename")
+				throw RuntimeException("Failed to load texture image ${texture.identifier}")
 			}
 			val pStagingBuffer = stack.mallocLong(1)
 			val pStagingBufferMemory = stack.mallocLong(1)
