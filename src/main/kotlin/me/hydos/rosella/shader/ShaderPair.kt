@@ -12,6 +12,7 @@ import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.VK10.*
 import java.util.*
 import java.util.function.Consumer
 
@@ -27,27 +28,27 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 	var descriptorSetLayout: Long = 0
 	var descriptorSets: MutableList<Long> = ArrayList()
 
-	fun createPool(valueMap: Map<Shader.ValueType, Int>, swapChain: SwapChain) {
+	fun createPool(swapChain: SwapChain) {
 		MemoryStack.stackPush().use { stack ->
 			val poolSizes = VkDescriptorPoolSize.callocStack(2, stack)
 
 			// Uniform Buffer Pool Size
 			poolSizes[0]
-				.type(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+				.type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 				.descriptorCount(swapChain.swapChainImages.size)
 
 			// Texture Sampler Pool Size
 			poolSizes[1]
-				.type(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				.type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 				.descriptorCount(swapChain.swapChainImages.size)
 
 			val poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
+				.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
 				.pPoolSizes(poolSizes)
 				.maxSets(swapChain.swapChainImages.size)
 
 			val pDescriptorPool = stack.mallocLong(1)
-			VK10.vkCreateDescriptorPool(
+			vkCreateDescriptorPool(
 				device.device,
 				poolInfo,
 				null,
@@ -72,7 +73,7 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 			ubo.proj.m11(ubo.proj.m11() * -1)
 
 			val data = it.mallocPointer(1)
-			VK10.vkMapMemory(
+			vkMapMemory(
 				device.device,
 				uniformBuffersMemory[currentImage],
 				0,
@@ -83,7 +84,7 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 			run {
 				memcpy(data.getByteBuffer(0, ModelUbo.SIZEOF), ubo)
 			}
-			VK10.vkUnmapMemory(device.device, uniformBuffersMemory[currentImage])
+			vkUnmapMemory(device.device, uniformBuffersMemory[currentImage])
 		}
 	}
 
@@ -96,8 +97,8 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 			for (i in swapchain.swapChainImages.indices) {
 				createBuffer(
 					ModelUbo.SIZEOF,
-					VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-					VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+					VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 					pBuffer,
 					pBufferMemory,
 					device
@@ -114,8 +115,8 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 			val pBufferMemory = it.mallocLong(1)
 			createBuffer(
 				sizeof(Vector3f::class), //TODO: unhardcode
-				VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				pBuffer,
 				pBufferMemory,
 				device
@@ -126,31 +127,24 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 		}
 	}
 
-	fun createDescriptorSetLayout() {
+	fun createDescriptorSetLayout(vararg poolObjects: PoolObjType) {
 		MemoryStack.stackPush().use {
-			val bindings = VkDescriptorSetLayoutBinding.callocStack(2, it)
+			val bindings = VkDescriptorSetLayoutBinding.callocStack(poolObjects.size, it)
 
-			// Ubo Layout
-			bindings[0]
-				.binding(0)
-				.descriptorCount(1)
-				.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-				.pImmutableSamplers(null)
-				.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
-
-			// Sampler Layout
-			bindings[1]
-				.binding(1)
-				.descriptorCount(1)
-				.descriptorType(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-				.pImmutableSamplers(null)
-				.stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
+			poolObjects.forEachIndexed { i, poolObj ->
+				bindings[i]
+					.binding(i)
+					.descriptorCount(1)
+					.descriptorType(poolObj.vkType)
+					.pImmutableSamplers(null)
+					.stageFlags(poolObj.vkShader)
+			}
 
 			val layoutInfo = VkDescriptorSetLayoutCreateInfo.callocStack(it)
-			layoutInfo.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
+			layoutInfo.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
 			layoutInfo.pBindings(bindings)
 			val pDescriptorSetLayout = it.mallocLong(1)
-			VK10.vkCreateDescriptorSetLayout(
+			vkCreateDescriptorSetLayout(
 				device.device,
 				layoutInfo,
 				null,
@@ -167,12 +161,12 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 				layouts.put(i, descriptorSetLayout)
 			}
 			val allocInfo = VkDescriptorSetAllocateInfo.callocStack(stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
+				.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
 				.descriptorPool(descriptorPool)
 				.pSetLayouts(layouts)
 			val pDescriptorSets = stack.mallocLong(swapChain.swapChainImages.size)
 
-			VK10.vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets)
+			vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets)
 				.ok("Failed to allocate descriptor sets")
 
 			descriptorSets = ArrayList(pDescriptorSets.capacity())
@@ -182,25 +176,25 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 				.range(ModelUbo.SIZEOF.toLong())
 
 			val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
-				.imageLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+				.imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 				.imageView(material.textureImageView)
 				.sampler(material.textureSampler)
 
 			val descriptorWrites = VkWriteDescriptorSet.callocStack(2, stack)
 
 			val uboDescriptorWrite = descriptorWrites[0]
-				.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+				.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
 				.dstBinding(0)
 				.dstArrayElement(0)
-				.descriptorType(VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+				.descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 				.descriptorCount(1)
 				.pBufferInfo(bufferInfo)
 
 			val samplerDescriptorWrite = descriptorWrites[1]
-				.sType(VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+				.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
 				.dstBinding(1)
 				.dstArrayElement(0)
-				.descriptorType(VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				.descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 				.descriptorCount(1)
 				.pImageInfo(imageInfo)
 
@@ -209,19 +203,24 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 				bufferInfo.buffer(uniformBuffers[i])
 				uboDescriptorWrite.dstSet(descriptorSet)
 				samplerDescriptorWrite.dstSet(descriptorSet)
-				VK10.vkUpdateDescriptorSets(device.device, descriptorWrites, null)
+				vkUpdateDescriptorSets(device.device, descriptorWrites, null)
 				descriptorSets.add(descriptorSet)
 			}
 		}
 	}
 
 	fun free(device: Device) {
-		uniformBuffers.forEach(Consumer { ubo: Long? -> VK10.vkDestroyBuffer(device.device, ubo!!, null) })
+		uniformBuffers.forEach(Consumer { ubo: Long? -> vkDestroyBuffer(device.device, ubo!!, null) })
 		uniformBuffersMemory.forEach(Consumer { uboMemory: Long? ->
-			VK10.vkFreeMemory(
+			vkFreeMemory(
 				device.device,
 				uboMemory!!, null
 			)
 		})
+	}
+
+	enum class PoolObjType(val vkType: Int, val vkShader: Int) {
+		UBO(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT),
+		COMBINED_IMG_SAMPLER(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 	}
 }

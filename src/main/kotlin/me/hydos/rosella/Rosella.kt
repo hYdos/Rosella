@@ -8,6 +8,7 @@ import me.hydos.rosella.memory.memcpy
 import me.hydos.rosella.model.Model
 import me.hydos.rosella.resource.ResourceLoader
 import me.hydos.rosella.shader.Shader
+import me.hydos.rosella.shader.ShaderPair
 import me.hydos.rosella.shader.ubo.ModelPushConstant
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.findMemoryType
@@ -92,7 +93,7 @@ class Rosella(
 		model.create(this)
 		model.material.loadShaders(device)
 		model.material.loadTextures(device, this)
-		model.material.shaders.createDescriptorSetLayout()
+		model.material.shaders.createDescriptorSetLayout(ShaderPair.PoolObjType.UBO, ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER)
 	}
 
 	fun beginCmdBuffer(stack: MemoryStack, pCommandBuffer: PointerBuffer): VkCommandBuffer {
@@ -122,7 +123,7 @@ class Rosella(
 		createFramebuffers()
 		model.material.shaders.createUniformBuffers(swapChain, device)
 		model.material.shaders.createPushConstantBuffer() //TODO
-		model.material.shaders.createPool(shaderVariables, swapChain)
+		model.material.shaders.createPool(swapChain)
 		model.material.shaders.createDescriptorSets(swapChain, model.material)
 		createCommandBuffers(swapChain, renderPass)
 		createSyncObjects()
