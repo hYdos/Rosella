@@ -13,7 +13,6 @@ import org.joml.Vector3f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
-import java.util.function.Consumer
 
 class ShaderPair(
 	val vertexShader: Shader,
@@ -24,9 +23,6 @@ class ShaderPair(
 ) {
 	var ubo = BasicUbo(device, memory)
 
-	var uniformBuffers: MutableList<Long> = ArrayList()
-	var uniformBuffersMemory: MutableList<Long> = ArrayList()
-
 	var pushConstantBuffers: MutableList<Long> = ArrayList()
 	var pushConstantBuffersMemory: MutableList<Long> = ArrayList()
 
@@ -35,28 +31,11 @@ class ShaderPair(
 	var descriptorSets: MutableList<Long> = ArrayList()
 
 	fun updateUbo(currentImage: Int, swapChain: SwapChain) {
-		ubo.update(currentImage, swapChain, uniformBuffersMemory)
+		ubo.update(currentImage, swapChain)
 	}
 
-	fun createUniformBuffers(swapchain: SwapChain, device: Device) {
-		MemoryStack.stackPush().use { stack ->
-			uniformBuffers = ArrayList(swapchain.swapChainImages.size)
-			uniformBuffersMemory = ArrayList(swapchain.swapChainImages.size)
-			val pBuffer = stack.mallocLong(1)
-			val pBufferMemory = stack.mallocLong(1)
-			for (i in swapchain.swapChainImages.indices) {
-				createBuffer(
-					LegacyUbo.SIZEOF,
-					VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-					pBuffer,
-					pBufferMemory,
-					device
-				)
-				uniformBuffers.add(pBuffer[0])
-				uniformBuffersMemory.add(pBufferMemory[0])
-			}
-		}
+	fun createUniformBuffers(swapChain: SwapChain) {
+		ubo.create(swapChain)
 	}
 
 	fun createPushConstantBuffer() {
@@ -161,7 +140,7 @@ class ShaderPair(
 
 			for (i in 0 until pDescriptorSets.capacity()) {
 				val descriptorSet = pDescriptorSets[i]
-				bufferInfo.buffer(uniformBuffers[i])
+				bufferInfo.buffer(ubo.getUniformBuffers()[i])
 				poolObjects.forEachIndexed { index, poolObj ->
 					val descriptorWrite = descriptorWrites[index]
 						.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
@@ -187,14 +166,8 @@ class ShaderPair(
 		}
 	}
 
-	fun free(device: Device) {
-		uniformBuffers.forEach(Consumer { ubo: Long? -> vkDestroyBuffer(device.device, ubo!!, null) })
-		uniformBuffersMemory.forEach(Consumer { uboMemory: Long? ->
-			vkFreeMemory(
-				device.device,
-				uboMemory!!, null
-			)
-		})
+	fun free() {
+		ubo.free()
 	}
 
 	enum class PoolObjType(val vkType: Int, val vkShader: Int) {

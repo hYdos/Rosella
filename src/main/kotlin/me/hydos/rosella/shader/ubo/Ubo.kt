@@ -10,8 +10,9 @@ import java.nio.ByteBuffer
 abstract class Ubo(device: Device, memory: MemMan) {
 
 	abstract fun create(swapChain: SwapChain)
-	abstract fun update(currentImg: Int, swapChain: SwapChain, uniformBuffersMemory: MutableList<Long>)
+	abstract fun update(currentImg: Int, swapChain: SwapChain)
 	abstract fun free()
+	abstract fun getUniformBuffers(): List<Long>
 
 	@Deprecated("Bad")
 	fun copyLegacyUboIntoMemory(buffer: ByteBuffer, ubo: LegacyUbo) {

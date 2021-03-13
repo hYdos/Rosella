@@ -116,7 +116,7 @@ class Rosella(
 		model.material.createPipeline(device, swapChain, renderPass, model.material.shader.descriptorSetLayout)
 		depthBuffer.createDepthResources(this)
 		createFramebuffers()
-		model.material.shader.createUniformBuffers(swapChain, device)
+		model.material.shader.createUniformBuffers(swapChain)
 		model.material.shader.createPushConstantBuffer() //TODO
 		model.material.shader.createPool(swapChain)
 		model.material.shader.createDescriptorSets(swapChain, model.material)
@@ -660,7 +660,7 @@ class Rosella(
 		// Free Depth Buffer
 		depthBuffer.free(device)
 
-		model.material.shader.free(device)
+		model.material.shader.free()
 
 		swapChain.swapChainFramebuffers.forEach { framebuffer ->
 			vkDestroyFramebuffer(
