@@ -13,10 +13,14 @@ import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
-import java.util.*
 import java.util.function.Consumer
 
-class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val device: Device) {
+class ShaderPair(
+	val vertexShader: Shader,
+	val fragmentShader: Shader,
+	val device: Device,
+	vararg var poolObjects: PoolObjType
+) {
 
 	var uniformBuffers: MutableList<Long> = ArrayList()
 	var uniformBuffersMemory: MutableList<Long> = ArrayList()
@@ -28,38 +32,7 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 	var descriptorSetLayout: Long = 0
 	var descriptorSets: MutableList<Long> = ArrayList()
 
-	fun createPool(swapChain: SwapChain) {
-		MemoryStack.stackPush().use { stack ->
-			val poolSizes = VkDescriptorPoolSize.callocStack(2, stack)
-
-			// Uniform Buffer Pool Size
-			poolSizes[0]
-				.type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-				.descriptorCount(swapChain.swapChainImages.size)
-
-			// Texture Sampler Pool Size
-			poolSizes[1]
-				.type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-				.descriptorCount(swapChain.swapChainImages.size)
-
-			val poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
-				.pPoolSizes(poolSizes)
-				.maxSets(swapChain.swapChainImages.size)
-
-			val pDescriptorPool = stack.mallocLong(1)
-			vkCreateDescriptorPool(
-				device.device,
-				poolInfo,
-				null,
-				pDescriptorPool
-			).ok("Failed to create descriptor pool")
-
-			descriptorPool = pDescriptorPool[0]
-		}
-	}
-
-	fun updateUniformBuffer(currentImage: Int, swapchain: SwapChain) {
+	fun updateUbo(currentImage: Int, swapchain: SwapChain) {
 		MemoryStack.stackPush().use {
 			val ubo = ModelUbo()
 			ubo.model.rotate((GLFW.glfwGetTime() * Math.toRadians(90.0)).toFloat(), 0.0f, 0.0f, 1.0f)
@@ -127,7 +100,34 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 		}
 	}
 
-	fun createDescriptorSetLayout(vararg poolObjects: PoolObjType) {
+	fun createPool(swapChain: SwapChain) {
+		MemoryStack.stackPush().use { stack ->
+			val poolSizes = VkDescriptorPoolSize.callocStack(poolObjects.size, stack)
+
+			poolObjects.forEachIndexed { i, poolObj ->
+				poolSizes[i]
+					.type(poolObj.vkType)
+					.descriptorCount(swapChain.swapChainImages.size)
+			}
+
+			val poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
+				.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
+				.pPoolSizes(poolSizes)
+				.maxSets(swapChain.swapChainImages.size)
+
+			val pDescriptorPool = stack.mallocLong(1)
+			vkCreateDescriptorPool(
+				device.device,
+				poolInfo,
+				null,
+				pDescriptorPool
+			).ok("Failed to create descriptor pool")
+
+			descriptorPool = pDescriptorPool[0]
+		}
+	}
+
+	fun createDescriptorSetLayout() {
 		MemoryStack.stackPush().use {
 			val bindings = VkDescriptorSetLayoutBinding.callocStack(poolObjects.size, it)
 
@@ -180,29 +180,30 @@ class ShaderPair(val vertexShader: Shader, val fragmentShader: Shader, val devic
 				.imageView(material.textureImageView)
 				.sampler(material.textureSampler)
 
-			val descriptorWrites = VkWriteDescriptorSet.callocStack(2, stack)
-
-			val uboDescriptorWrite = descriptorWrites[0]
-				.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-				.dstBinding(0)
-				.dstArrayElement(0)
-				.descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-				.descriptorCount(1)
-				.pBufferInfo(bufferInfo)
-
-			val samplerDescriptorWrite = descriptorWrites[1]
-				.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-				.dstBinding(1)
-				.dstArrayElement(0)
-				.descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-				.descriptorCount(1)
-				.pImageInfo(imageInfo)
+			val descriptorWrites = VkWriteDescriptorSet.callocStack(poolObjects.size, stack)
 
 			for (i in 0 until pDescriptorSets.capacity()) {
 				val descriptorSet = pDescriptorSets[i]
 				bufferInfo.buffer(uniformBuffers[i])
-				uboDescriptorWrite.dstSet(descriptorSet)
-				samplerDescriptorWrite.dstSet(descriptorSet)
+				poolObjects.forEachIndexed { index, poolObj ->
+					val descriptorWrite = descriptorWrites[index]
+						.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+						.dstBinding(index)
+						.dstArrayElement(0)
+						.descriptorType(poolObj.vkType)
+						.descriptorCount(1)
+
+					when (poolObj.vkType) {
+						VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER -> {
+							descriptorWrite.pBufferInfo(bufferInfo)
+						}
+
+						VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER -> {
+							descriptorWrite.pImageInfo(imageInfo)
+						}
+					}
+					descriptorWrite.dstSet(descriptorSet)
+				}
 				vkUpdateDescriptorSets(device.device, descriptorWrites, null)
 				descriptorSets.add(descriptorSet)
 			}

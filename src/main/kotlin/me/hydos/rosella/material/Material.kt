@@ -22,7 +22,11 @@ import java.nio.LongBuffer
  * similar to how unity works
  * guaranteed to change once and a while
  */
-class Material(private val vertexShaderFile: String, private val fragmentShaderFile: String, private val textureLocation: String? = null) {
+class Material(
+	private val vertexShaderFile: String,
+	private val fragmentShaderFile: String,
+	private val textureLocation: String? = null
+) {
 
 	var pipelineLayout: Long = 0
 	var graphicsPipeline: Long = 0
@@ -30,13 +34,19 @@ class Material(private val vertexShaderFile: String, private val fragmentShaderF
 	private var textureImage: Long = 0
 	private var textureImageMemory: Long = 0
 
-	lateinit var shaders: ShaderPair
+	lateinit var shader: ShaderPair
 
 	var textureImageView: Long = 0
 	var textureSampler: Long = 0
 
 	fun loadShaders(device: Device) {
-		this.shaders = ShaderPair(Shader(vertexShaderFile), Shader(fragmentShaderFile), device)
+		this.shader = ShaderPair(
+			Shader(vertexShaderFile),
+			Shader(fragmentShaderFile),
+			device,
+			ShaderPair.PoolObjType.UBO,
+			ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
+		)
 	}
 
 	fun loadTextures(device: Device, engine: Rosella) {
@@ -276,7 +286,8 @@ class Material(private val vertexShaderFile: String, private val fragmentShaderF
 	}
 
 	private fun createTextureImageView(engine: Rosella) {
-		textureImageView = engine.createImageView(textureImage,
+		textureImageView = engine.createImageView(
+			textureImage,
 			VK10.VK_FORMAT_R8G8B8A8_SRGB,
 			VK10.VK_IMAGE_ASPECT_COLOR_BIT
 		)

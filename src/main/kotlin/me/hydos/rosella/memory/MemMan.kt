@@ -61,7 +61,7 @@ class MemMan(val device: Device, private val instance: VkInstance) {
 		val stagingBuffer = pBuffer[0]
 		val data = stack.mallocPointer(1)
 		Vma.vmaMapMemory(allocator, stagingBufferAllocation, data)
-		run { callback(data) }
+		callback(data)
 		Vma.vmaUnmapMemory(allocator, stagingBuffer)
 		return BufferInfo(stagingBuffer, stagingBufferAllocation)
 	}
@@ -98,16 +98,16 @@ class MemMan(val device: Device, private val instance: VkInstance) {
 	 * Copies a buffer from one place to another. usually used to copy a staging buffer into GPU mem
 	 */
 	fun copyBuffer(srcBuffer: Long, dstBuffer: Long, size: Int, engine: Rosella, device: Device) {
-		stackPush().use { stack ->
-			val pCommandBuffer = stack.mallocPointer(1)
-			val commandBuffer = engine.beginCmdBuffer(stack, pCommandBuffer)
+		stackPush().use {
+			val pCommandBuffer = it.mallocPointer(1)
+			val commandBuffer = engine.beginCmdBuffer(it, pCommandBuffer)
 			run {
-				val copyRegion = VkBufferCopy.callocStack(1, stack)
+				val copyRegion = VkBufferCopy.callocStack(1, it)
 				copyRegion.size(size.toLong())
 				VK10.vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, copyRegion)
 			}
 			VK10.vkEndCommandBuffer(commandBuffer)
-			val submitInfo = VkSubmitInfo.callocStack(stack)
+			val submitInfo = VkSubmitInfo.callocStack(it)
 				.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO)
 				.pCommandBuffers(pCommandBuffer)
 			VK10.vkQueueSubmit(engine.queues.graphicsQueue, submitInfo, VK10.VK_NULL_HANDLE).ok()
