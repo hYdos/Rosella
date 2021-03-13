@@ -1,5 +1,6 @@
 package me.hydos.rosella.shader
 
+import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.material.Material
 import me.hydos.rosella.memory.MemMan
@@ -29,8 +30,8 @@ class ShaderPair(
 	var descriptorSetLayout: Long = 0
 	var descriptorSets: MutableList<Long> = ArrayList()
 
-	fun updateUbo(currentImage: Int, swapChain: SwapChain) {
-		ubo.update(currentImage, swapChain)
+	fun updateUbo(currentImage: Int, swapChain: SwapChain, engine: Rosella) {
+		ubo.update(currentImage, swapChain, engine.view, engine.proj)
 	}
 
 	fun createUniformBuffers(swapChain: SwapChain) {

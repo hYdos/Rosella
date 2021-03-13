@@ -13,6 +13,7 @@ import me.hydos.rosella.util.findMemoryType
 import me.hydos.rosella.util.findQueueFamilies
 import me.hydos.rosella.util.ok
 import me.hydos.rosella.util.sizeof
+import org.joml.Matrix4f
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWVulkan
@@ -41,6 +42,9 @@ class Rosella(
 	var depthBuffer = DepthBuffer()
 
 	var model: Model = Model("models/fact_core.gltf")
+
+	var view: Matrix4f = Matrix4f()
+	var proj: Matrix4f = Matrix4f()
 
 	private var inFlightFrames: MutableList<Frame>? = null
 	private var imagesInFlight: MutableMap<Int, Frame>? = null
@@ -87,6 +91,20 @@ class Rosella(
 		state = State.READY
 	}
 
+	private fun createProjAndView() {
+		view = Matrix4f()
+		proj = Matrix4f()
+
+		view.lookAt(2.0f, -40.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)
+		proj.perspective(
+			Math.toRadians(45.0).toFloat(),
+			swapChain.swapChainExtent!!.width().toFloat() / swapChain.swapChainExtent!!.height().toFloat(),
+			0.1f,
+			1000.0f
+		)
+		proj.m11(proj.m11() * -1)
+	}
+
 	private fun createModels() {
 		model.create(this)
 		model.material.loadShaders(device, memMan)
@@ -116,6 +134,7 @@ class Rosella(
 		model.material.createPipeline(device, swapChain, renderPass, model.material.shader.descriptorSetLayout)
 		depthBuffer.createDepthResources(this)
 		createFramebuffers()
+		createProjAndView()
 		model.material.shader.createUniformBuffers(swapChain)
 		model.material.shader.createPushConstantBuffer() //TODO
 		model.material.shader.createPool(swapChain)
@@ -604,7 +623,7 @@ class Rosella(
 
 			val imageIndex = pImageIndex[0]
 
-			model.material.shader.updateUbo(imageIndex, swapChain)
+			model.material.shader.updateUbo(imageIndex, swapChain, this)
 
 			if (imagesInFlight!!.containsKey(imageIndex)) {
 				vkWaitForFences(device.device, imagesInFlight!![imageIndex]!!.fence(), true, UINT64_MAX)
@@ -652,6 +671,7 @@ class Rosella(
 		vkDeviceWaitIdle(device.device)
 		freeSwapChain()
 		createFullSwapChain()
+		createProjAndView()
 	}
 
 	private fun freeSwapChain() {

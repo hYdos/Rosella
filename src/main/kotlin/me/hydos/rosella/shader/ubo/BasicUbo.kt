@@ -3,6 +3,8 @@ package me.hydos.rosella.shader.ubo
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.swapchain.SwapChain
+import me.hydos.rosella.util.alignas
+import me.hydos.rosella.util.alignof
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.sizeof
 import org.joml.Matrix4f
@@ -15,6 +17,8 @@ class BasicUbo(val device: Device, val memory: MemMan) : Ubo() {
 
 	var ubos: MutableList<Long> = ArrayList()
 	var ubosMem: MutableList<Long> = ArrayList()
+
+	var model: Matrix4f = Matrix4f()
 
 	override fun create(swapChain: SwapChain) {
 		MemoryStack.stackPush().use { stack ->
@@ -37,18 +41,9 @@ class BasicUbo(val device: Device, val memory: MemMan) : Ubo() {
 		}
 	}
 
-	override fun update(currentImg: Int, swapChain: SwapChain) {
+	override fun update(currentImg: Int, swapChain: SwapChain, view: Matrix4f, proj: Matrix4f) {
 		MemoryStack.stackPush().use {
-			val ubo = LegacyUbo()
-			ubo.model.rotate((GLFW.glfwGetTime() * Math.toRadians(90.0)).toFloat(), 0.0f, 0.0f, 1.0f)
-			ubo.view.lookAt(2.0f, -40.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)
-			ubo.proj.perspective(
-				Math.toRadians(45.0).toFloat(),
-				swapChain.swapChainExtent!!.width().toFloat() / swapChain.swapChainExtent!!.height().toFloat(),
-				0.1f,
-				1000.0f
-			)
-			ubo.proj.m11(ubo.proj.m11() * -1)
+			model.rotate((GLFW.glfwGetTime() * Math.toRadians(90.0)).toFloat(), 0.0f, 0.0f, 1.0f)
 
 			val data = it.mallocPointer(1)
 			VK10.vkMapMemory(
@@ -60,7 +55,11 @@ class BasicUbo(val device: Device, val memory: MemMan) : Ubo() {
 				data
 			)
 			run {
-				copyLegacyUboIntoMemory(data.getByteBuffer(0, getSize()), ubo)
+				val buffer = data.getByteBuffer(0, getSize())
+				val mat4Size = 16 * java.lang.Float.BYTES
+				model[0, buffer]
+				view.get(alignas(mat4Size, alignof(view)), buffer)
+				proj.get(alignas(mat4Size * 2, alignof(view)), buffer)
 			}
 			VK10.vkUnmapMemory(device.device, ubosMem[currentImg])
 		}
