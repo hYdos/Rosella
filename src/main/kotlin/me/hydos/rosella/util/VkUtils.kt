@@ -49,7 +49,7 @@ private val SIZEOF_CACHE = mutableMapOf<Class<*>, Int>().apply {
 	this[Vector3f::class.java] = 3 * Float.SIZE_BYTES
 	this[Vector4f::class.java] = 4 * Float.SIZE_BYTES
 
-	this[Matrix4f::class.java] = this[Vector4f::class.java]!!
+	this[Matrix4f::class.java] = 16 * java.lang.Float.BYTES
 }
 
 fun sizeof(obj: Any?): Int {
