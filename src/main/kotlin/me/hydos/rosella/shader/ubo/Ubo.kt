@@ -1,17 +1,35 @@
 package me.hydos.rosella.shader.ubo
 
-import me.hydos.rosella.device.Device
-import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.alignas
 import me.hydos.rosella.util.alignof
 import java.nio.ByteBuffer
 
-abstract class Ubo(device: Device, memory: MemMan) {
+abstract class Ubo {
 
+	/**
+	 * Called when the uniform buffers should be created
+	 */
 	abstract fun create(swapChain: SwapChain)
+
+	/**
+	 * Called before each frame to update the ubo
+	 */
 	abstract fun update(currentImg: Int, swapChain: SwapChain)
+
+	/**
+	 * Called when the program is closing and free's memory
+	 */
 	abstract fun free()
+
+	/**
+	 * Gets the size of the ubo
+	 */
+	abstract fun getSize(): Int
+
+	/**
+	 * Gets an list of pointers to ubo's
+	 */
 	abstract fun getUniformBuffers(): List<Long>
 
 	@Deprecated("Bad")

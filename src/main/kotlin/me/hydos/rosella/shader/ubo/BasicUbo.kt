@@ -4,12 +4,14 @@ import me.hydos.rosella.device.Device
 import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.createBuffer
+import me.hydos.rosella.util.sizeof
+import org.joml.Matrix4f
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
 import java.util.function.Consumer
 
-class BasicUbo(val device: Device, val memory: MemMan) : Ubo(device, memory) {
+class BasicUbo(val device: Device, val memory: MemMan) : Ubo() {
 
 	var ubos: MutableList<Long> = ArrayList()
 	var ubosMem: MutableList<Long> = ArrayList()
@@ -22,7 +24,7 @@ class BasicUbo(val device: Device, val memory: MemMan) : Ubo(device, memory) {
 			val pBufferMemory = stack.mallocLong(1)
 			for (i in swapChain.swapChainImages.indices) {
 				createBuffer(
-					LegacyUbo.SIZEOF,
+					getSize(),
 					VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 					VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 					pBuffer,
@@ -53,12 +55,12 @@ class BasicUbo(val device: Device, val memory: MemMan) : Ubo(device, memory) {
 				device.device,
 				ubosMem[currentImg],
 				0,
-				LegacyUbo.SIZEOF.toLong(),
+				getSize().toLong(),
 				0,
 				data
 			)
 			run {
-				copyLegacyUboIntoMemory(data.getByteBuffer(0, LegacyUbo.SIZEOF), ubo)
+				copyLegacyUboIntoMemory(data.getByteBuffer(0, getSize()), ubo)
 			}
 			VK10.vkUnmapMemory(device.device, ubosMem[currentImg])
 		}
@@ -72,6 +74,10 @@ class BasicUbo(val device: Device, val memory: MemMan) : Ubo(device, memory) {
 				uboMemory!!, null
 			)
 		})
+	}
+
+	override fun getSize(): Int {
+		return 3 * sizeof(Matrix4f::class)
 	}
 
 	override fun getUniformBuffers(): List<Long> {

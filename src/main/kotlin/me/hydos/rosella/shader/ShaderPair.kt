@@ -4,7 +4,6 @@ import me.hydos.rosella.device.Device
 import me.hydos.rosella.material.Material
 import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.shader.ubo.BasicUbo
-import me.hydos.rosella.shader.ubo.LegacyUbo
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.ok
@@ -129,7 +128,7 @@ class ShaderPair(
 
 			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
 				.offset(0)
-				.range(LegacyUbo.SIZEOF.toLong())
+				.range(ubo.getSize().toLong())
 
 			val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
 				.imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)

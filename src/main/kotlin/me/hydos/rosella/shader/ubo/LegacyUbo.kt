@@ -4,11 +4,6 @@ import org.joml.Matrix4f
 
 @Deprecated("This is bad. dont use thank")
 class LegacyUbo {
-	companion object {
-		const val MAT4f_SIZE = 16 * java.lang.Float.BYTES
-		const val SIZEOF = 3 * MAT4f_SIZE
-	}
-
 	var model: Matrix4f = Matrix4f()
 	var view: Matrix4f = Matrix4f()
 	var proj: Matrix4f = Matrix4f()
