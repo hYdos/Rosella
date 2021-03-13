@@ -2,8 +2,8 @@ package me.hydos.rosella.shader.ubo
 
 import org.joml.Matrix4f
 
-
-class ModelUbo {
+@Deprecated("This is bad. dont use thank")
+class LegacyUbo {
 	companion object {
 		const val MAT4f_SIZE = 16 * java.lang.Float.BYTES
 		const val SIZEOF = 3 * MAT4f_SIZE

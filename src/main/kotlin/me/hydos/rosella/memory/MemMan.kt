@@ -3,10 +3,7 @@ package me.hydos.rosella.memory
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.model.Vertex
-import me.hydos.rosella.shader.ubo.ModelPushConstant
-import me.hydos.rosella.shader.ubo.ModelUbo
-import me.hydos.rosella.util.alignas
-import me.hydos.rosella.util.alignof
+import me.hydos.rosella.shader.pushconstant.ModelPushConstant
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
@@ -175,16 +172,6 @@ fun memcpy(buffer: ByteBuffer, indices: ArrayList<Int>) {
 		buffer.putInt(index)
 	}
 	buffer.rewind()
-}
-
-/**
- * Copies an UBO(Uniform Buffer Object) into the specified buffer
- */
-fun memcpy(buffer: ByteBuffer, ubo: ModelUbo) {
-	val mat4Size = 16 * java.lang.Float.BYTES
-	ubo.model[0, buffer]
-	ubo.view.get(alignas(mat4Size, alignof(ubo.view)), buffer)
-	ubo.proj.get(alignas(mat4Size * 2, alignof(ubo.view)), buffer)
 }
 
 /**

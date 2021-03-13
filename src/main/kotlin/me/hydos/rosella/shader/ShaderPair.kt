@@ -2,14 +2,14 @@ package me.hydos.rosella.shader
 
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.material.Material
-import me.hydos.rosella.memory.memcpy
-import me.hydos.rosella.shader.ubo.ModelUbo
+import me.hydos.rosella.memory.MemMan
+import me.hydos.rosella.shader.ubo.BasicUbo
+import me.hydos.rosella.shader.ubo.LegacyUbo
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.ok
 import me.hydos.rosella.util.sizeof
 import org.joml.Vector3f
-import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
@@ -19,8 +19,10 @@ class ShaderPair(
 	val vertexShader: Shader,
 	val fragmentShader: Shader,
 	val device: Device,
+	val memory: MemMan,
 	vararg var poolObjects: PoolObjType
 ) {
+	var ubo = BasicUbo(device, memory)
 
 	var uniformBuffers: MutableList<Long> = ArrayList()
 	var uniformBuffersMemory: MutableList<Long> = ArrayList()
@@ -32,33 +34,8 @@ class ShaderPair(
 	var descriptorSetLayout: Long = 0
 	var descriptorSets: MutableList<Long> = ArrayList()
 
-	fun updateUbo(currentImage: Int, swapchain: SwapChain) {
-		MemoryStack.stackPush().use {
-			val ubo = ModelUbo()
-			ubo.model.rotate((GLFW.glfwGetTime() * Math.toRadians(90.0)).toFloat(), 0.0f, 0.0f, 1.0f)
-			ubo.view.lookAt(2.0f, -40.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)
-			ubo.proj.perspective(
-				Math.toRadians(45.0).toFloat(),
-				swapchain.swapChainExtent!!.width().toFloat() / swapchain.swapChainExtent!!.height().toFloat(),
-				0.1f,
-				1000.0f
-			)
-			ubo.proj.m11(ubo.proj.m11() * -1)
-
-			val data = it.mallocPointer(1)
-			vkMapMemory(
-				device.device,
-				uniformBuffersMemory[currentImage],
-				0,
-				ModelUbo.SIZEOF.toLong(),
-				0,
-				data
-			)
-			run {
-				memcpy(data.getByteBuffer(0, ModelUbo.SIZEOF), ubo)
-			}
-			vkUnmapMemory(device.device, uniformBuffersMemory[currentImage])
-		}
+	fun updateUbo(currentImage: Int, swapChain: SwapChain) {
+		ubo.update(currentImage, swapChain, uniformBuffersMemory)
 	}
 
 	fun createUniformBuffers(swapchain: SwapChain, device: Device) {
@@ -69,7 +46,7 @@ class ShaderPair(
 			val pBufferMemory = stack.mallocLong(1)
 			for (i in swapchain.swapChainImages.indices) {
 				createBuffer(
-					ModelUbo.SIZEOF,
+					LegacyUbo.SIZEOF,
 					VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 					pBuffer,
@@ -173,7 +150,7 @@ class ShaderPair(
 
 			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
 				.offset(0)
-				.range(ModelUbo.SIZEOF.toLong())
+				.range(LegacyUbo.SIZEOF.toLong())
 
 			val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
 				.imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)

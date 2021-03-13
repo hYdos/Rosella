@@ -3,6 +3,7 @@ package me.hydos.rosella.material
 import me.hydos.rosella.RenderPass
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
+import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.model.Vertex
 import me.hydos.rosella.shader.Shader
 import me.hydos.rosella.shader.ShaderPair
@@ -39,11 +40,12 @@ class Material(
 	var textureImageView: Long = 0
 	var textureSampler: Long = 0
 
-	fun loadShaders(device: Device) {
+	fun loadShaders(device: Device, memMan: MemMan) {
 		this.shader = ShaderPair(
 			Shader(vertexShaderFile),
 			Shader(fragmentShaderFile),
 			device,
+			memMan,
 			ShaderPair.PoolObjType.UBO,
 			ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
 		)

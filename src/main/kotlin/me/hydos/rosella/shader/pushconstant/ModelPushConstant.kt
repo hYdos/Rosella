@@ -1,4 +1,4 @@
-package me.hydos.rosella.shader.ubo
+package me.hydos.rosella.shader.pushconstant
 
 import org.joml.Vector3f
 

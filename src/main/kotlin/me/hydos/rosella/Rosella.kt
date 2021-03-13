@@ -7,8 +7,7 @@ import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.memory.memcpy
 import me.hydos.rosella.model.Model
 import me.hydos.rosella.resource.ResourceLoader
-import me.hydos.rosella.shader.Shader
-import me.hydos.rosella.shader.ubo.ModelPushConstant
+import me.hydos.rosella.shader.pushconstant.ModelPushConstant
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.findMemoryType
 import me.hydos.rosella.util.findQueueFamilies
@@ -90,7 +89,7 @@ class Rosella(
 
 	private fun createModels() {
 		model.create(this)
-		model.material.loadShaders(device)
+		model.material.loadShaders(device, memMan)
 		model.material.loadTextures(device, this)
 		model.material.shader.createDescriptorSetLayout()
 	}
@@ -111,9 +110,6 @@ class Rosella(
 	}
 
 	private fun createFullSwapChain() {
-		//TODO: for shaders
-		var shaderVariables: MutableMap<Shader.ValueType, Int> = HashMap()
-
 		this.swapChain = SwapChain(this, device.device, device.physicalDevice, surface)
 		this.renderPass = RenderPass(device, swapChain, this)
 		createImgViews()
