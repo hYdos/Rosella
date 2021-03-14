@@ -5,6 +5,7 @@ import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.model.Vertex
+import me.hydos.rosella.resource.Resource
 import me.hydos.rosella.shader.Shader
 import me.hydos.rosella.shader.ShaderPair
 import me.hydos.rosella.swapchain.SwapChain
@@ -24,9 +25,9 @@ import java.nio.LongBuffer
  * guaranteed to change once and a while
  */
 class Material(
-	private val vertexShaderFile: String,
-	private val fragmentShaderFile: String,
-	private val textureLocation: String? = null
+	private val vertexShaderFile: Resource,
+	private val fragmentShaderFile: Resource,
+	private val texture: Resource
 ) {
 
 	var pipelineLayout: Long = 0
@@ -297,15 +298,14 @@ class Material(
 
 	private fun createTextureImage(device: Device, engine: Rosella) {
 		MemoryStack.stackPush().use { stack ->
-			val filename =
-				ClassLoader.getSystemClassLoader().getResource(textureLocation).toExternalForm().replace("file:", "")
+			val file = texture.readAllBytes(true)
 			val pWidth = stack.mallocInt(1)
 			val pHeight = stack.mallocInt(1)
 			val pChannels = stack.mallocInt(1)
-			val pixels: ByteBuffer? = STBImage.stbi_load(filename, pWidth, pHeight, pChannels, STBImage.STBI_rgb_alpha)
+			val pixels: ByteBuffer? = STBImage.stbi_load_from_memory(file, pWidth, pHeight, pChannels, STBImage.STBI_rgb_alpha)
 			val imageSize = (pWidth[0] * pHeight[0] * 4).toLong()
 			if (pixels == null) {
-				throw RuntimeException("Failed to load texture image $filename")
+				throw RuntimeException("Failed to load texture image ${texture.identifier}")
 			}
 			val pStagingBuffer = stack.mallocLong(1)
 			val pStagingBufferMemory = stack.mallocLong(1)

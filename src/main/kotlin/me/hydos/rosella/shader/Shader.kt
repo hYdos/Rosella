@@ -1,3 +1,5 @@
 package me.hydos.rosella.shader
 
-class Shader(val shaderLocation: String)
+import me.hydos.rosella.resource.Resource
+
+class Shader(val shaderLocation: Resource)
