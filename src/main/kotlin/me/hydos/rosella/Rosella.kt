@@ -85,7 +85,7 @@ class Rosella(
 
 		this.createCmdPool(this)
 		createModels()
-		createFullSwapChain()
+		createSwapChain()
 
 		glfwShowWindow(screen.windowPtr)
 		state = State.READY
@@ -127,7 +127,7 @@ class Rosella(
 		return commandBuffer
 	}
 
-	private fun createFullSwapChain() {
+	private fun createSwapChain() {
 		this.swapChain = SwapChain(this, device.device, device.physicalDevice, surface)
 		this.renderPass = RenderPass(device, swapChain, this)
 		createImgViews()
@@ -135,10 +135,7 @@ class Rosella(
 		depthBuffer.createDepthResources(this)
 		createFramebuffers()
 		createProjAndView()
-		model.material.shader.createUniformBuffers(swapChain)
-		model.material.shader.createPushConstantBuffer() //TODO
-		model.material.shader.createPool(swapChain)
-		model.material.shader.createDescriptorSets(swapChain, model.material)
+		model.material.initializeShader(this)
 		createCommandBuffers(swapChain, renderPass)
 		createSyncObjects()
 	}
@@ -670,7 +667,7 @@ class Rosella(
 
 		vkDeviceWaitIdle(device.device)
 		freeSwapChain()
-		createFullSwapChain()
+		createSwapChain()
 		createProjAndView()
 	}
 

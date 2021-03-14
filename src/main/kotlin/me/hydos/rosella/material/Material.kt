@@ -394,4 +394,11 @@ class Material(
 			VK10.vkFreeCommandBuffers(device.device, engine.commandPool, commandBuffer)
 		}
 	}
+
+	fun initializeShader(swapChain: SwapChain) {
+		shader.createUniformBuffers(swapChain)
+		shader.createPushConstantBuffer()
+		shader.createPool(swapChain)
+		shader.createDescriptorSets(swapChain, this)
+	}
 }
