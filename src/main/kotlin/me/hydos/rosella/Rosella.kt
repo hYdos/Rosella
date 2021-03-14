@@ -41,7 +41,7 @@ class Rosella(
 
 	var depthBuffer = DepthBuffer()
 
-	var model: Model = Model("models/fact_core.gltf")
+	var models = ArrayList<Model>()
 
 	var view: Matrix4f = Matrix4f()
 	var proj: Matrix4f = Matrix4f()
@@ -64,6 +64,10 @@ class Rosella(
 	var queues: Queues = Queues()
 
 	init {
+		//TODO: for testing. make this be specified by the program
+		models.add(Model("models/fact_core.gltf", "textures/fact_core_0.png"))
+		models.add(Model("models/chalet.obj", "textures/chalet.jpg"))
+
 		state = State.STARTING
 
 		// Setup Validation Layers
@@ -106,10 +110,12 @@ class Rosella(
 	}
 
 	private fun createModels() {
-		model.create(this)
-		model.material.loadShaders(device, memMan)
-		model.material.loadTextures(device, this)
-		model.material.shader.createDescriptorSetLayout()
+		for (model in models) {
+			model.create(this)
+			model.material.loadShaders(device, memMan)
+			model.material.loadTextures(device, this)
+			model.material.shader.createDescriptorSetLayout()
+		}
 	}
 
 	fun beginCmdBuffer(stack: MemoryStack, pCommandBuffer: PointerBuffer): VkCommandBuffer {
@@ -131,11 +137,15 @@ class Rosella(
 		this.swapChain = SwapChain(this, device.device, device.physicalDevice, surface)
 		this.renderPass = RenderPass(device, swapChain, this)
 		createImgViews()
-		model.material.createPipeline(device, swapChain, renderPass, model.material.shader.descriptorSetLayout)
+		for (model in models) {
+			model.material.createPipeline(device, swapChain, renderPass, model.material.shader.descriptorSetLayout)
+		}
 		depthBuffer.createDepthResources(this)
 		createFramebuffers()
 		createProjAndView()
-		model.material.initializeShader(swapChain)
+		for (model in models) {
+			model.material.initializeShader(swapChain)
+		}
 		createCommandBuffers(swapChain, renderPass)
 		createSyncObjects()
 	}
@@ -244,58 +254,60 @@ class Rosella(
 				// Draw stuff
 				vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE)
 				run {
-					vkCmdBindPipeline(
-						commandBuffer,
-						VK_PIPELINE_BIND_POINT_GRAPHICS,
-						model.material.graphicsPipeline
-					)
-					val offsets = it.longs(0)
+					for (model in models) {
+						vkCmdBindPipeline(
+							commandBuffer,
+							VK_PIPELINE_BIND_POINT_GRAPHICS,
+							model.material.graphicsPipeline
+						)
+						val offsets = it.longs(0)
 
-					val vertexBuffers = it.longs(model.vertexBuffer)
-					vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets)
-					vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32)
-					vkCmdBindDescriptorSets(
-						commandBuffer,
-						VK_PIPELINE_BIND_POINT_GRAPHICS,
-						model.material.pipelineLayout,
-						0,
-						it.longs(model.material.shader.descriptorSets[i]),
-						null
-					)
+						val vertexBuffers = it.longs(model.vertexBuffer)
+						vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets)
+						vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32)
+						vkCmdBindDescriptorSets(
+							commandBuffer,
+							VK_PIPELINE_BIND_POINT_GRAPHICS,
+							model.material.pipelineLayout,
+							0,
+							it.longs(model.material.shader.descriptorSets[i]),
+							null
+						)
 
-					//TODO: push constants are the way to make multiple objects work. Valoghese remind me after i get them working to make multiple models work. :)
-					// Load the push constant into memory
-					val data = it.mallocPointer(1)
-					val modelPushConstant = ModelPushConstant()
-					modelPushConstant.position.add(0f, 1f, 0f)
-					val size = sizeof(modelPushConstant.position)
-					vkMapMemory(
-						device.device,
-						model.material.shader.pushConstantBuffersMemory[0], // Hardcoded to 0 for the 1 model
-						0,
-						size.toLong(),
-						0,
-						data
-					)
-					run {
-						memcpy(data.getByteBuffer(0, size), modelPushConstant)
+						//TODO: push constants are the way to make multiple objects work. Valoghese remind me after i get them working to make multiple models work. :)
+						// Load the push constant into memory
+						val data = it.mallocPointer(1)
+						val modelPushConstant = ModelPushConstant()
+						modelPushConstant.position.add(0f, 1f, 0f)
+						val size = sizeof(modelPushConstant.position)
+						vkMapMemory(
+							device.device,
+							model.material.shader.pushConstantBuffersMemory[0], // Hardcoded to 0 for the 1 model
+							0,
+							size.toLong(),
+							0,
+							data
+						)
+						run {
+							memcpy(data.getByteBuffer(0, size), modelPushConstant)
+						}
+						vkUnmapMemory(
+							device.device,
+							model.material.shader.pushConstantBuffersMemory[0]
+						)// Hardcoded to 0 for the 1 model
+
+						val buffer = it.longs(1)
+						buffer.put(model.material.shader.pushConstantBuffers[0])
+						vkCmdPushConstants(
+							commandBuffer,
+							model.material.pipelineLayout,
+							VK_SHADER_STAGE_VERTEX_BIT,
+							0,
+							data.getByteBuffer(0, size)
+						)
+
+						vkCmdDrawIndexed(commandBuffer, model.indices.size, 1, 0, 0, 0)
 					}
-					vkUnmapMemory(
-						device.device,
-						model.material.shader.pushConstantBuffersMemory[0]
-					)// Hardcoded to 0 for the 1 model
-
-					val buffer = it.longs(1)
-					buffer.put(model.material.shader.pushConstantBuffers[0])
-					vkCmdPushConstants(
-						commandBuffer,
-						model.material.pipelineLayout,
-						VK_SHADER_STAGE_VERTEX_BIT,
-						0,
-						data.getByteBuffer(0, size)
-					)
-
-					vkCmdDrawIndexed(commandBuffer, model.indices.size, 1, 0, 0, 0)
 				}
 				vkCmdEndRenderPass(commandBuffer)
 				vkEndCommandBuffer(commandBuffer).ok()
@@ -357,7 +369,7 @@ class Rosella(
 			} else {
 				throw IllegalArgumentException("Unsupported layout transition")
 			}
-			val commandBuffer: VkCommandBuffer = model.material.beginSingleTimeCommands(this)
+			val commandBuffer: VkCommandBuffer = models[0].material.beginSingleTimeCommands(this)
 			vkCmdPipelineBarrier(
 				commandBuffer,
 				sourceStage, destinationStage,
@@ -366,7 +378,7 @@ class Rosella(
 				null,
 				barrier
 			)
-			model.material.endSingleTimeCommands(commandBuffer, device, this)
+			models[0].material.endSingleTimeCommands(commandBuffer, device, this)
 		}
 	}
 
@@ -502,7 +514,9 @@ class Rosella(
 	fun free() {
 		this.state = State.STOPPING
 
-		model.destroy(memMan)
+		for (model in models) {
+			model.free(memMan)
+		}
 
 		freeSwapChain()
 
@@ -620,7 +634,9 @@ class Rosella(
 
 			val imageIndex = pImageIndex[0]
 
-			model.material.shader.updateUbo(imageIndex, swapChain, this)
+			for (model in models) {
+				model.material.shader.updateUbo(imageIndex, swapChain, this)
+			}
 
 			if (imagesInFlight!!.containsKey(imageIndex)) {
 				vkWaitForFences(device.device, imagesInFlight!![imageIndex]!!.fence(), true, UINT64_MAX)
@@ -672,12 +688,15 @@ class Rosella(
 	}
 
 	private fun freeSwapChain() {
-		vkDestroyDescriptorPool(device.device, model.material.shader.descriptorPool, null)
+		for (model in models) {
+			vkDestroyDescriptorPool(device.device, model.material.shader.descriptorPool, null)
+			model.material.shader.free()
+			model.material.free(device, this)
+		}
 
 		// Free Depth Buffer
 		depthBuffer.free(device)
 
-		model.material.shader.free()
 
 		swapChain.swapChainFramebuffers.forEach { framebuffer ->
 			vkDestroyFramebuffer(
@@ -686,7 +705,6 @@ class Rosella(
 				null
 			)
 		}
-		model.material.free(device, this)
 		vkDestroyRenderPass(device.device, renderPass.renderPass, null)
 		swapChain.swapChainImageViews.forEach { imageView -> vkDestroyImageView(device.device, imageView, null) }
 		vkDestroySwapchainKHR(device.device, swapChain.swapChain, null)

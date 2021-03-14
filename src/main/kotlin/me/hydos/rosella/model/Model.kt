@@ -11,7 +11,7 @@ import java.io.File
 import java.lang.ClassLoader.getSystemClassLoader
 
 
-class Model(private val modelLocation: String) {
+class Model(private val modelLocation: String, textureLoc: String) {
 
 	private var vertices: ArrayList<Vertex> = ArrayList()
 	var indices: ArrayList<Int> = ArrayList()
@@ -20,9 +20,9 @@ class Model(private val modelLocation: String) {
 
 	var indexBuffer: Long = 0
 
-	var material: Material = Material("shaders/base.v.glsl", "shaders/base.f.glsl", "textures/fact_core_0.png")
+	var material: Material = Material("shaders/base.v.glsl", "shaders/base.f.glsl", textureLoc)
 
-	fun destroy(memMan: MemMan) {
+	fun free(memMan: MemMan) {
 		vmaFreeMemory(memMan.allocator, vertexBuffer)
 		vmaFreeMemory(memMan.allocator, indexBuffer)
 	}
