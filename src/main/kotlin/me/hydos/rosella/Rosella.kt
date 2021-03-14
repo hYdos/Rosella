@@ -135,7 +135,7 @@ class Rosella(
 		depthBuffer.createDepthResources(this)
 		createFramebuffers()
 		createProjAndView()
-		model.material.initializeShader(this)
+		model.material.initializeShader(swapChain)
 		createCommandBuffers(swapChain, renderPass)
 		createSyncObjects()
 	}
