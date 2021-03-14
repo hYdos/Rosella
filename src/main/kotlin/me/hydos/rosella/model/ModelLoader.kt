@@ -1,5 +1,6 @@
 package me.hydos.rosella.model
 
+import me.hydos.rosella.resource.Resource
 import org.joml.Vector2f
 import org.joml.Vector2fc
 import org.joml.Vector3f
@@ -9,21 +10,20 @@ import org.lwjgl.assimp.AINode
 import org.lwjgl.assimp.AIScene
 import org.lwjgl.assimp.AIVector3D
 import org.lwjgl.assimp.Assimp.aiGetErrorString
-import org.lwjgl.assimp.Assimp.aiImportFile
-import java.io.File
 import java.util.*
 import java.util.Objects.requireNonNull
 import java.util.logging.Logger
 
-
 object ModelLoader {
-	fun loadModel(file: File, flags: Int): SimpleModel {
-		aiImportFile(file.absolutePath, flags).use { scene ->
+	fun loadModel(resource: Resource, flags: Int): SimpleModel {
+		loadScene(resource, flags).use { scene ->
 			val logger: Logger = Logger.getLogger(ModelLoader::class.java.simpleName)
-			logger.info("Loading model " + file.path)
+			logger.info("Loading model " + resource.identifier)
+
 			if (scene?.mRootNode() == null) {
 				throw RuntimeException("Could not load model " + aiGetErrorString())
 			}
+
 			val model = SimpleModel()
 			val startTime = System.nanoTime()
 			processNode(scene.mRootNode()!!, scene, model)
