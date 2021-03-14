@@ -42,6 +42,10 @@ class BasicUbo(val device: Device, val memory: MemMan) : Ubo() {
 	}
 
 	override fun update(currentImg: Int, swapChain: SwapChain, view: Matrix4f, proj: Matrix4f) {
+		if(ubosMem.size == 0) { //no models exist tm
+			create(swapChain)
+		}
+
 		MemoryStack.stackPush().use {
 			model.rotate((GLFW.glfwGetTime() * Math.toRadians(90.0)).toFloat(), 0.0f, 0.0f, 1.0f)
 

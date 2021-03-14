@@ -26,7 +26,7 @@ fun compileShader(filename: String, source: String, shaderType: ShaderType): Spi
 
 	if (shaderc_result_get_compilation_status(result) != shaderc_compilation_status_success) {
 		throw RuntimeException(
-				"Failed to compile shader ${filename}into SPIR-V: ${shaderc_result_get_error_message(result)}"
+				"Failed to compile shader $filename into SPIR-V: ${shaderc_result_get_error_message(result)}"
 		)
 	}
 

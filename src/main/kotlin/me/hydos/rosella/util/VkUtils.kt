@@ -109,6 +109,25 @@ fun createBuffer(
 	}
 }
 
+fun beginSingleTimeCommands(engine: Rosella): VkCommandBuffer {
+	MemoryStack.stackPush().use { stack ->
+		val pCommandBuffer = stack.mallocPointer(1)
+		return engine.beginCmdBuffer(stack, pCommandBuffer)
+	}
+}
+
+fun endSingleTimeCommands(commandBuffer: VkCommandBuffer, device: Device, engine: Rosella) {
+	MemoryStack.stackPush().use { stack ->
+		VK10.vkEndCommandBuffer(commandBuffer)
+		val submitInfo = VkSubmitInfo.callocStack(1, stack)
+			.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO)
+			.pCommandBuffers(stack.pointers(commandBuffer))
+		VK10.vkQueueSubmit(engine.queues.graphicsQueue, submitInfo, VK10.VK_NULL_HANDLE)
+		VK10.vkQueueWaitIdle(engine.queues.graphicsQueue)
+		VK10.vkFreeCommandBuffers(device.device, engine.commandPool, commandBuffer)
+	}
+}
+
 fun findQueueFamilies(device: VkPhysicalDevice, engine: Rosella): QueueFamilyIndices {
 	val indices = QueueFamilyIndices()
 

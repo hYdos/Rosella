@@ -3,17 +3,15 @@ package me.hydos.rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.Queues
 import me.hydos.rosella.io.Screen
+import me.hydos.rosella.material.Material
 import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.memory.memcpy
 import me.hydos.rosella.model.Model
-import me.hydos.rosella.resource.Global
 import me.hydos.rosella.resource.Identifier
+import me.hydos.rosella.shader.ShaderPair
 import me.hydos.rosella.shader.pushconstant.ModelPushConstant
 import me.hydos.rosella.swapchain.SwapChain
-import me.hydos.rosella.util.findMemoryType
-import me.hydos.rosella.util.findQueueFamilies
-import me.hydos.rosella.util.ok
-import me.hydos.rosella.util.sizeof
+import me.hydos.rosella.util.*
 import org.joml.Matrix4f
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFW.*
@@ -42,6 +40,8 @@ class Rosella(
 	var depthBuffer = DepthBuffer()
 
 	var models = ArrayList<Model>()
+	var materials = HashMap<Identifier, Material>()
+	var shaders = HashMap<Identifier, ShaderPair>()
 
 	var view: Matrix4f = Matrix4f()
 	var proj: Matrix4f = Matrix4f()
@@ -64,21 +64,6 @@ class Rosella(
 	var queues: Queues = Queues()
 
 	init {
-		//TODO: for testing. make this be specified by the program
-		models.add(
-			Model(
-				Global.ensureResource(Identifier("rosella", "models/fact_core.gltf")),
-				Global.ensureResource(Identifier("rosella", "textures/fact_core_0.png"))
-			)
-		)
-
-		models.add(
-			Model(
-				Global.ensureResource(Identifier("rosella", "models/chalet.obj")),
-				Global.ensureResource(Identifier("rosella", "textures/chalet.jpg"))
-			)
-		)
-
 		state = State.STARTING
 
 		// Setup Validation Layers
@@ -99,7 +84,6 @@ class Rosella(
 		this.memMan = MemMan(device, vulkanInstance)
 
 		this.createCmdPool(this)
-		createModels()
 		createSwapChain()
 
 		glfwShowWindow(screen.windowPtr)
@@ -120,13 +104,8 @@ class Rosella(
 		proj.m11(proj.m11() * -1)
 	}
 
-	private fun createModels() {
-		for (model in models) {
-			model.create(this)
-			model.material.loadShaders(device, memMan)
-			model.material.loadTextures(device, this)
-			model.material.shader.createDescriptorSetLayout()
-		}
+	private fun createModel(model: Model) {
+		model.create(this)
 	}
 
 	fun beginCmdBuffer(stack: MemoryStack, pCommandBuffer: PointerBuffer): VkCommandBuffer {
@@ -148,8 +127,8 @@ class Rosella(
 		this.swapChain = SwapChain(this, device.device, device.physicalDevice, surface)
 		this.renderPass = RenderPass(device, swapChain, this)
 		createImgViews()
-		for (model in models) {
-			model.material.createPipeline(device, swapChain, renderPass, model.material.shader.descriptorSetLayout)
+		for (material in materials.values) {
+			material.createPipeline(device, swapChain, renderPass, material.shader.descriptorSetLayout)
 		}
 		depthBuffer.createDepthResources(this)
 		createFramebuffers()
@@ -157,7 +136,7 @@ class Rosella(
 		for (model in models) {
 			model.material.initializeShader(swapChain)
 		}
-		createCommandBuffers(swapChain, renderPass)
+		createCommandBuffers(renderPass)
 		createSyncObjects()
 	}
 
@@ -208,13 +187,12 @@ class Rosella(
 	}
 
 	fun createCommandBuffers(
-		swapchain: SwapChain,
 		renderPass: RenderPass
 	) {
 		/**
 		 * Create the Command Buffers
 		 */
-		val commandBuffersCount: Int = swapchain.swapChainFramebuffers.size
+		val commandBuffersCount: Int = swapChain.swapChainFramebuffers.size
 
 		commandBuffers = java.util.ArrayList(commandBuffersCount)
 
@@ -247,7 +225,7 @@ class Rosella(
 
 			val renderArea = VkRect2D.callocStack(it)
 				.offset(VkOffset2D.callocStack(it).set(0, 0))
-				.extent(swapchain.swapChainExtent!!)
+				.extent(swapChain.swapChainExtent!!)
 
 			renderPassInfo.renderArea(renderArea)
 
@@ -260,7 +238,7 @@ class Rosella(
 			for (i in 0 until commandBuffersCount) {
 				val commandBuffer = commandBuffers[i]
 				vkBeginCommandBuffer(commandBuffer, beginInfo).ok()
-				renderPassInfo.framebuffer(swapchain.swapChainFramebuffers[i])
+				renderPassInfo.framebuffer(swapChain.swapChainFramebuffers[i])
 
 				// Draw stuff
 				vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE)
@@ -380,7 +358,7 @@ class Rosella(
 			} else {
 				throw IllegalArgumentException("Unsupported layout transition")
 			}
-			val commandBuffer: VkCommandBuffer = models[0].material.beginSingleTimeCommands(this)
+			val commandBuffer: VkCommandBuffer = beginSingleTimeCommands(this)
 			vkCmdPipelineBarrier(
 				commandBuffer,
 				sourceStage, destinationStage,
@@ -389,7 +367,7 @@ class Rosella(
 				null,
 				barrier
 			)
-			models[0].material.endSingleTimeCommands(commandBuffer, device, this)
+			endSingleTimeCommands(commandBuffer, device, this)
 		}
 	}
 
@@ -708,7 +686,6 @@ class Rosella(
 		// Free Depth Buffer
 		depthBuffer.free(device)
 
-
 		swapChain.swapChainFramebuffers.forEach { framebuffer ->
 			vkDestroyFramebuffer(
 				device.device,
@@ -721,6 +698,29 @@ class Rosella(
 		vkDestroySwapchainKHR(device.device, swapChain.swapChain, null)
 	}
 
+	fun addModel(model: Model) {
+		model.loadMaterial(this)
+		models.add(model)
+		model.create(this)
+	}
+
+	fun registerMaterial(identifier: Identifier, material: Material) {
+		materials[identifier] = material
+	}
+
+	fun registerShader(identifier: Identifier, shader: ShaderPair) {
+		shaders[identifier] = shader
+	}
+
+	fun reloadMaterials() {
+		for (material in materials.values) {
+			material.loadShaders(this)
+			material.loadTextures(device, this)
+			material.shader.createDescriptorSetLayout()
+			material.createPipeline(device, swapChain, renderPass, material.shader.descriptorSetLayout)
+		}
+		recreateSwapChain()
+	}
 
 	enum class State {
 		STARTING, READY, STOPPING

@@ -3,10 +3,9 @@ package me.hydos.rosella.material
 import me.hydos.rosella.RenderPass
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
-import me.hydos.rosella.memory.MemMan
 import me.hydos.rosella.model.Vertex
+import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.resource.Resource
-import me.hydos.rosella.shader.Shader
 import me.hydos.rosella.shader.ShaderPair
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.*
@@ -25,9 +24,8 @@ import java.nio.LongBuffer
  * guaranteed to change once and a while
  */
 class Material(
-	private val vertexShaderFile: Resource,
-	private val fragmentShaderFile: Resource,
-	private val texture: Resource
+	private val texture: Resource,
+	private val shaderId: Identifier
 ) {
 
 	var pipelineLayout: Long = 0
@@ -41,15 +39,10 @@ class Material(
 	var textureImageView: Long = 0
 	var textureSampler: Long = 0
 
-	fun loadShaders(device: Device, memMan: MemMan) {
-		this.shader = ShaderPair(
-			Shader(vertexShaderFile),
-			Shader(fragmentShaderFile),
-			device,
-			memMan,
-			ShaderPair.PoolObjType.UBO,
-			ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
-		)
+	fun loadShaders(engine: Rosella) {
+		val retrievedShader = engine.shaders[shaderId]
+			?: error("The shader $shaderId couldn't be found. (Are you registering it?)")
+		this.shader = retrievedShader
 	}
 
 	fun loadTextures(device: Device, engine: Rosella) {
@@ -67,10 +60,9 @@ class Material(
 		renderPass: RenderPass,
 		descriptorSetLayout: Long
 	) {
-		//TODO: optimise pipeline creation. could make it work better in some ways. i should write this stuff down
 		MemoryStack.stackPush().use {
-			val vertShaderSPIRV: SpirV = compileShaderFile(vertexShaderFile, ShaderType.VERTEX_SHADER)
-			val fragShaderSPIRV: SpirV = compileShaderFile(fragmentShaderFile, ShaderType.FRAGMENT_SHADER)
+			val vertShaderSPIRV: SpirV = compileShaderFile(shader.vertexShader.shaderLocation, ShaderType.VERTEX_SHADER)
+			val fragShaderSPIRV: SpirV = compileShaderFile(shader.fragmentShader.shaderLocation, ShaderType.FRAGMENT_SHADER)
 			val vertShaderModule = createShader(vertShaderSPIRV.bytecode(), device)
 			val fragShaderModule = createShader(fragShaderSPIRV.bytecode(), device)
 			val entryPoint: ByteBuffer = it.UTF8("main")
@@ -302,7 +294,8 @@ class Material(
 			val pWidth = stack.mallocInt(1)
 			val pHeight = stack.mallocInt(1)
 			val pChannels = stack.mallocInt(1)
-			val pixels: ByteBuffer? = STBImage.stbi_load_from_memory(file, pWidth, pHeight, pChannels, STBImage.STBI_rgb_alpha)
+			val pixels: ByteBuffer? =
+				STBImage.stbi_load_from_memory(file, pWidth, pHeight, pChannels, STBImage.STBI_rgb_alpha)
 			val imageSize = (pWidth[0] * pHeight[0] * 4).toLong()
 			if (pixels == null) {
 				throw RuntimeException("Failed to load texture image ${texture.identifier}")
@@ -374,25 +367,6 @@ class Material(
 		src.limit(size.toInt())
 		dst.put(src)
 		src.limit(src.capacity()).rewind()
-	}
-
-	fun beginSingleTimeCommands(engine: Rosella): VkCommandBuffer {
-		MemoryStack.stackPush().use { stack ->
-			val pCommandBuffer = stack.mallocPointer(1)
-			return engine.beginCmdBuffer(stack, pCommandBuffer)
-		}
-	}
-
-	fun endSingleTimeCommands(commandBuffer: VkCommandBuffer, device: Device, engine: Rosella) {
-		MemoryStack.stackPush().use { stack ->
-			VK10.vkEndCommandBuffer(commandBuffer)
-			val submitInfo = VkSubmitInfo.callocStack(1, stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO)
-				.pCommandBuffers(stack.pointers(commandBuffer))
-			VK10.vkQueueSubmit(engine.queues.graphicsQueue, submitInfo, VK10.VK_NULL_HANDLE)
-			VK10.vkQueueWaitIdle(engine.queues.graphicsQueue)
-			VK10.vkFreeCommandBuffers(device.device, engine.commandPool, commandBuffer)
-		}
 	}
 
 	fun initializeShader(swapChain: SwapChain) {

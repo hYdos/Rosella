@@ -3,7 +3,6 @@ package me.hydos.rosella.model
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.material.Material
 import me.hydos.rosella.memory.MemMan
-import me.hydos.rosella.resource.Global
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.resource.Resource
 import org.joml.Vector3f
@@ -12,7 +11,7 @@ import org.lwjgl.assimp.Assimp
 import org.lwjgl.util.vma.Vma.vmaFreeMemory
 
 
-class Model(private val model: Resource, texture: Resource) {
+class Model(private val model: Resource, private val materialIdentifier: Identifier) {
 
 	private var vertices: ArrayList<Vertex> = ArrayList()
 	var indices: ArrayList<Int> = ArrayList()
@@ -21,11 +20,13 @@ class Model(private val model: Resource, texture: Resource) {
 
 	var indexBuffer: Long = 0
 
-	var material: Material = Material(
-		Global.ensureResource(Identifier("rosella", "shaders/base.v.glsl")),
-		Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl")),
-		texture
-	)
+	lateinit var material: Material
+
+	fun loadMaterial(engine: Rosella) {
+		val retrievedMaterial = engine.materials[materialIdentifier]
+			?: error("The material $materialIdentifier couldn't be found. (Are you registering it?)")
+		material = retrievedMaterial
+	}
 
 	fun free(memMan: MemMan) {
 		vmaFreeMemory(memMan.allocator, vertexBuffer)
