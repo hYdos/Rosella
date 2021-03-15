@@ -4,21 +4,15 @@ import java.io.InputStream
 
 class ClassLoaderResourceLoader(private val loader: ClassLoader) : ResourceLoader {
 
-	override fun loadResource(id: Identifier): Resource? {
-		val stream = loader.getResourceAsStream(id.file)
+	override fun loadResource(id: Identifier): Resource {
+		return object : Resource {
+			override val identifier: Identifier
+				get() = id
 
-		return if (stream != null) {
-			object : Resource {
-				override val identifier: Identifier
-					get() = id
+			override val loader: ResourceLoader
+				get() = this@ClassLoaderResourceLoader
 
-				override val loader: ResourceLoader
-					get() = this@ClassLoaderResourceLoader
-
-				override fun openStream(): InputStream = stream
-			}
-		} else {
-			null
+			override fun openStream(): InputStream = this@ClassLoaderResourceLoader.loader.getResourceAsStream(id.file)
 		}
 	}
 }

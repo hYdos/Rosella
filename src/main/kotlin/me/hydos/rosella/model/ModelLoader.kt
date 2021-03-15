@@ -17,8 +17,8 @@ import java.util.logging.Logger
 object ModelLoader {
 	fun loadModel(resource: Resource, flags: Int): SimpleModel {
 		loadScene(resource, flags).use { scene ->
-			val logger: Logger = Logger.getLogger(ModelLoader::class.java.simpleName)
-			logger.info("Loading model " + resource.identifier)
+			Logger.getLogger(ModelLoader::class.java.simpleName)
+			println("Loading model " + resource.identifier)
 
 			if (scene?.mRootNode() == null) {
 				throw RuntimeException("Could not load model " + aiGetErrorString())
@@ -27,7 +27,7 @@ object ModelLoader {
 			val model = SimpleModel()
 			val startTime = System.nanoTime()
 			processNode(scene.mRootNode()!!, scene, model)
-			logger.info("mdl loaded in " + (System.nanoTime() - startTime) / 1e6 + "ms")
+			println("mdl loaded in " + (System.nanoTime() - startTime) / 1e6 + "ms")
 			return model
 		}
 	}

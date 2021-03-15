@@ -4,8 +4,6 @@ import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.Queues
 import me.hydos.rosella.io.Window
 import me.hydos.rosella.material.Material
-import me.hydos.rosella.util.memory.MemMan
-import me.hydos.rosella.util.memory.memcpy
 import me.hydos.rosella.model.Model
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.shader.ShaderPair
@@ -15,6 +13,8 @@ import me.hydos.rosella.swapchain.Frame
 import me.hydos.rosella.swapchain.RenderPass
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.*
+import me.hydos.rosella.util.memory.MemMan
+import me.hydos.rosella.util.memory.memcpy
 import org.joml.Matrix4f
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFW.*
@@ -701,7 +701,6 @@ class Rosella(
 		}
 		vkDestroyRenderPass(device.device, renderPass.renderPass, null)
 		swapChain.swapChainImageViews.forEach { imageView -> vkDestroyImageView(device.device, imageView, null) }
-		vkDestroySwapchainKHR(device.device, swapChain.swapChain, null)
 	}
 
 	fun addModel(model: Model) {
