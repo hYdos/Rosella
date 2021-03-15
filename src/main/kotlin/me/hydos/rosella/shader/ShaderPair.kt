@@ -3,10 +3,10 @@ package me.hydos.rosella.shader
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.material.Material
-import me.hydos.rosella.util.memory.MemMan
 import me.hydos.rosella.shader.ubo.BasicUbo
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.createBuffer
+import me.hydos.rosella.util.memory.MemMan
 import me.hydos.rosella.util.ok
 import me.hydos.rosella.util.sizeof
 import org.joml.Vector3f
@@ -31,7 +31,7 @@ class ShaderPair(
 	var descriptorSets: MutableList<Long> = ArrayList()
 
 	fun updateUbo(currentImage: Int, swapChain: SwapChain, engine: Rosella) {
-		ubo.update(currentImage, swapChain, engine.view, engine.proj)
+		ubo.update(currentImage, swapChain, engine.camera.view, engine.camera.proj)
 	}
 
 	fun createUniformBuffers(swapChain: SwapChain) {

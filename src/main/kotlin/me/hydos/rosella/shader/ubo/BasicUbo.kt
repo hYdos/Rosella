@@ -1,14 +1,13 @@
 package me.hydos.rosella.shader.ubo
 
 import me.hydos.rosella.device.Device
-import me.hydos.rosella.util.memory.MemMan
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.alignas
 import me.hydos.rosella.util.alignof
 import me.hydos.rosella.util.createBuffer
+import me.hydos.rosella.util.memory.MemMan
 import me.hydos.rosella.util.sizeof
 import org.joml.Matrix4f
-import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
 import java.util.function.Consumer
@@ -47,7 +46,7 @@ class BasicUbo(val device: Device, val memory: MemMan) : Ubo() {
 		}
 
 		MemoryStack.stackPush().use {
-			model.rotate((GLFW.glfwGetTime() * Math.toRadians(90.0)).toFloat(), 0.0f, 0.0f, 1.0f)
+//			model.rotate((GLFW.glfwGetTime() * Math.toRadians(90.0)).toFloat(), 0.0f, 0.0f, 1.0f)
 
 			val data = it.mallocPointer(1)
 			VK10.vkMapMemory(

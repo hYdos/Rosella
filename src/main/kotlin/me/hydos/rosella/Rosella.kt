@@ -1,5 +1,6 @@
 package me.hydos.rosella
 
+import me.hydos.rosella.camera.Camera
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.Queues
 import me.hydos.rosella.io.Window
@@ -15,7 +16,6 @@ import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.*
 import me.hydos.rosella.util.memory.MemMan
 import me.hydos.rosella.util.memory.memcpy
-import org.joml.Matrix4f
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFW.*
 import org.lwjgl.glfw.GLFWVulkan
@@ -40,7 +40,6 @@ class Rosella(
 	val enableValidationLayers: Boolean,
 	val window: Window
 ) {
-
 	var memMan: MemMan
 
 	var depthBuffer = DepthBuffer()
@@ -49,8 +48,7 @@ class Rosella(
 	var materials = HashMap<Identifier, Material>()
 	var shaders = HashMap<Identifier, ShaderPair>()
 
-	var view: Matrix4f = Matrix4f()
-	var proj: Matrix4f = Matrix4f()
+	val camera = Camera(window)
 
 	private var inFlightFrames: MutableList<Frame>? = null
 	private var imagesInFlight: MutableMap<Int, Frame>? = null
@@ -94,24 +92,6 @@ class Rosella(
 		state = State.READY
 	}
 
-	private fun createProjAndView() {
-		view = Matrix4f()
-		proj = Matrix4f()
-
-		view.lookAt(2.0f, -40.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)
-		proj.perspective(
-			Math.toRadians(45.0).toFloat(),
-			swapChain.swapChainExtent!!.width().toFloat() / swapChain.swapChainExtent!!.height().toFloat(),
-			0.1f,
-			1000.0f
-		)
-		proj.m11(proj.m11() * -1)
-	}
-
-	private fun createModel(model: Model) {
-		model.create(this)
-	}
-
 	fun beginCmdBuffer(stack: MemoryStack, pCommandBuffer: PointerBuffer): VkCommandBuffer {
 		val allocInfo = VkCommandBufferAllocateInfo.callocStack(stack)
 			.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
@@ -135,8 +115,8 @@ class Rosella(
 			material.createPipeline(device, swapChain, renderPass, material.shader.descriptorSetLayout)
 		}
 		depthBuffer.createDepthResources(this)
-		createFramebuffers()
-		createProjAndView()
+		createFrameBuffers()
+		camera.createViewAndProj(swapChain)
 		for (material in materials.values) {
 			material.initializeShader(swapChain)
 		}
@@ -327,7 +307,7 @@ class Rosella(
 			barrier.subresourceRange().layerCount(1)
 
 
-			if (newLayout === VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+			if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 				barrier.subresourceRange().aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT)
 				if (depthBuffer.hasStencilComponent(format)) {
 					barrier.subresourceRange().aspectMask(
@@ -416,17 +396,17 @@ class Rosella(
 		this.framebufferResize = true
 	}
 
-	private fun createFramebuffers() {
+	private fun createFrameBuffers() {
 		swapChain.swapChainFrameBuffers = ArrayList(swapChain.swapChainImageViews.size)
 		stackPush().use { stack ->
 			val attachments = stack.longs(VK_NULL_HANDLE, depthBuffer.depthImageView)
 			val pFramebuffer = stack.mallocLong(1)
 			val framebufferInfo = VkFramebufferCreateInfo.callocStack(stack)
-			framebufferInfo.sType(VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO)
-			framebufferInfo.renderPass(renderPass.renderPass)
-			framebufferInfo.width(swapChain.swapChainExtent!!.width())
-			framebufferInfo.height(swapChain.swapChainExtent!!.height())
-			framebufferInfo.layers(1)
+				.sType(VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO)
+				.renderPass(renderPass.renderPass)
+				.width(swapChain.swapChainExtent!!.width())
+				.height(swapChain.swapChainExtent!!.height())
+				.layers(1)
 			for (imageView in swapChain.swapChainImageViews) {
 				attachments.put(0, imageView)
 				framebufferInfo.pAttachments(attachments)
@@ -676,7 +656,7 @@ class Rosella(
 		vkDeviceWaitIdle(device.device)
 		freeSwapChain()
 		createSwapChain()
-		createProjAndView()
+		camera.createViewAndProj(swapChain)
 	}
 
 	private fun freeSwapChain() {
