@@ -1,7 +1,7 @@
 package me.hydos.rosella.shader.ubo
 
 import me.hydos.rosella.device.Device
-import me.hydos.rosella.memory.MemMan
+import me.hydos.rosella.util.memory.MemMan
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.alignas
 import me.hydos.rosella.util.alignof

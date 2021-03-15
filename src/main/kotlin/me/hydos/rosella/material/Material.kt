@@ -1,6 +1,6 @@
 package me.hydos.rosella.material
 
-import me.hydos.rosella.RenderPass
+import me.hydos.rosella.swapchain.RenderPass
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.model.Vertex

@@ -1,7 +1,7 @@
 package me.hydos.example
 
 import me.hydos.rosella.Rosella
-import me.hydos.rosella.io.Screen
+import me.hydos.rosella.io.Window
 import me.hydos.rosella.material.Material
 import me.hydos.rosella.model.Model
 import me.hydos.rosella.resource.Global
@@ -14,7 +14,7 @@ object Example {
 
 	@JvmStatic
 	fun main(args: Array<String>) {
-		val screen = Screen("Rosella Engine", 1280, 720)
+		val screen = Window("Rosella Engine", 1280, 720)
 		val engine = Rosella("Rosella Example", false, screen)
 
 		val factCore = Identifier("rosella", "fact_core")

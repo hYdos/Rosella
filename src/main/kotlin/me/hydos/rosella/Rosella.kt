@@ -2,14 +2,17 @@ package me.hydos.rosella
 
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.Queues
-import me.hydos.rosella.io.Screen
+import me.hydos.rosella.io.Window
 import me.hydos.rosella.material.Material
-import me.hydos.rosella.memory.MemMan
-import me.hydos.rosella.memory.memcpy
+import me.hydos.rosella.util.memory.MemMan
+import me.hydos.rosella.util.memory.memcpy
 import me.hydos.rosella.model.Model
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.shader.ShaderPair
 import me.hydos.rosella.shader.pushconstant.ModelPushConstant
+import me.hydos.rosella.swapchain.DepthBuffer
+import me.hydos.rosella.swapchain.Frame
+import me.hydos.rosella.swapchain.RenderPass
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.*
 import org.joml.Matrix4f
@@ -29,10 +32,13 @@ import java.nio.LongBuffer
 import java.util.function.Consumer
 import java.util.stream.Collectors
 
+/**
+ * Main engine class. most interactions will happen here
+ */
 class Rosella(
 	name: String,
 	val enableValidationLayers: Boolean,
-	internal val screen: Screen
+	val window: Window
 ) {
 
 	var memMan: MemMan
@@ -80,13 +86,11 @@ class Rosella(
 
 		createSurface()
 		this.device = Device(this, validationLayers)
-
 		this.memMan = MemMan(device, vulkanInstance)
-
 		this.createCmdPool(this)
 		createSwapChain()
 
-		glfwShowWindow(screen.windowPtr)
+		glfwShowWindow(window.windowPtr)
 		state = State.READY
 	}
 
@@ -192,7 +196,7 @@ class Rosella(
 		/**
 		 * Create the Command Buffers
 		 */
-		val commandBuffersCount: Int = swapChain.swapChainFramebuffers.size
+		val commandBuffersCount: Int = swapChain.swapChainFrameBuffers.size
 
 		commandBuffers = java.util.ArrayList(commandBuffersCount)
 
@@ -238,9 +242,8 @@ class Rosella(
 			for (i in 0 until commandBuffersCount) {
 				val commandBuffer = commandBuffers[i]
 				vkBeginCommandBuffer(commandBuffer, beginInfo).ok()
-				renderPassInfo.framebuffer(swapChain.swapChainFramebuffers[i])
+				renderPassInfo.framebuffer(swapChain.swapChainFrameBuffers[i])
 
-				// Draw stuff
 				vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE)
 				run {
 					for (model in models) {
@@ -414,7 +417,7 @@ class Rosella(
 	}
 
 	private fun createFramebuffers() {
-		swapChain.swapChainFramebuffers = ArrayList(swapChain.swapChainImageViews.size)
+		swapChain.swapChainFrameBuffers = ArrayList(swapChain.swapChainImageViews.size)
 		stackPush().use { stack ->
 			val attachments = stack.longs(VK_NULL_HANDLE, depthBuffer.depthImageView)
 			val pFramebuffer = stack.mallocLong(1)
@@ -428,7 +431,7 @@ class Rosella(
 				attachments.put(0, imageView)
 				framebufferInfo.pAttachments(attachments)
 				vkCreateFramebuffer(device.device, framebufferInfo, null, pFramebuffer).ok()
-				swapChain.swapChainFramebuffers.add(pFramebuffer[0])
+				swapChain.swapChainFrameBuffers.add(pFramebuffer[0])
 			}
 		}
 	}
@@ -495,7 +498,7 @@ class Rosella(
 	private fun createSurface() {
 		stackPush().use {
 			val pSurface: LongBuffer = it.longs(VK_NULL_HANDLE)
-			glfwCreateWindowSurface(vulkanInstance, screen.windowPtr, null, pSurface).ok()
+			glfwCreateWindowSurface(vulkanInstance, window.windowPtr, null, pSurface).ok()
 			this.surface = pSurface.get(0)
 		}
 	}
@@ -665,7 +668,7 @@ class Rosella(
 			val width = stack.ints(0)
 			val height = stack.ints(0)
 			while (width[0] == 0 && height[0] == 0) {
-				glfwGetFramebufferSize(screen.windowPtr, width, height)
+				glfwGetFramebufferSize(window.windowPtr, width, height)
 				glfwWaitEvents()
 			}
 		}
@@ -689,7 +692,7 @@ class Rosella(
 		// Free Depth Buffer
 		depthBuffer.free(device)
 
-		swapChain.swapChainFramebuffers.forEach { framebuffer ->
+		swapChain.swapChainFrameBuffers.forEach { framebuffer ->
 			vkDestroyFramebuffer(
 				device.device,
 				framebuffer,

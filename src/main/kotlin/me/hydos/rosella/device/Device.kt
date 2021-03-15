@@ -12,13 +12,15 @@ import org.lwjgl.vulkan.KHRSurface.*
 import org.lwjgl.vulkan.KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME
 import org.lwjgl.vulkan.VK10.*
 
-
-val DEVICE_EXTENSIONS: Set<String> = listOf(VK_KHR_SWAPCHAIN_EXTENSION_NAME).toSet()
-
+/**
+ * Represents the physical and logical device (GPU) which supports vulkan.
+ * This class will be used almost everywhere vulkan calls are made.
+ */
 class Device(private val engine: Rosella, private val layers: Set<String>) {
 
-	internal var device: VkDevice
+	private val deviceExtensions: Set<String> = listOf(VK_KHR_SWAPCHAIN_EXTENSION_NAME).toSet()
 
+	internal var device: VkDevice
 	val physicalDevice: VkPhysicalDevice = stackPush().use {
 		val deviceCount = run {
 			val count = it.ints(0)
@@ -64,14 +66,14 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 				.sType(VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
 				.pQueueCreateInfos(queueCreateInfos)
 				.pEnabledFeatures(deviceFeatures)
-				.ppEnabledExtensionNames(engine.asPtrBuffer(DEVICE_EXTENSIONS))
+				.ppEnabledExtensionNames(engine.asPtrBuffer(deviceExtensions))
 
 			if (engine.enableValidationLayers) {
 				createInfo.ppEnabledLayerNames(engine.asPtrBuffer(layers))
 			}
 			val pDevice: PointerBuffer = it.pointers(VK_NULL_HANDLE)
 			if (vkCreateDevice(physicalDevice, createInfo, null, pDevice) != VK_SUCCESS) {
-				throw RuntimeException("Failed to create logical device")
+				error("Failed to create logical device")
 			}
 			device = VkDevice(pDevice[0], physicalDevice, createInfo)
 
@@ -97,7 +99,7 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 			stackPush().use {
 				val swapChainSupport: SwapChainSupportDetails = querySwapChainSupport(device, it, engine.surface)
 				swapChainAdequate =
-					swapChainSupport.formats!!.hasRemaining() && swapChainSupport.presentModes!!.hasRemaining()
+					swapChainSupport.formats.hasRemaining() && swapChainSupport.presentModes.hasRemaining()
 				val supportedFeatures: VkPhysicalDeviceFeatures = VkPhysicalDeviceFeatures.mallocStack(it)
 				vkGetPhysicalDeviceFeatures(device, supportedFeatures)
 				anisotropySupported = supportedFeatures.samplerAnisotropy()
@@ -112,10 +114,10 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 			val extensionCount = stack.ints(0)
 			vkEnumerateDeviceExtensionProperties(device, null as String?, extensionCount, null)
 //			val availableExtensions =
-			VkExtensionProperties.mallocStack(extensionCount[0], stack)
+//			VkExtensionProperties.mallocStack(extensionCount[0], stack)
 //			return availableExtensions.stream().collect(toSet()).containsAll(DEVICE_EXTENSIONS)
 			return true
-//			TODO("something broke here. based workaround")
+//			TODO: something broke here. based workaround
 		}
 	}
 }

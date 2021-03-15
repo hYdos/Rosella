@@ -5,7 +5,7 @@ import org.lwjgl.vulkan.VkSurfaceFormatKHR
 import java.nio.IntBuffer
 
 class SwapChainSupportDetails {
-	internal var capabilities: VkSurfaceCapabilitiesKHR? = null
-	internal var formats: VkSurfaceFormatKHR.Buffer? = null
-	internal var presentModes: IntBuffer? = null
+	lateinit var capabilities: VkSurfaceCapabilitiesKHR
+	lateinit var formats: VkSurfaceFormatKHR.Buffer
+	lateinit var presentModes: IntBuffer
 }

@@ -1,4 +1,4 @@
-package me.hydos.rosella.memory
+package me.hydos.rosella.util.memory
 
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device

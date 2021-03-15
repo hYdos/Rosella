@@ -1,7 +1,7 @@
-package me.hydos.rosella
+package me.hydos.rosella.swapchain
 
+import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
-import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.ok
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.vulkan.*
@@ -10,7 +10,7 @@ import org.lwjgl.vulkan.VK10.*
 import java.nio.LongBuffer
 
 
-class RenderPass(val device: Device, private val swapchain: SwapChain, private val engine: Rosella) {
+class RenderPass(val device: Device, private val swapChain: SwapChain, private val engine: Rosella) {
 	var renderPass: Long = 0
 
 	init {
@@ -18,8 +18,8 @@ class RenderPass(val device: Device, private val swapchain: SwapChain, private v
 			val attachments = VkAttachmentDescription.callocStack(2, it)
 			val attachmentRefs = VkAttachmentReference.callocStack(2, it)
 
-			val colorAttachment = attachments[0]
-				.format(swapchain.swapChainImageFormat)
+			attachments[0]
+				.format(swapChain.swapChainImageFormat)
 				.samples(VK_SAMPLE_COUNT_1_BIT)
 				.loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
 				.storeOp(VK_ATTACHMENT_STORE_OP_STORE)
@@ -28,7 +28,7 @@ class RenderPass(val device: Device, private val swapchain: SwapChain, private v
 				.initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 				.finalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 
-			val samples = attachments[0].samples()
+			attachments[0].samples()
 
 			val colorAttachmentRef = attachmentRefs[0]
 				.attachment(0)

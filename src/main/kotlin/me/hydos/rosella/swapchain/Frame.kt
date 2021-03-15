@@ -1,9 +1,11 @@
-package me.hydos.rosella
+package me.hydos.rosella.swapchain
 
 import org.lwjgl.system.MemoryStack.stackGet
 import java.nio.LongBuffer
 
-
+/**
+ * Represents a frame that will be rendered to the window
+ */
 class Frame(
 	private val imageAvailableSemaphore: Long,
 	private val renderFinishedSemaphore: Long,

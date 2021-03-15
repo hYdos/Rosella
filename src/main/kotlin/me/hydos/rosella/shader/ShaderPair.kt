@@ -3,7 +3,7 @@ package me.hydos.rosella.shader
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.material.Material
-import me.hydos.rosella.memory.MemMan
+import me.hydos.rosella.util.memory.MemMan
 import me.hydos.rosella.shader.ubo.BasicUbo
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.createBuffer

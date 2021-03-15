@@ -1,11 +1,15 @@
-package me.hydos.rosella
+package me.hydos.rosella.swapchain
 
+import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VkFormatProperties
 import java.nio.IntBuffer
 
+/**
+ * Since vulkan gives us so much control, we must make our own depth buffer instead of relying on the driver to create one for us.
+ */
 class DepthBuffer {
 
 	var depthImage: Long = 0
@@ -65,7 +69,7 @@ class DepthBuffer {
 				}
 			}
 		}
-		throw RuntimeException("Failed to find supported format")
+		error("Failed to find supported format")
 	}
 
 	fun free(device: Device) {

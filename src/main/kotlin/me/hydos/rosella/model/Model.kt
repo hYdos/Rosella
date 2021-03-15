@@ -2,7 +2,7 @@ package me.hydos.rosella.model
 
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.material.Material
-import me.hydos.rosella.memory.MemMan
+import me.hydos.rosella.util.memory.MemMan
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.resource.Resource
 import org.joml.Vector3f

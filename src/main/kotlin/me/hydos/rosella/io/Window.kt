@@ -4,7 +4,10 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList
 import me.hydos.rosella.Rosella
 import org.lwjgl.glfw.GLFW.*
 
-class Screen(title: String, width: Int, height: Int, windowResizable: Boolean = true) {
+/**
+ * Represents a window in which Rosella can be attached to
+ */
+class Window(title: String, width: Int, height: Int, windowResizable: Boolean = true) {
 	internal val windowPtr: Long
 	private val loopCallbacks: MutableList<() -> Unit> = ObjectArrayList()
 	private val closeCallbacks: MutableList<() -> Unit> = ObjectArrayList()
