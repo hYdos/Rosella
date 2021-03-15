@@ -133,8 +133,8 @@ class Rosella(
 		depthBuffer.createDepthResources(this)
 		createFramebuffers()
 		createProjAndView()
-		for (model in models) {
-			model.material.initializeShader(swapChain)
+		for (material in materials.values) {
+			material.initializeShader(swapChain)
 		}
 		createCommandBuffers(renderPass)
 		createSyncObjects()
@@ -623,8 +623,8 @@ class Rosella(
 
 			val imageIndex = pImageIndex[0]
 
-			for (model in models) {
-				model.material.shader.updateUbo(imageIndex, swapChain, this)
+			for (shader in shaders.values) {
+				shader.updateUbo(imageIndex, swapChain, this)
 			}
 
 			if (imagesInFlight!!.containsKey(imageIndex)) {
@@ -677,10 +677,13 @@ class Rosella(
 	}
 
 	private fun freeSwapChain() {
-		for (model in models) {
-			vkDestroyDescriptorPool(device.device, model.material.shader.descriptorPool, null)
-			model.material.shader.free()
-			model.material.free(device, this)
+		for (shaderPair in shaders.values) {
+			vkDestroyDescriptorPool(device.device, shaderPair.descriptorPool, null)
+			shaderPair.free()
+		}
+
+		for (material in materials.values) {
+			material.free(device, this)
 		}
 
 		// Free Depth Buffer
