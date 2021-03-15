@@ -58,6 +58,8 @@ object Example {
 			)
 		)
 
+		engine.createCommandBuffers(engine.renderPass)
+
 		// Register events so we can interact and run game logic
 		screen.onMainLoop {
 			engine.renderFrame()

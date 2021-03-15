@@ -59,7 +59,7 @@ class Rosella(
 	private var framebufferResize: Boolean = false
 
 	lateinit var swapChain: SwapChain
-	private lateinit var renderPass: RenderPass
+	lateinit var renderPass: RenderPass
 	internal lateinit var vulkanInstance: VkInstance
 
 	internal val device: Device
