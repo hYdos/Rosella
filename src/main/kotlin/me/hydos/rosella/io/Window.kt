@@ -13,7 +13,7 @@ class Window(title: String, width: Int, height: Int, windowResizable: Boolean = 
 	private val closeCallbacks: MutableList<() -> Unit> = ObjectArrayList()
 
 	fun start(engine: Rosella) {
-		glfwSetFramebufferSizeCallback(windowPtr, engine::windowResizeCallback)
+		glfwSetFramebufferSizeCallback(windowPtr, engine.renderer::windowResizeCallback)
 
 		while (!glfwWindowShouldClose(windowPtr)) {
 			glfwPollEvents()

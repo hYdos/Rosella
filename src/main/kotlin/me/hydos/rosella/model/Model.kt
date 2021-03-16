@@ -2,7 +2,7 @@ package me.hydos.rosella.model
 
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.material.Material
-import me.hydos.rosella.util.memory.MemMan
+import me.hydos.rosella.util.memory.Memory
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.resource.Resource
 import org.joml.Vector3f
@@ -28,15 +28,15 @@ class Model(private val model: Resource, private val materialIdentifier: Identif
 		material = retrievedMaterial
 	}
 
-	fun free(memMan: MemMan) {
-		vmaFreeMemory(memMan.allocator, vertexBuffer)
-		vmaFreeMemory(memMan.allocator, indexBuffer)
+	fun free(memory: Memory) {
+		vmaFreeMemory(memory.allocator, vertexBuffer)
+		vmaFreeMemory(memory.allocator, indexBuffer)
 	}
 
 	fun create(engine: Rosella): Model {
 		loadModelFile()
-		vertexBuffer = engine.memMan.createVertexBuffer(engine, vertices)
-		indexBuffer = engine.memMan.createIndexBuffer(engine, indices)
+		vertexBuffer = engine.memory.createVertexBuffer(engine, vertices)
+		indexBuffer = engine.memory.createIndexBuffer(engine, indices)
 		return this
 	}
 

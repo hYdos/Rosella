@@ -22,7 +22,7 @@ class DepthBuffer {
 			val pDepthImage = stack.mallocLong(1)
 			val pDepthImageMemory = stack.mallocLong(1)
 			engine.createImage(
-				engine.swapChain.swapChainExtent!!.width(), engine.swapChain.swapChainExtent!!.height(),
+				engine.renderer.swapChain.swapChainExtent!!.width(), engine.renderer.swapChain.swapChainExtent!!.height(),
 				depthFormat,
 				VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -32,7 +32,7 @@ class DepthBuffer {
 			)
 			depthImage = pDepthImage[0]
 			depthImageMemory = pDepthImageMemory[0]
-			depthImageView = engine.createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT)
+			depthImageView = engine.renderer.createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT)
 
 			// Explicitly transitioning the depth image
 			engine.transitionImageLayout(

@@ -6,7 +6,7 @@ import me.hydos.rosella.material.Material
 import me.hydos.rosella.shader.ubo.BasicUbo
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.createBuffer
-import me.hydos.rosella.util.memory.MemMan
+import me.hydos.rosella.util.memory.Memory
 import me.hydos.rosella.util.ok
 import me.hydos.rosella.util.sizeof
 import org.joml.Vector3f
@@ -18,7 +18,7 @@ class ShaderPair(
 	val vertexShader: Shader,
 	val fragmentShader: Shader,
 	val device: Device,
-	val memory: MemMan,
+	val memory: Memory,
 	vararg var poolObjects: PoolObjType
 ) {
 	var ubo = BasicUbo(device, memory)

@@ -35,7 +35,7 @@ class RenderPass(val device: Device, private val swapChain: SwapChain, private v
 				.layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 
 			attachments[1]
-				.format(engine.depthBuffer.findDepthFormat(engine.device))
+				.format(engine.renderer.depthBuffer.findDepthFormat(engine.device))
 				.samples(VK_SAMPLE_COUNT_1_BIT)
 				.loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
 				.storeOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)

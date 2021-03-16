@@ -5,14 +5,14 @@ import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.alignas
 import me.hydos.rosella.util.alignof
 import me.hydos.rosella.util.createBuffer
-import me.hydos.rosella.util.memory.MemMan
+import me.hydos.rosella.util.memory.Memory
 import me.hydos.rosella.util.sizeof
 import org.joml.Matrix4f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
 import java.util.function.Consumer
 
-class BasicUbo(val device: Device, val memory: MemMan) : Ubo() {
+class BasicUbo(val device: Device, val memory: Memory) : Ubo() {
 
 	var ubos: MutableList<Long> = ArrayList()
 	var ubosMem: MutableList<Long> = ArrayList()

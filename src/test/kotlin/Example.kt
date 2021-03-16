@@ -8,7 +8,6 @@ import me.hydos.rosella.resource.Global
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.shader.Shader
 import me.hydos.rosella.shader.ShaderPair
-import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 
 object Example {
 
@@ -26,7 +25,7 @@ object Example {
 			Shader(Global.ensureResource(Identifier("rosella", "shaders/base.v.glsl"))),
 			Shader(Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl"))),
 			engine.device,
-			engine.memMan,
+			engine.memory,
 			ShaderPair.PoolObjType.UBO,
 			ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
 		)
@@ -58,15 +57,14 @@ object Example {
 			)
 		)
 
-		engine.createCommandBuffers(engine.renderPass)
+		engine.renderer.createCommandBuffers(engine.renderer.renderPass, engine)
+
+		// Register events so we can interact and run game logic
+		engine.renderer.createCommandBuffers(engine.renderer.renderPass, engine)
 
 		// Register events so we can interact and run game logic
 		screen.onMainLoop {
-			engine.renderFrame()
-		}
-		screen.onWindowClose {
-			vkDeviceWaitIdle(engine.device.device) // The 1 vulkan method that needs to be called from the program using our engine
-			engine.free()
+			engine.renderer.render(engine)
 		}
 
 		// Start the screens main loop.

@@ -20,7 +20,7 @@ import java.nio.LongBuffer
 /**
  * Used for managing CPU and GPU memory. if your getting memory problems, blame this class
  */
-class MemMan(val device: Device, private val instance: VkInstance) {
+class Memory(val device: Device, private val instance: VkInstance) {
 
 	val allocator: Long = stackPush().use {
 		val vulkanFunctions: VmaVulkanFunctions = VmaVulkanFunctions.callocStack(it)
@@ -94,7 +94,7 @@ class MemMan(val device: Device, private val instance: VkInstance) {
 	fun copyBuffer(srcBuffer: Long, dstBuffer: Long, size: Int, engine: Rosella, device: Device) {
 		stackPush().use {
 			val pCommandBuffer = it.mallocPointer(1)
-			val commandBuffer = engine.beginCmdBuffer(it, pCommandBuffer)
+			val commandBuffer = engine.renderer.beginCmdBuffer(it, pCommandBuffer)
 			run {
 				val copyRegion = VkBufferCopy.callocStack(1, it)
 				copyRegion.size(size.toLong())
@@ -104,9 +104,9 @@ class MemMan(val device: Device, private val instance: VkInstance) {
 			val submitInfo = VkSubmitInfo.callocStack(it)
 				.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO)
 				.pCommandBuffers(pCommandBuffer)
-			VK10.vkQueueSubmit(engine.queues.graphicsQueue, submitInfo, VK10.VK_NULL_HANDLE).ok()
-			VK10.vkQueueWaitIdle(engine.queues.graphicsQueue)
-			VK10.vkFreeCommandBuffers(device.device, engine.commandPool, pCommandBuffer)
+			VK10.vkQueueSubmit(engine.renderer.queues.graphicsQueue, submitInfo, VK10.VK_NULL_HANDLE).ok()
+			VK10.vkQueueWaitIdle(engine.renderer.queues.graphicsQueue)
+			VK10.vkFreeCommandBuffers(device.device, engine.renderer.commandPool, pCommandBuffer)
 		}
 	}
 
@@ -114,7 +114,7 @@ class MemMan(val device: Device, private val instance: VkInstance) {
 		stackPush().use {
 			val size: Int = (Integer.BYTES * indices.size)
 			val pBuffer = it.mallocLong(1)
-			val stagingBuffer = engine.memMan.createStagingBuf(size, pBuffer, it) { data ->
+			val stagingBuffer = engine.memory.createStagingBuf(size, pBuffer, it) { data ->
 				memcpy(data.getByteBuffer(0, size), indices)
 			}
 
@@ -140,7 +140,7 @@ class MemMan(val device: Device, private val instance: VkInstance) {
 		stackPush().use {
 			val size: Int = Vertex.SIZEOF * vertices.size
 			val pBuffer = it.mallocLong(1)
-			val stagingBuffer = engine.memMan.createStagingBuf(size, pBuffer, it) { data ->
+			val stagingBuffer = engine.memory.createStagingBuf(size, pBuffer, it) { data ->
 				memcpy(data.getByteBuffer(0, size), vertices)
 			}
 
