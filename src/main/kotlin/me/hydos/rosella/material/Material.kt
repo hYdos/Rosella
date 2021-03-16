@@ -1,19 +1,17 @@
 package me.hydos.rosella.material
 
-import me.hydos.rosella.swapchain.RenderPass
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.model.Vertex
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.resource.Resource
 import me.hydos.rosella.shader.ShaderPair
+import me.hydos.rosella.swapchain.RenderPass
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.*
 import org.joml.Vector3f
-import org.lwjgl.PointerBuffer
 import org.lwjgl.stb.STBImage
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.system.Pointer
 import org.lwjgl.vulkan.*
 import java.nio.ByteBuffer
 import java.nio.LongBuffer
@@ -62,7 +60,8 @@ class Material(
 	) {
 		MemoryStack.stackPush().use {
 			val vertShaderSPIRV: SpirV = compileShaderFile(shader.vertexShader.shaderLocation, ShaderType.VERTEX_SHADER)
-			val fragShaderSPIRV: SpirV = compileShaderFile(shader.fragmentShader.shaderLocation, ShaderType.FRAGMENT_SHADER)
+			val fragShaderSPIRV: SpirV =
+				compileShaderFile(shader.fragmentShader.shaderLocation, ShaderType.FRAGMENT_SHADER)
 			val vertShaderModule = createShader(vertShaderSPIRV.bytecode(), device)
 			val fragShaderModule = createShader(fragShaderSPIRV.bytecode(), device)
 			val entryPoint: ByteBuffer = it.UTF8("main")
@@ -177,7 +176,7 @@ class Material(
 			/**
 			 * Create Push Constants
 			 */
-			val pushConstantRange = VkPushConstantRange.Buffer(it.bytes(1))
+			val pushConstantRange = VkPushConstantRange.callocStack(1, it)
 				.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
 				.offset(0)
 				.size(sizeof(Vector3f::class))
@@ -243,15 +242,7 @@ class Material(
 		}
 	}
 
-	private fun asPtrBuffer(list: List<Pointer>): PointerBuffer {
-		val stack = MemoryStack.stackGet()
-		val buffer = stack.mallocPointer(list.size)
-		list.forEach { pointer: Pointer -> buffer.put(pointer) }
-		return buffer.rewind()
-	}
-
 	fun free(device: Device, engine: Rosella) {
-		VK10.vkFreeCommandBuffers(device.device, engine.commandPool, asPtrBuffer(engine.commandBuffers))
 		VK10.vkDestroyPipeline(device.device, graphicsPipeline, null)
 		VK10.vkDestroyPipelineLayout(device.device, pipelineLayout, null)
 	}
