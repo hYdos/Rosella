@@ -177,7 +177,7 @@ class Material(
 			/**
 			 * Create Push Constants
 			 */
-			val pushConstantRange = VkPushConstantRange.Buffer(it.bytes(1))
+			val pushConstantRange = VkPushConstantRange.callocStack(1, it)
 				.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
 				.offset(0)
 				.size(sizeof(Vector3f::class))
