@@ -21,23 +21,19 @@ import java.nio.LongBuffer
  */
 class MemMan(val device: Device, private val instance: VkInstance) {
 
-	var allocator: Long = 0
+	val allocator: Long = stackPush().use {
+		val vulkanFunctions: VmaVulkanFunctions = VmaVulkanFunctions.callocStack(it)
+			.set(instance, device.device)
 
-	init {
-		stackPush().use {
-			val vulkanFunctions: VmaVulkanFunctions = VmaVulkanFunctions.callocStack(it)
-				.set(instance, device.device)
+		val createInfo: VmaAllocatorCreateInfo = VmaAllocatorCreateInfo.callocStack(it)
+			.device(device.device)
+			.physicalDevice(device.physicalDevice)
+			.instance(instance)
+			.pVulkanFunctions(vulkanFunctions)
 
-			val createInfo: VmaAllocatorCreateInfo = VmaAllocatorCreateInfo.callocStack(it)
-				.device(device.device)
-				.physicalDevice(device.physicalDevice)
-				.instance(instance)
-				.pVulkanFunctions(vulkanFunctions)
-
-			val pAllocator = it.mallocPointer(1)
-			Vma.vmaCreateAllocator(createInfo, pAllocator)
-			this.allocator = pAllocator[0]
-		}
+		val pAllocator = it.mallocPointer(1)
+		Vma.vmaCreateAllocator(createInfo, pAllocator)
+		pAllocator[0]
 	}
 
 	/**
