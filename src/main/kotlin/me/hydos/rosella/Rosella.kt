@@ -14,6 +14,7 @@ import me.hydos.rosella.swapchain.RenderPass
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.*
 import me.hydos.rosella.util.memory.MemMan
+import me.hydos.rosella.util.memory.asPointerBuffer
 import me.hydos.rosella.util.memory.memcpy
 import org.joml.Matrix4f
 import org.lwjgl.PointerBuffer
@@ -203,14 +204,12 @@ class Rosella(
 		stackPush().use {
 			// Allocate
 			val allocInfo = VkCommandBufferAllocateInfo.callocStack(it)
-			allocInfo.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
-			allocInfo.commandPool(commandPool)
-			allocInfo.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-			allocInfo.commandBufferCount(commandBuffersCount)
-			val pCommandBuffers = it.mallocPointer(commandBuffersCount)
-			if (vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffers) != VK_SUCCESS) {
-				throw RuntimeException("Failed to allocate command buffers")
-			}
+				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
+				.commandPool(commandPool)
+				.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+				.commandBufferCount(commandBuffersCount)
+			val pCommandBuffers = it.callocPointer(commandBuffersCount)
+			vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffers).ok()
 
 			for (i in 0 until commandBuffersCount) {
 				commandBuffers.add(
@@ -684,6 +683,8 @@ class Rosella(
 			vkDestroyDescriptorPool(device.device, shaderPair.descriptorPool, null)
 			shaderPair.free()
 		}
+
+		vkFreeCommandBuffers(device.device, commandPool, commandBuffers.asPointerBuffer())
 
 		for (material in materials.values) {
 			material.free(device, this)

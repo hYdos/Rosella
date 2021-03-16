@@ -8,6 +8,7 @@ import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryStack.stackPush
+import org.lwjgl.system.Pointer
 import org.lwjgl.util.vma.Vma
 import org.lwjgl.util.vma.VmaAllocationCreateInfo
 import org.lwjgl.util.vma.VmaAllocatorCreateInfo
@@ -193,4 +194,14 @@ fun memcpy(buffer: ByteBuffer, vertices: List<Vertex>) {
 		buffer.putFloat(vertex.texCoords.x());
 		buffer.putFloat(vertex.texCoords.y());
 	}
+}
+
+fun List<Pointer>.asPointerBuffer(): PointerBuffer {
+	val buffer = MemoryStack.stackGet().mallocPointer(size)
+
+	for (pointer in this) {
+		buffer.put(pointer)
+	}
+
+	return buffer.rewind()
 }
