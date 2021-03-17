@@ -1,10 +1,14 @@
 package me.hydos.rosella.renderer
 
+import me.hydos.cell.allocateCmdBuffers
+import me.hydos.cell.createBeginInfo
+import me.hydos.cell.createRenderPassInfo
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.camera.Camera
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.Queues
 import me.hydos.rosella.io.Window
+import me.hydos.rosella.model.Model
 import me.hydos.rosella.shader.pushconstant.ModelPushConstant
 import me.hydos.rosella.swapchain.DepthBuffer
 import me.hydos.rosella.swapchain.Frame
@@ -288,14 +292,12 @@ class Renderer() {
 		commandBuffers = java.util.ArrayList(commandBuffersCount)
 
 		MemoryStack.stackPush().use {
-			// Allocate
-			val allocInfo = VkCommandBufferAllocateInfo.callocStack(it)
-				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
-				.commandPool(commandPool)
-				.level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-				.commandBufferCount(commandBuffersCount)
-			val pCommandBuffers = it.callocPointer(commandBuffersCount)
-			vkAllocateCommandBuffers(device.device, allocInfo, pCommandBuffers).ok()
+			val pCommandBuffers = allocateCmdBuffers(
+				it,
+				device,
+				commandPool,
+				commandBuffersCount
+			)
 
 			for (i in 0 until commandBuffersCount) {
 				commandBuffers.add(
@@ -305,12 +307,9 @@ class Renderer() {
 					)
 				)
 			}
-			val beginInfo = VkCommandBufferBeginInfo.callocStack(it)
-				.sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
-
-			val renderPassInfo = VkRenderPassBeginInfo.callocStack(it)
-				.sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
-				.renderPass(renderPass.renderPass)
+			val beginInfo = createBeginInfo(it)
+			//TODO: make raw vulkan calls use Vk.kt
+			val renderPassInfo = createRenderPassInfo(it, renderPass)
 
 			val renderArea = VkRect2D.callocStack(it)
 				.offset(VkOffset2D.callocStack(it).set(0, 0))
@@ -351,37 +350,7 @@ class Renderer() {
 							null
 						)
 
-						//TODO: push constants are the way to make multiple objects work. Valoghese remind me after i get them working to make multiple models work. :)
-						// Load the push constant into memory
-						val data = it.mallocPointer(1)
-						val modelPushConstant = ModelPushConstant()
-						modelPushConstant.position.add(0f, 1f, 0f)
-						val size = sizeof(modelPushConstant.position)
-						vkMapMemory(
-							device.device,
-							model.material.shader.pushConstantBuffersMemory[0], // Hardcoded to 0 for the 1 model
-							0,
-							size.toLong(),
-							0,
-							data
-						)
-						run {
-							memcpy(data.getByteBuffer(0, size), modelPushConstant)
-						}
-						vkUnmapMemory(
-							device.device,
-							model.material.shader.pushConstantBuffersMemory[0]
-						)// Hardcoded to 0 for the 1 model
-
-						val buffer = it.longs(1)
-						buffer.put(model.material.shader.pushConstantBuffers[0])
-						vkCmdPushConstants(
-							commandBuffer,
-							model.material.pipelineLayout,
-							VK_SHADER_STAGE_VERTEX_BIT,
-							0,
-							data.getByteBuffer(0, size)
-						)
+						pushConstant(model, commandBuffer)
 
 						vkCmdDrawIndexed(commandBuffer, model.indices.size, 1, 0, 0, 0)
 					}
@@ -390,6 +359,41 @@ class Renderer() {
 				vkEndCommandBuffer(commandBuffer).ok()
 			}
 		}
+	}
+
+	private fun pushConstant(model: Model, commandBuffer: VkCommandBuffer) {
+		//TODO: push constants are the way to make multiple objects work. Valoghese remind me after i get them working to make multiple models work. :)
+		// Load the push constant into memory
+		val it = MemoryStack.stackGet()
+		val data = it.mallocPointer(1)
+		val modelPushConstant = ModelPushConstant()
+		modelPushConstant.position.add(0f, 1f, 0f)
+		val size = sizeof(modelPushConstant.position)
+		vkMapMemory(
+			device.device,
+			model.material.shader.pushConstantBuffersMemory[0], // Hardcoded to 0 for the 1 model
+			0,
+			size.toLong(),
+			0,
+			data
+		)
+		run {
+			memcpy(data.getByteBuffer(0, size), modelPushConstant)
+		}
+		vkUnmapMemory(
+			device.device,
+			model.material.shader.pushConstantBuffersMemory[0]
+		)// Hardcoded to 0 for the 1 model
+
+		val buffer = it.longs(1)
+		buffer.put(model.material.shader.pushConstantBuffers[0])
+		vkCmdPushConstants(
+			commandBuffer,
+			model.material.pipelineLayout,
+			VK_SHADER_STAGE_VERTEX_BIT,
+			0,
+			data.getByteBuffer(0, size)
+		)
 	}
 
 	/**
