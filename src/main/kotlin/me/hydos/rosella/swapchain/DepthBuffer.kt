@@ -1,7 +1,10 @@
 package me.hydos.rosella.swapchain
 
-import me.hydos.rosella.Rosella
+import me.hydos.cell.createImage
+import me.hydos.cell.createImageView
+import me.hydos.cell.transitionImageLayout
 import me.hydos.rosella.device.Device
+import me.hydos.rosella.renderer.Renderer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VkFormatProperties
@@ -16,28 +19,35 @@ class DepthBuffer {
 	var depthImageMemory: Long = 0
 	var depthImageView: Long = 0
 
-	fun createDepthResources(engine: Rosella) {
+	fun createDepthResources(device: Device, swapChain: SwapChain, renderer: Renderer) {
 		MemoryStack.stackPush().use { stack ->
-			val depthFormat: Int = findDepthFormat(engine.device)
+			val depthFormat: Int = findDepthFormat(device)
 			val pDepthImage = stack.mallocLong(1)
 			val pDepthImageMemory = stack.mallocLong(1)
-			engine.createImage(
-				engine.renderer.swapChain.swapChainExtent!!.width(), engine.renderer.swapChain.swapChainExtent!!.height(),
+			createImage(
+				swapChain.swapChainExtent.width(),
+				swapChain.swapChainExtent.height(),
 				depthFormat,
 				VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 				pDepthImage,
-				pDepthImageMemory
+				pDepthImageMemory,
+				device
 			)
 			depthImage = pDepthImage[0]
 			depthImageMemory = pDepthImageMemory[0]
-			depthImageView = engine.renderer.createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT)
+			depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, device)
 
 			// Explicitly transitioning the depth image
-			engine.transitionImageLayout(
-				depthImage, depthFormat,
-				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+			transitionImageLayout(
+				depthImage,
+				depthFormat,
+				VK_IMAGE_LAYOUT_UNDEFINED,
+				VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+				renderer.depthBuffer,
+				device,
+				renderer
 			)
 		}
 	}

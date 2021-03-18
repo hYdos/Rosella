@@ -1,15 +1,13 @@
 package me.hydos.rosella.util
 
-import me.hydos.rosella.Rosella
+import me.hydos.cell.findMemoryType
 import me.hydos.rosella.device.Device
-import me.hydos.rosella.device.QueueFamilyIndices
 import org.joml.Matrix4f
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties
 import java.nio.LongBuffer
 import kotlin.reflect.KClass
 
@@ -107,63 +105,4 @@ fun createBuffer(
 		VK10.vkAllocateMemory(device.device, allocInfo, null, pBufferMemory).ok()
 		VK10.vkBindBufferMemory(device.device, pBuffer[0], pBufferMemory[0], 0)
 	}
-}
-
-fun beginSingleTimeCommands(engine: Rosella): VkCommandBuffer {
-	MemoryStack.stackPush().use { stack ->
-		val pCommandBuffer = stack.mallocPointer(1)
-		return engine.renderer.beginCmdBuffer(stack, pCommandBuffer)
-	}
-}
-
-fun endSingleTimeCommands(commandBuffer: VkCommandBuffer, device: Device, engine: Rosella) {
-	MemoryStack.stackPush().use { stack ->
-		VK10.vkEndCommandBuffer(commandBuffer)
-		val submitInfo = VkSubmitInfo.callocStack(1, stack)
-			.sType(VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO)
-			.pCommandBuffers(stack.pointers(commandBuffer))
-		VK10.vkQueueSubmit(engine.renderer.queues.graphicsQueue, submitInfo, VK10.VK_NULL_HANDLE)
-		VK10.vkQueueWaitIdle(engine.renderer.queues.graphicsQueue)
-		VK10.vkFreeCommandBuffers(device.device, engine.renderer.commandPool, commandBuffer)
-	}
-}
-
-fun findQueueFamilies(device: VkPhysicalDevice, engine: Rosella): QueueFamilyIndices {
-	val indices = QueueFamilyIndices()
-
-	MemoryStack.stackPush().use { stack ->
-		val queueFamilyCount = stack.ints(0)
-		VK10.vkGetPhysicalDeviceQueueFamilyProperties(device, queueFamilyCount, null)
-
-		val queueFamilies = VkQueueFamilyProperties.mallocStack(queueFamilyCount[0], stack)
-		VK10.vkGetPhysicalDeviceQueueFamilyProperties(device, queueFamilyCount, queueFamilies)
-
-		val presentSupport = stack.ints(VK10.VK_FALSE)
-
-		var i = 0
-		while (i < queueFamilies.capacity() || !indices.isComplete) {
-			if (queueFamilies[i].queueFlags() and VK10.VK_QUEUE_GRAPHICS_BIT != 0) {
-				indices.graphicsFamily = i
-			}
-			KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR(device, i, engine.surface, presentSupport)
-			if (presentSupport.get(0) == VK10.VK_TRUE) {
-				indices.presentFamily = i
-			}
-			i++
-		}
-		return indices
-	}
-}
-
-fun findMemoryType(typeFilter: Int, properties: Int, device: Device): Int {
-	val memProperties = VkPhysicalDeviceMemoryProperties.mallocStack()
-	vkGetPhysicalDeviceMemoryProperties(device.physicalDevice, memProperties)
-	for (i in 0 until memProperties.memoryTypeCount()) {
-		if (typeFilter and (1 shl i) != 0 && memProperties.memoryTypes(i)
-				.propertyFlags() and properties == properties
-		) {
-			return i
-		}
-	}
-	throw RuntimeException("Failed to find suitable memory type")
 }

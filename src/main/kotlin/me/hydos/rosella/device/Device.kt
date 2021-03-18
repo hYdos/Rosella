@@ -1,9 +1,9 @@
 package me.hydos.rosella.device
 
+import me.hydos.cell.findQueueFamilies
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.swapchain.SwapChainSupportDetails
 import me.hydos.rosella.swapchain.querySwapChainSupport
-import me.hydos.rosella.util.findQueueFamilies
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack.stackPush
@@ -20,7 +20,7 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 
 	private val deviceExtensions: Set<String> = listOf(VK_KHR_SWAPCHAIN_EXTENSION_NAME).toSet()
 
-	internal var device: VkDevice
+	var device: VkDevice
 	val physicalDevice: VkPhysicalDevice = stackPush().use {
 		val deviceCount = run {
 			val count = it.ints(0)
@@ -48,7 +48,7 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 
 	init {
 		stackPush().use {
-			val indices = findQueueFamilies(physicalDevice, engine)
+			val indices = findQueueFamilies(physicalDevice, engine.surface)
 			val uniqueQueueFamilies = indices.unique()
 			val queueCreateInfos = VkDeviceQueueCreateInfo.callocStack(uniqueQueueFamilies.size, it)
 
@@ -89,7 +89,7 @@ class Device(private val engine: Rosella, private val layers: Set<String>) {
 
 
 	private fun isDeviceSuitable(device: VkPhysicalDevice, engine: Rosella): Boolean {
-		val indices = findQueueFamilies(device, engine)
+		val indices = findQueueFamilies(device, engine.surface)
 
 		val extensionsSupported = checkDeviceExtensionsSupport(device)
 		var swapChainAdequate = false

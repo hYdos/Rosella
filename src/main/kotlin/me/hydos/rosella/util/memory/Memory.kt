@@ -196,6 +196,15 @@ fun memcpy(buffer: ByteBuffer, vertices: List<Vertex>) {
 	}
 }
 
+/**
+ * Copies an ByteBuffer into another ByteBuffer
+ */
+fun memcpy(dst: ByteBuffer, src: ByteBuffer, size: Long) {
+	src.limit(size.toInt())
+	dst.put(src)
+	src.limit(src.capacity()).rewind()
+}
+
 fun List<Pointer>.asPointerBuffer(): PointerBuffer {
 	val buffer = MemoryStack.stackGet().mallocPointer(size)
 

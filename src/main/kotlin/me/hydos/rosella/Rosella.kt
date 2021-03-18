@@ -9,9 +9,6 @@ import me.hydos.rosella.renderer.Renderer
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.shader.ShaderPair
 import me.hydos.rosella.swapchain.Frame
-import me.hydos.rosella.util.beginSingleTimeCommands
-import me.hydos.rosella.util.endSingleTimeCommands
-import me.hydos.rosella.util.findMemoryType
 import me.hydos.rosella.util.memory.Memory
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
@@ -24,6 +21,7 @@ import org.lwjgl.system.MemoryUtil.NULL
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR
 import org.lwjgl.vulkan.VK10.*
+import java.nio.IntBuffer
 import java.nio.LongBuffer
 import java.util.function.Consumer
 import java.util.stream.Collectors
@@ -47,6 +45,7 @@ class Rosella(
 	val camera = Camera(window)
 
 	internal lateinit var vulkanInstance: VkInstance
+	lateinit var maxImages: IntBuffer
 
 	internal val device: Device
 	private var debugMessenger: Long = 0
@@ -70,104 +69,6 @@ class Rosella(
 		renderer.initialize(this)
 
 		glfwShowWindow(window.windowPtr)
-	}
-
-	fun createImage(
-		width: Int, height: Int, format: Int, tiling: Int, usage: Int, memProperties: Int,
-		pTextureImage: LongBuffer, pTextureImageMemory: LongBuffer
-	) {
-		stackPush().use { stack ->
-			val imageInfo = VkImageCreateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
-				.imageType(VK_IMAGE_TYPE_2D)
-			imageInfo.extent().width(width)
-			imageInfo.extent().height(height)
-			imageInfo.extent().depth(1)
-			imageInfo.mipLevels(1)
-				.arrayLayers(1)
-				.format(format)
-				.tiling(tiling)
-				.initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
-				.usage(usage)
-				.samples(VK_SAMPLE_COUNT_1_BIT)
-				.sharingMode(VK_SHARING_MODE_EXCLUSIVE)
-			vkCreateImage(device.device, imageInfo, null, pTextureImage).ok("Failed to allocate image memory")
-			val memRequirements = VkMemoryRequirements.mallocStack(stack)
-			vkGetImageMemoryRequirements(device.device, pTextureImage[0], memRequirements)
-			val allocInfo = VkMemoryAllocateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-				.allocationSize(memRequirements.size())
-				.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), memProperties, device))
-			vkAllocateMemory(device.device, allocInfo, null, pTextureImageMemory).ok("Failed to allocate image memory")
-			vkBindImageMemory(device.device, pTextureImage[0], pTextureImageMemory[0], 0)
-		}
-	}
-
-	fun transitionImageLayout(
-		image: Long,
-		format: Int,
-		oldLayout: Int,
-		newLayout: Int,
-	) {
-		stackPush().use { stack ->
-			val barrier = VkImageMemoryBarrier.callocStack(1, stack)
-				.sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-				.oldLayout(oldLayout)
-				.newLayout(newLayout)
-				.srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-				.dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-				.image(image)
-			barrier.subresourceRange().baseMipLevel(0)
-			barrier.subresourceRange().levelCount(1)
-			barrier.subresourceRange().baseArrayLayer(0)
-			barrier.subresourceRange().layerCount(1)
-
-
-			if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-				barrier.subresourceRange().aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT)
-				if (renderer.depthBuffer.hasStencilComponent(format)) {
-					barrier.subresourceRange().aspectMask(
-						barrier.subresourceRange().aspectMask() or VK_IMAGE_ASPECT_STENCIL_BIT
-					)
-				}
-			} else {
-				barrier.subresourceRange().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-			}
-
-			val sourceStage: Int
-			val destinationStage: Int
-			if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-				barrier.srcAccessMask(0)
-					.dstAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
-				sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
-				destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT
-			} else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-				barrier.srcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
-					.dstAccessMask(VK_ACCESS_SHADER_READ_BIT)
-				sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT
-				destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-			} else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-
-				barrier.srcAccessMask(0)
-				barrier.dstAccessMask(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT or VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
-
-				sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
-				destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-
-			} else {
-				throw IllegalArgumentException("Unsupported layout transition")
-			}
-			val commandBuffer: VkCommandBuffer = beginSingleTimeCommands(this)
-			vkCmdPipelineBarrier(
-				commandBuffer,
-				sourceStage, destinationStage,
-				0,
-				null,
-				null,
-				barrier
-			)
-			endSingleTimeCommands(commandBuffer, device, this)
-		}
 	}
 
 	private fun createInstance(name: String, validationLayers: Set<String>) {
@@ -322,24 +223,24 @@ class Rosella(
 			material.loadShaders(this)
 			material.loadTextures(device, this)
 			material.shader.createDescriptorSetLayout()
-			material.createPipeline(device, renderer.swapChain, renderer.renderPass, material.shader.descriptorSetLayout)
+			material.createPipeline(
+				device,
+				renderer.swapChain,
+				renderer.renderPass,
+				material.shader.descriptorSetLayout
+			)
 		}
 		renderer.recreateSwapChain(window, camera, this)
 	}
+}
 
-	companion object {
-		private fun createDebugUtilsMessengerEXT(
-			instance: VkInstance,
-			createInfo: VkDebugUtilsMessengerCreateInfoEXT,
-			allocationCallbacks: VkAllocationCallbacks?,
-			pDebugMessenger: LongBuffer
-		): Int {
-			return if (vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") != NULL) {
-				EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, createInfo, allocationCallbacks, pDebugMessenger)
-			} else VK_ERROR_EXTENSION_NOT_PRESENT
-		}
-
-		const val MAX_FRAMES_IN_FLIGHT = 2
-		const val UINT64_MAX = -0x1L
-	}
+private fun createDebugUtilsMessengerEXT(
+	instance: VkInstance,
+	createInfo: VkDebugUtilsMessengerCreateInfoEXT,
+	allocationCallbacks: VkAllocationCallbacks?,
+	pDebugMessenger: LongBuffer
+): Int {
+	return if (vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") != NULL) {
+		EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, createInfo, allocationCallbacks, pDebugMessenger)
+	} else VK_ERROR_EXTENSION_NOT_PRESENT
 }

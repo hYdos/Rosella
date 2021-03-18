@@ -1,9 +1,9 @@
 package me.hydos.rosella.swapchain
 
+import me.hydos.cell.findQueueFamilies
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.QueueFamilyIndices
 import me.hydos.rosella.io.Window
-import me.hydos.rosella.util.findQueueFamilies
 import me.hydos.rosella.util.ok
 import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
 import org.lwjgl.system.MemoryStack
@@ -15,7 +15,6 @@ import org.lwjgl.vulkan.VK10.*
 import java.nio.IntBuffer
 import java.nio.LongBuffer
 
-
 class SwapChain(
 	engine: Rosella,
 	device: VkDevice,
@@ -24,10 +23,10 @@ class SwapChain(
 ) {
 	var swapChain: Long = 0
 	var swapChainImageViews: MutableList<Long> = ArrayList()
-	var swapChainFrameBuffers: MutableList<Long> = ArrayList()
+	var frameBuffers: MutableList<Long> = ArrayList()
 	var swapChainImages: MutableList<Long> = ArrayList()
 	var swapChainImageFormat = 0
-	var swapChainExtent: VkExtent2D? = null
+	var swapChainExtent: VkExtent2D
 
 	init {
 		MemoryStack.stackPush().use {
@@ -38,6 +37,7 @@ class SwapChain(
 			val extent: VkExtent2D = chooseSwapExtent(swapChainSupport.capabilities, engine.window)!!
 
 			val imageCount: IntBuffer = it.ints(swapChainSupport.capabilities.minImageCount() + 1)
+			engine.maxImages = imageCount
 
 			if (swapChainSupport.capabilities.maxImageCount() > 0 && imageCount[0] > swapChainSupport.capabilities.maxImageCount()) {
 				imageCount.put(0, swapChainSupport.capabilities.maxImageCount())
@@ -55,7 +55,7 @@ class SwapChain(
 				.imageArrayLayers(1)
 				.imageUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
 
-			val indices: QueueFamilyIndices = findQueueFamilies(physicalDevice, engine)
+			val indices: QueueFamilyIndices = findQueueFamilies(device, surface)
 
 			if (indices.graphicsFamily != indices.presentFamily) {
 				createInfo.imageSharingMode(VK_SHARING_MODE_CONCURRENT)
