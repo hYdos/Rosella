@@ -116,6 +116,9 @@ class Memory(val device: Device, private val instance: VkInstance) {
 		}
 	}
 
+	/**
+	 * Creates an index buffer from an list of indices
+	 */
 	fun createIndexBuffer(engine: Rosella, indices: ArrayList<Int>): Long {
 		stackPush().use {
 			val size: Int = (Integer.BYTES * indices.size)
@@ -137,11 +140,6 @@ class Memory(val device: Device, private val instance: VkInstance) {
 		}
 	}
 
-	private fun freeBuffer(buffer: BufferInfo) {
-		Vma.vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation)
-		Vma.vmaFreeMemory(allocator, buffer.buffer)
-	}
-
 	/**
 	 * Creates a vertex buffer from an List of Vertices
 	 */
@@ -152,7 +150,6 @@ class Memory(val device: Device, private val instance: VkInstance) {
 			val stagingBuffer = engine.memory.createStagingBuf(size, pBuffer, it) { data ->
 				memcpy(data.getByteBuffer(0, size), vertices)
 			}
-
 			createBuf(
 				size,
 				VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -161,13 +158,26 @@ class Memory(val device: Device, private val instance: VkInstance) {
 			)
 			val vertexBuffer = pBuffer[0]
 			copyBuffer(stagingBuffer.buffer, vertexBuffer, size, engine, device)
-			Vma.vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation)
-			Vma.vmaFreeMemory(allocator, stagingBuffer.buffer)
+			freeBuffer(stagingBuffer)
 			return vertexBuffer
 		}
 	}
 
+	/**
+	 * Forces a buffer to be freed
+	 */
+	private fun freeBuffer(buffer: BufferInfo) {
+		Vma.vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation)
+		Vma.vmaFreeMemory(allocator, buffer.buffer)
+	}
+
+	/**
+	 * Free's all created buffers and mapped memory
+	 */
 	fun free() {
+		for (memory in mappedMemory) {
+			Vma.vmaUnmapMemory(allocator, memory)
+		}
 		for (buffer in buffers) {
 			freeBuffer(buffer)
 		}
