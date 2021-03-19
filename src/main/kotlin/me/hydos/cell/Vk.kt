@@ -315,7 +315,7 @@ fun transitionImageLayout(
 	}
 }
 
-fun createTextureImage(device: Device, engine: Rosella, material: Material, renderer: Renderer) {
+fun createTextureImage(device: Device, material: Material, renderer: Renderer) {
 	MemoryStack.stackPush().use { stack ->
 		val file = material.texture.readAllBytes(true)
 		val pWidth = stack.mallocInt(1)

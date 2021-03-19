@@ -14,23 +14,29 @@ import org.lwjgl.util.vma.VmaAllocationCreateInfo
 import org.lwjgl.util.vma.VmaAllocatorCreateInfo
 import org.lwjgl.util.vma.VmaVulkanFunctions
 import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.VK11.VK_API_VERSION_1_1
 import java.nio.ByteBuffer
 import java.nio.LongBuffer
 
 /**
- * Used for managing CPU and GPU memory. if your getting memory problems, blame this class
+ * Used for managing CPU and GPU memory.
+ * This class will try to handle most vma stuff for the user so they dont have to touch much memory related stuff
  */
 class Memory(val device: Device, private val instance: VkInstance) {
+
+	val buffers = ArrayList<BufferInfo>()
+	val mappedMemory = ArrayList<Long>()
 
 	val allocator: Long = stackPush().use {
 		val vulkanFunctions: VmaVulkanFunctions = VmaVulkanFunctions.callocStack(it)
 			.set(instance, device.device)
 
 		val createInfo: VmaAllocatorCreateInfo = VmaAllocatorCreateInfo.callocStack(it)
-			.device(device.device)
 			.physicalDevice(device.physicalDevice)
-			.instance(instance)
+			.device(device.device)
 			.pVulkanFunctions(vulkanFunctions)
+			.instance(instance)
+			.vulkanApiVersion(VK_API_VERSION_1_1)
 
 		val pAllocator = it.mallocPointer(1)
 		Vma.vmaCreateAllocator(createInfo, pAllocator)
@@ -126,11 +132,14 @@ class Memory(val device: Device, private val instance: VkInstance) {
 			)
 			val indexBuffer = pBuffer[0]
 			copyBuffer(stagingBuffer.buffer, indexBuffer, size, engine, device)
-			Vma.vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation)
-			Vma.vmaFreeMemory(allocator, stagingBuffer.buffer)
-
+			freeBuffer(stagingBuffer)
 			return indexBuffer
 		}
+	}
+
+	private fun freeBuffer(buffer: BufferInfo) {
+		Vma.vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation)
+		Vma.vmaFreeMemory(allocator, buffer.buffer)
 	}
 
 	/**
@@ -155,6 +164,12 @@ class Memory(val device: Device, private val instance: VkInstance) {
 			Vma.vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation)
 			Vma.vmaFreeMemory(allocator, stagingBuffer.buffer)
 			return vertexBuffer
+		}
+	}
+
+	fun free() {
+		for (buffer in buffers) {
+			freeBuffer(buffer)
 		}
 	}
 }

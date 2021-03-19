@@ -46,7 +46,7 @@ class Material(
 	}
 
 	fun loadTextures(device: Device, engine: Rosella) {
-		createTextureImage(device, engine, this, engine.renderer)
+		createTextureImage(device, this, engine.renderer)
 		createTextureImageView(engine, this)
 		createTextureSampler(device, this)
 	}
