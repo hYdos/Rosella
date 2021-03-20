@@ -3,7 +3,6 @@ package me.hydos.rosella.shader
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.model.RenderObject
-import me.hydos.rosella.shader.ubo.BasicUbo
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.memory.Memory
 import me.hydos.rosella.util.ok
@@ -19,18 +18,13 @@ class ShaderPair(
 	var maxObjCount: Int,
 	vararg var poolObjects: PoolObjType
 ) {
-	var ubo = BasicUbo(device, memory)
-
 	var descriptorPool: Long = 0
 	var descriptorSetLayout: Long = 0
-	var descriptorSets: MutableList<Long> = ArrayList()
 
 	fun updateUbos(currentImage: Int, swapChain: SwapChain, engine: Rosella) {
-		ubo.update(currentImage, swapChain, engine.camera.view, engine.camera.proj)
-	}
-
-	fun createUbos(swapChain: SwapChain) {
-		ubo.create(swapChain)
+		for (renderObject in engine.renderObjects) {
+			renderObject.ubo.update(currentImage, swapChain, engine.camera.view, engine.camera.proj)
+		}
 	}
 
 	fun createPool(swapChain: SwapChain) {
@@ -102,11 +96,11 @@ class ShaderPair(
 			vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets)
 				.ok("Failed to allocate descriptor sets")
 
-			descriptorSets = ArrayList(pDescriptorSets.capacity())
+			renderObject.descriptorSets = ArrayList(pDescriptorSets.capacity())
 
 			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
 				.offset(0)
-				.range(ubo.getSize().toLong())
+				.range(renderObject.ubo.getSize().toLong())
 
 			val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
 				.imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
@@ -117,7 +111,7 @@ class ShaderPair(
 
 			for (i in 0 until pDescriptorSets.capacity()) {
 				val descriptorSet = pDescriptorSets[i]
-				bufferInfo.buffer(ubo.getUniformBuffers()[i].buffer) //TODO: the line which will save us all. Hail FREX
+				bufferInfo.buffer(renderObject.ubo.getUniformBuffers()[i].buffer) //TODO: the line which will save us all. Hail FREX
 				poolObjects.forEachIndexed { index, poolObj ->
 					val descriptorWrite = descriptorWrites[index]
 						.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
@@ -138,13 +132,9 @@ class ShaderPair(
 					descriptorWrite.dstSet(descriptorSet)
 				}
 				vkUpdateDescriptorSets(device.device, descriptorWrites, null)
-				descriptorSets.add(descriptorSet)
+				renderObject.descriptorSets.add(descriptorSet)
 			}
 		}
-	}
-
-	fun free() {
-		ubo.free()
 	}
 
 	enum class PoolObjType(val vkType: Int, val vkShader: Int) {

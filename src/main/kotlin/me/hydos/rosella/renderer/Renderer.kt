@@ -151,7 +151,6 @@ class Renderer {
 	fun freeSwapChain(engine: Rosella) {
 		for (shaderPair in engine.shaders.values) {
 			vkDestroyDescriptorPool(device.device, shaderPair.descriptorPool, null)
-			shaderPair.free()
 		}
 
 		vkFreeCommandBuffers(device.device, commandPool, commandBuffers.asPointerBuffer())
@@ -277,11 +276,9 @@ class Renderer {
 
 				vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE)
 				run {
-					for (model in engine.models) {
-						bindModel(model, it, model.material.shader.descriptorSets[i], commandBuffer)
-//						pushConstant(model, commandBuffer)
-
-						vkCmdDrawIndexed(commandBuffer, model.indices.size, 1, 0, 0, 0)
+					for (renderObject in engine.renderObjects) {
+						bindModel(renderObject, it, renderObject.descriptorSets[i], commandBuffer)
+						vkCmdDrawIndexed(commandBuffer, renderObject.indices.size, 1, 0, 0, 0)
 					}
 				}
 				vkCmdEndRenderPass(commandBuffer)
@@ -290,7 +287,12 @@ class Renderer {
 		}
 	}
 
-	private fun bindModel(renderObject: RenderObject, matrix: MemoryStack, descriptorSet: Long, commandBuffer: VkCommandBuffer) {
+	private fun bindModel(
+		renderObject: RenderObject,
+		matrix: MemoryStack,
+		descriptorSet: Long,
+		commandBuffer: VkCommandBuffer
+	) {
 		vkCmdBindPipeline(
 			commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,

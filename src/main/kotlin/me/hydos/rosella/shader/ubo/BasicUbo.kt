@@ -16,7 +16,7 @@ class BasicUbo(val device: Device, val memory: Memory) : Ubo() {
 
 	var ubos: MutableList<BufferInfo> = ArrayList()
 
-	var model: Matrix4f = Matrix4f()
+	var modelMatrix: Matrix4f = Matrix4f()
 
 	override fun create(swapChain: SwapChain) {
 		MemoryStack.stackPush().use { stack ->
@@ -45,7 +45,7 @@ class BasicUbo(val device: Device, val memory: Memory) : Ubo() {
 			memory.map(ubos[currentImg].allocation, false, data)
 			val buffer = data.getByteBuffer(0, getSize())
 			val mat4Size = 16 * java.lang.Float.BYTES
-			model[0, buffer]
+			modelMatrix[0, buffer]
 			view.get(alignas(mat4Size, alignof(view)), buffer)
 			proj.get(alignas(mat4Size * 2, alignof(view)), buffer)
 			memory.unmap(ubos[currentImg].allocation)

@@ -4,6 +4,8 @@ import me.hydos.rosella.Rosella
 import me.hydos.rosella.material.Material
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.resource.Resource
+import me.hydos.rosella.shader.ubo.BasicUbo
+import me.hydos.rosella.shader.ubo.Ubo
 import me.hydos.rosella.util.memory.Memory
 import org.joml.Vector3f
 import org.joml.Vector3fc
@@ -17,20 +19,26 @@ class RenderObject(private val model: Resource, private val materialIdentifier: 
 	var indices: ArrayList<Int> = ArrayList()
 
 	var vertexBuffer: Long = 0
-
 	var indexBuffer: Long = 0
+
+	var descriptorSets: MutableList<Long> = ArrayList()
+
+	lateinit var ubo: Ubo
 
 	lateinit var material: Material
 
-	fun loadMaterial(engine: Rosella) {
+	fun load(engine: Rosella) {
 		val retrievedMaterial = engine.materials[materialIdentifier]
 			?: error("The material $materialIdentifier couldn't be found. (Are you registering the material?)")
 		material = retrievedMaterial
+		ubo = BasicUbo(engine.device, engine.memory)
+		ubo.create(engine.renderer.swapChain)
 	}
 
 	fun free(memory: Memory) {
 		vmaFreeMemory(memory.allocator, vertexBuffer)
 		vmaFreeMemory(memory.allocator, indexBuffer)
+		ubo.free()
 	}
 
 	fun create(engine: Rosella) {

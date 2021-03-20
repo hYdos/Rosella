@@ -250,7 +250,6 @@ class Material(
 	}
 
 	fun initializeShader(swapChain: SwapChain) {
-		shader.createUbos(swapChain)
 		shader.createPool(swapChain)
 	}
 }

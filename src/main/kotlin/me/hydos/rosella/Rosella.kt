@@ -39,7 +39,7 @@ class Rosella(
 
 	var renderer: Renderer = Renderer()
 
-	var models = ArrayList<RenderObject>()
+	var renderObjects = ArrayList<RenderObject>()
 	var materials = HashMap<Identifier, Material>()
 	var shaders = HashMap<Identifier, ShaderPair>()
 
@@ -108,7 +108,7 @@ class Rosella(
 	}
 
 	fun free() {
-		for (model in models) {
+		for (model in renderObjects) {
 			model.free(memory)
 		}
 
@@ -208,8 +208,8 @@ class Rosella(
 	}
 
 	fun addRenderObject(renderObject: RenderObject) {
-		renderObject.loadMaterial(this)
-		models.add(renderObject)
+		renderObject.load(this)
+		renderObjects.add(renderObject)
 		renderObject.create(this)
 	}
 
