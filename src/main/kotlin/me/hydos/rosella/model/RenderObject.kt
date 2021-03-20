@@ -13,7 +13,7 @@ import org.lwjgl.assimp.Assimp
 import org.lwjgl.util.vma.Vma.vmaFreeMemory
 
 
-open class RenderObject(private val model: Resource, private val materialIdentifier: Identifier) {
+open class RenderObject(private val model: Resource, val materialIdentifier: Identifier) {
 
 	var vertices: ArrayList<Vertex> = ArrayList()
 	var indices: ArrayList<Int> = ArrayList()
@@ -27,7 +27,7 @@ open class RenderObject(private val model: Resource, private val materialIdentif
 
 	lateinit var material: Material
 
-	fun load(engine: Rosella) {
+	open fun load(engine: Rosella) {
 		val retrievedMaterial = engine.materials[materialIdentifier]
 			?: error("The material $materialIdentifier couldn't be found. (Are you registering the material?)")
 		material = retrievedMaterial
@@ -42,13 +42,13 @@ open class RenderObject(private val model: Resource, private val materialIdentif
 	}
 
 	fun create(engine: Rosella) {
-		loadModelFile()
+		loadModelInfo()
 		vertexBuffer = engine.memory.createVertexBuffer(engine, vertices)
 		indexBuffer = engine.memory.createIndexBuffer(engine, indices)
 		material.shader.createDescriptorSets(engine.renderer.swapChain, this)
 	}
 
-	open fun loadModelFile() {
+	open fun loadModelInfo() {
 		val model: ModelLoader.SimpleModel =
 			ModelLoader.loadModel(model, Assimp.aiProcess_FlipUVs or Assimp.aiProcess_DropNormals)
 		val vertexCount: Int = model.positions.size

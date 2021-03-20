@@ -30,7 +30,7 @@ class Camera(window: Window) {
 		view.lookAt(2.0f, -40.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)
 		proj.perspective(
 			Math.toRadians(45.0).toFloat(),
-			swapChain.swapChainExtent!!.width().toFloat() / swapChain.swapChainExtent!!.height().toFloat(),
+			swapChain.swapChainExtent.width().toFloat() / swapChain.swapChainExtent.height().toFloat(),
 			0.1f,
 			1000.0f
 		)
