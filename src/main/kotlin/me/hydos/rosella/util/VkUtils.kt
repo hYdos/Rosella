@@ -6,16 +6,17 @@ import org.joml.Vector3f
 import org.joml.Vector4f
 import org.lwjgl.vulkan.KHRSurface
 import org.lwjgl.vulkan.VK10
+import org.lwjgl.vulkan.VK11
 import kotlin.reflect.KClass
 
-
-private val map = mutableMapOf<Int, String>().apply {
+private val errorMap = mutableMapOf<Int, String>().apply {
 	this[VK10.VK_NOT_READY] = "VK_NOT_READY"
 	this[VK10.VK_TIMEOUT] = "VK_TIMEOUT"
 	this[VK10.VK_EVENT_SET] = "VK_EVENT_SET"
 	this[VK10.VK_EVENT_RESET] = "VK_EVENT_RESET"
 	this[VK10.VK_INCOMPLETE] = "VK_INCOMPLETE"
 	this[VK10.VK_ERROR_OUT_OF_HOST_MEMORY] = "VK_ERROR_OUT_OF_HOST_MEMORY"
+	this[VK11.VK_ERROR_OUT_OF_POOL_MEMORY] = "VK_ERROR_OUT_OF_POOL_MEMORY"
 	this[VK10.VK_ERROR_OUT_OF_DEVICE_MEMORY] = "VK_ERROR_OUT_OF_DEVICE_MEMORY"
 	this[VK10.VK_ERROR_INITIALIZATION_FAILED] = "VK_ERROR_INITIALIZATION_FAILED"
 	this[VK10.VK_ERROR_DEVICE_LOST] = "VK_ERROR_DEVICE_LOST"
@@ -65,14 +66,14 @@ fun alignas(offset: Int, alignment: Int): Int {
 
 fun Int.ok(): Int {
 	if (this != VK10.VK_SUCCESS) {
-		throw RuntimeException(map[this] ?: toString(16))
+		throw RuntimeException(errorMap[this] ?: toString(16))
 	}
 	return this
 }
 
 fun Int.ok(message: String): Int {
 	if (this != VK10.VK_SUCCESS) {
-		throw RuntimeException(message + " Caused by: " + map[this])
+		throw RuntimeException(message + " Caused by: " + errorMap[this] + " (" + this + ")")
 	}
 	return this
 }
