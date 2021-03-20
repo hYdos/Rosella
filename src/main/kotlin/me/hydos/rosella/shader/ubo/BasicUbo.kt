@@ -36,7 +36,7 @@ class BasicUbo(val device: Device, val memory: Memory) : Ubo() {
 	}
 
 	override fun update(currentImg: Int, swapChain: SwapChain, view: Matrix4f, proj: Matrix4f) {
-		if (ubos.size == 0) { //no models exist.
+		if (ubos.size == 0) {
 			create(swapChain) //TODO: CONCERN. why did i write this
 		}
 
