@@ -1,6 +1,6 @@
 package me.hydos.rosella.device
 
-import me.hydos.cell.findQueueFamilies
+import me.hydos.rosella.findQueueFamilies
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.swapchain.SwapChainSupportDetails
 import me.hydos.rosella.swapchain.querySwapChainSupport

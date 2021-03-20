@@ -1,9 +1,8 @@
 /**
  * This file is for accessing vulkan indirectly. it manages structs so engine code can look better.
  */
-package me.hydos.cell
+package me.hydos.rosella
 
-import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.QueueFamilyIndices
 import me.hydos.rosella.material.Material
@@ -11,7 +10,7 @@ import me.hydos.rosella.renderer.Renderer
 import me.hydos.rosella.swapchain.DepthBuffer
 import me.hydos.rosella.swapchain.RenderPass
 import me.hydos.rosella.swapchain.SwapChain
-import me.hydos.rosella.util.createBuffer
+import me.hydos.rosella.util.memory.Memory
 import me.hydos.rosella.util.memory.memcpy
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
@@ -315,7 +314,11 @@ fun transitionImageLayout(
 	}
 }
 
-fun createTextureImage(device: Device, material: Material, renderer: Renderer) {
+/**
+ * A Giant mess of an texture image creator.
+ * TODO: clean
+ */
+fun createTextureImage(device: Device, material: Material, renderer: Renderer, memory: Memory) {
 	MemoryStack.stackPush().use { stack ->
 		val file = material.texture.readAllBytes(true)
 		val pWidth = stack.mallocInt(1)
@@ -327,21 +330,19 @@ fun createTextureImage(device: Device, material: Material, renderer: Renderer) {
 		if (pixels == null) {
 			throw RuntimeException("Failed to load texture image ${material.texture.identifier}")
 		}
-		val pStagingBuffer = stack.mallocLong(1)
-		val pStagingBufferMemory = stack.mallocLong(1)
-		createBuffer(
+
+
+		val pBuffer = stack.mallocLong(1)
+		val stagingBuf = memory.createStagingBuf(
 			imageSize.toInt(),
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			pStagingBuffer,
-			pStagingBufferMemory,
-			device
-		)
-		val data = stack.mallocPointer(1)
-		vkMapMemory(device.device, pStagingBufferMemory[0], 0, imageSize, 0, data)
-		run { memcpy(data.getByteBuffer(0, imageSize.toInt()), pixels, imageSize) }
-		vkUnmapMemory(device.device, pStagingBufferMemory[0])
+			pBuffer,
+			stack
+		) { data ->
+			memcpy(data.getByteBuffer(0, imageSize.toInt()), pixels, imageSize)
+		}
 		STBImage.stbi_image_free(pixels)
+
+
 		val pTextureImage = stack.mallocLong(1)
 		val pTextureImageMemory = stack.mallocLong(1)
 		createImage(
@@ -355,6 +356,9 @@ fun createTextureImage(device: Device, material: Material, renderer: Renderer) {
 		)
 		material.textureImage = pTextureImage[0]
 		material.textureImageMemory = pTextureImageMemory[0]
+
+
+
 		transitionImageLayout(
 			material.textureImage,
 			VK_FORMAT_R8G8B8A8_SRGB,
@@ -364,7 +368,7 @@ fun createTextureImage(device: Device, material: Material, renderer: Renderer) {
 			renderer.device,
 			renderer
 		)
-		copyBufferToImage(pStagingBuffer[0], material.textureImage, pWidth[0], pHeight[0], device, renderer)
+		copyBufferToImage(stagingBuf.buffer, material.textureImage, pWidth[0], pHeight[0], device, renderer)
 		transitionImageLayout(
 			material.textureImage,
 			VK_FORMAT_R8G8B8A8_SRGB,
@@ -374,8 +378,7 @@ fun createTextureImage(device: Device, material: Material, renderer: Renderer) {
 			renderer.device,
 			renderer
 		)
-		vkDestroyBuffer(device.device, pStagingBuffer[0], null)
-		vkFreeMemory(device.device, pStagingBufferMemory[0], null)
+		memory.freeBuffer(stagingBuf)
 	}
 }
 

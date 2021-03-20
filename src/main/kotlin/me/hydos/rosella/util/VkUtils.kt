@@ -1,14 +1,11 @@
 package me.hydos.rosella.util
 
-import me.hydos.cell.findMemoryType
-import me.hydos.rosella.device.Device
 import org.joml.Matrix4f
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
-import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.*
-import java.nio.LongBuffer
+import org.lwjgl.vulkan.KHRSurface
+import org.lwjgl.vulkan.VK10
 import kotlin.reflect.KClass
 
 
@@ -78,31 +75,4 @@ fun Int.ok(message: String): Int {
 		throw RuntimeException(message + " Caused by: " + map[this])
 	}
 	return this
-}
-
-@Deprecated("Please use the VMA based createBuffer method.")
-fun createBuffer(
-	size: Int,
-	usage: Int,
-	properties: Int,
-	pBuffer: LongBuffer,
-	pBufferMemory: LongBuffer,
-	device: Device
-) {
-	MemoryStack.stackPush().use { stack ->
-		val bufferInfo = VkBufferCreateInfo.callocStack(stack)
-			.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
-			.size(size.toLong())
-			.usage(usage)
-			.sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE)
-		VK10.vkCreateBuffer(device.device, bufferInfo, null, pBuffer).ok()
-		val memRequirements = VkMemoryRequirements.mallocStack(stack)
-		VK10.vkGetBufferMemoryRequirements(device.device, pBuffer[0], memRequirements)
-		val allocInfo = VkMemoryAllocateInfo.callocStack(stack)
-			.sType(VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-			.allocationSize(memRequirements.size())
-			.memoryTypeIndex(findMemoryType(memRequirements.memoryTypeBits(), properties, device))
-		VK10.vkAllocateMemory(device.device, allocInfo, null, pBufferMemory).ok()
-		VK10.vkBindBufferMemory(device.device, pBuffer[0], pBufferMemory[0], 0)
-	}
 }

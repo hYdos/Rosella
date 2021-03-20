@@ -1,21 +1,17 @@
 package me.hydos.rosella.renderer
 
-import me.hydos.cell.*
-import me.hydos.rosella.Rosella
+import me.hydos.rosella.*
 import me.hydos.rosella.camera.Camera
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.Queues
 import me.hydos.rosella.io.Window
 import me.hydos.rosella.model.Model
-import me.hydos.rosella.shader.pushconstant.ModelPushConstant
 import me.hydos.rosella.swapchain.DepthBuffer
 import me.hydos.rosella.swapchain.Frame
 import me.hydos.rosella.swapchain.RenderPass
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.memory.asPointerBuffer
-import me.hydos.rosella.util.memory.memcpy
 import me.hydos.rosella.util.ok
-import me.hydos.rosella.util.sizeof
 import org.lwjgl.PointerBuffer
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryStack
@@ -283,7 +279,7 @@ class Renderer {
 				run {
 					for (model in engine.models) {
 						bindModel(model, it, model.material.shader.descriptorSets[i], commandBuffer)
-						pushConstant(model, commandBuffer)
+//						pushConstant(model, commandBuffer)
 
 						vkCmdDrawIndexed(commandBuffer, model.indices.size, 1, 0, 0, 0)
 					}
@@ -315,41 +311,41 @@ class Renderer {
 		)
 	}
 
-	/**
-	 * Some basic push constant code i am playing around with.
-	 */
-	private fun pushConstant(model: Model, commandBuffer: VkCommandBuffer) {
-		val it = MemoryStack.stackGet()
-		val data = it.mallocPointer(1)
-		val modelPushConstant = ModelPushConstant()
-		modelPushConstant.position.add(0f, 1f, 0f)
-		val size = sizeof(modelPushConstant.position)
-		vkMapMemory(
-			device.device,
-			model.material.shader.pushConstantBuffersMemory[0], // Hardcoded to 0 for the 1 model
-			0,
-			size.toLong(),
-			0,
-			data
-		)
-		run {
-			memcpy(data.getByteBuffer(0, size), modelPushConstant)
-		}
-		vkUnmapMemory(
-			device.device,
-			model.material.shader.pushConstantBuffersMemory[0]
-		)// Hardcoded to 0 for the 1 model
-
-		val buffer = it.longs(1)
-		buffer.put(model.material.shader.pushConstantBuffers[0])
-		vkCmdPushConstants(
-			commandBuffer,
-			model.material.pipelineLayout,
-			VK_SHADER_STAGE_VERTEX_BIT,
-			0,
-			data.getByteBuffer(0, size)
-		)
-	}
+//	/**
+//	 * Some basic push constant code i am playing around with.
+//	 */
+//	private fun pushConstant(model: Model, commandBuffer: VkCommandBuffer) {
+//		val it = MemoryStack.stackGet()
+//		val data = it.mallocPointer(1)
+//		val modelPushConstant = ModelPushConstant()
+//		modelPushConstant.position.add(0f, 1f, 0f)
+//		val size = sizeof(modelPushConstant.position)
+//		vkMapMemory(
+//			device.device,
+//			model.material.shader.pushConstantBuffersMemory[0], // Hardcoded to 0 for the 1 model
+//			0,
+//			size.toLong(),
+//			0,
+//			data
+//		)
+//		run {
+//			memcpy(data.getByteBuffer(0, size), modelPushConstant)
+//		}
+//		vkUnmapMemory(
+//			device.device,
+//			model.material.shader.pushConstantBuffersMemory[0]
+//		)// Hardcoded to 0 for the 1 model
+//
+//		val buffer = it.longs(1)
+//		buffer.put(model.material.shader.pushConstantBuffers[0])
+//		vkCmdPushConstants(
+//			commandBuffer,
+//			model.material.pipelineLayout,
+//			VK_SHADER_STAGE_VERTEX_BIT,
+//			0,
+//			data.getByteBuffer(0, size)
+//		)
+//	}
 
 	/**
 	 * Called after the vulkan device and instance have been initialized.

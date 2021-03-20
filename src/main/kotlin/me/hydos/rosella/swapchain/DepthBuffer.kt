@@ -1,8 +1,8 @@
 package me.hydos.rosella.swapchain
 
-import me.hydos.cell.createImage
-import me.hydos.cell.createImageView
-import me.hydos.cell.transitionImageLayout
+import me.hydos.rosella.createImage
+import me.hydos.rosella.createImageView
+import me.hydos.rosella.transitionImageLayout
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.renderer.Renderer
 import org.lwjgl.system.MemoryStack

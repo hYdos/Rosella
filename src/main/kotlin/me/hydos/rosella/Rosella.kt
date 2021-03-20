@@ -131,6 +131,8 @@ class Rosella(
 
 		vkDestroySurfaceKHR(vulkanInstance, surface, null)
 		vkDestroyInstance(vulkanInstance, null)
+
+		memory.free()
 	}
 
 	private fun getRequiredExtensions(validationLayersEnabled: Boolean): PointerBuffer? {

@@ -24,8 +24,8 @@ import java.nio.LongBuffer
  */
 class Memory(val device: Device, private val instance: VkInstance) {
 
-	val buffers = ArrayList<BufferInfo>()
 	val mappedMemory = ArrayList<Long>()
+	val buffers = ArrayList<BufferInfo>()
 
 	val allocator: Long = stackPush().use {
 		val vulkanFunctions: VmaVulkanFunctions = VmaVulkanFunctions.callocStack(it)
@@ -44,6 +44,23 @@ class Memory(val device: Device, private val instance: VkInstance) {
 	}
 
 	/**
+	 * Maps an allocation with an Pointer Buffer
+	 */
+	fun map(allocation: Long, unmapOnClose: Boolean, data: PointerBuffer) {
+		if (unmapOnClose) {
+			mappedMemory.add(allocation)
+		}
+		Vma.vmaMapMemory(allocator, allocation, data)
+	}
+
+	/**
+	 * Unmaps allocated memory. this should usually be called on close
+	 */
+	fun unmap(allocation: Long) {
+		Vma.vmaUnmapMemory(allocator, allocation)
+	}
+
+	/**
 	 * Used for creating the buffer written to before copied to the GPU
 	 */
 	fun createStagingBuf(
@@ -52,30 +69,29 @@ class Memory(val device: Device, private val instance: VkInstance) {
 		stack: MemoryStack,
 		callback: (data: PointerBuffer) -> Unit
 	): BufferInfo {
-		val stagingBufferAllocation: Long = createBuf(
+		val stagingBuffer: BufferInfo = createBuffer(
 			size,
 			VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			Vma.VMA_MEMORY_USAGE_CPU_ONLY,
 			pBuffer
 		)
-		val stagingBuffer = pBuffer[0]
 		val data = stack.mallocPointer(1)
-		Vma.vmaMapMemory(allocator, stagingBufferAllocation, data)
+		map(stagingBuffer.allocation, true, data)
 		callback(data)
-		Vma.vmaUnmapMemory(allocator, stagingBuffer)
-		return BufferInfo(stagingBuffer, stagingBufferAllocation)
+		return stagingBuffer
 	}
 
 
 	/**
 	 * Used to create a Vulkan Memory Allocator Buffer.
 	 */
-	fun createBuf(
+	fun createBuffer(
 		size: Int,
 		usage: Int,
 		vmaUsage: Int,
 		pBuffer: LongBuffer
-	): Long {
+	): BufferInfo {
+		var allocation: Long
 		stackPush().use {
 			val vulkanBufferInfo = VkBufferCreateInfo.callocStack(it)
 				.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
@@ -86,12 +102,11 @@ class Memory(val device: Device, private val instance: VkInstance) {
 			val vmaBufferInfo: VmaAllocationCreateInfo = VmaAllocationCreateInfo.callocStack(it)
 				.usage(vmaUsage)
 
-			val allocation = it.mallocPointer(1)
-
-			Vma.vmaCreateBuffer(allocator, vulkanBufferInfo, vmaBufferInfo, pBuffer, allocation, null)
-
-			return allocation[0]
+			val pAllocation = it.mallocPointer(1)
+			Vma.vmaCreateBuffer(allocator, vulkanBufferInfo, vmaBufferInfo, pBuffer, pAllocation, null)
+			allocation = pAllocation[0]
 		}
+		return BufferInfo(pBuffer[0], allocation)
 	}
 
 	/**
@@ -127,7 +142,7 @@ class Memory(val device: Device, private val instance: VkInstance) {
 				memcpy(data.getByteBuffer(0, size), indices)
 			}
 
-			createBuf(
+			createBuffer(
 				size,
 				VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 				Vma.VMA_MEMORY_USAGE_CPU_TO_GPU,
@@ -150,7 +165,7 @@ class Memory(val device: Device, private val instance: VkInstance) {
 			val stagingBuffer = engine.memory.createStagingBuf(size, pBuffer, it) { data ->
 				memcpy(data.getByteBuffer(0, size), vertices)
 			}
-			createBuf(
+			createBuffer(
 				size,
 				VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 				Vma.VMA_MEMORY_USAGE_CPU_TO_GPU,
@@ -166,7 +181,7 @@ class Memory(val device: Device, private val instance: VkInstance) {
 	/**
 	 * Forces a buffer to be freed
 	 */
-	private fun freeBuffer(buffer: BufferInfo) {
+	fun freeBuffer(buffer: BufferInfo) {
 		Vma.vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation)
 		Vma.vmaFreeMemory(allocator, buffer.buffer)
 	}
@@ -176,7 +191,7 @@ class Memory(val device: Device, private val instance: VkInstance) {
 	 */
 	fun free() {
 		for (memory in mappedMemory) {
-			Vma.vmaUnmapMemory(allocator, memory)
+			unmap(memory)
 		}
 		for (buffer in buffers) {
 			freeBuffer(buffer)

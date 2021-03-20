@@ -5,11 +5,8 @@ import me.hydos.rosella.device.Device
 import me.hydos.rosella.material.Material
 import me.hydos.rosella.shader.ubo.BasicUbo
 import me.hydos.rosella.swapchain.SwapChain
-import me.hydos.rosella.util.createBuffer
 import me.hydos.rosella.util.memory.Memory
 import me.hydos.rosella.util.ok
-import me.hydos.rosella.util.sizeof
-import org.joml.Vector3f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
@@ -24,7 +21,6 @@ class ShaderPair(
 	var ubo = BasicUbo(device, memory)
 
 	var pushConstantBuffers: MutableList<Long> = ArrayList()
-	var pushConstantBuffersMemory: MutableList<Long> = ArrayList()
 
 	var descriptorPool: Long = 0
 	var descriptorSetLayout: Long = 0
@@ -38,23 +34,23 @@ class ShaderPair(
 		ubo.create(swapChain)
 	}
 
-	fun createPushConstantBuffer() {
-		MemoryStack.stackPush().use {
-			val pBuffer = it.mallocLong(1)
-			val pBufferMemory = it.mallocLong(1)
-			createBuffer(
-				sizeof(Vector3f::class), //TODO: unhardcode
-				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-				pBuffer,
-				pBufferMemory,
-				device
-			)
-
-			pushConstantBuffers.add(pBuffer[0])
-			pushConstantBuffersMemory.add(pBufferMemory[0])
-		}
-	}
+//	fun createPushConstantBuffer() {
+//		MemoryStack.stackPush().use {
+//			val pBuffer = it.mallocLong(1)
+//			val pBufferMemory = it.mallocLong(1)
+//			createBuffer(
+//				sizeof(Vector3f::class),
+//				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+//				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+//				pBuffer,
+//				pBufferMemory,
+//				device
+//			)
+//
+//			pushConstantBuffers.add(pBuffer[0])
+//			pushConstantBuffersMemory.add(pBufferMemory[0])
+//		}
+//	}
 
 	fun createPool(swapChain: SwapChain) {
 		MemoryStack.stackPush().use { stack ->
@@ -140,7 +136,7 @@ class ShaderPair(
 
 			for (i in 0 until pDescriptorSets.capacity()) {
 				val descriptorSet = pDescriptorSets[i]
-				bufferInfo.buffer(ubo.getUniformBuffers()[i])
+				bufferInfo.buffer(ubo.getUniformBuffers()[i].buffer)
 				poolObjects.forEachIndexed { index, poolObj ->
 					val descriptorWrite = descriptorWrites[index]
 						.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)

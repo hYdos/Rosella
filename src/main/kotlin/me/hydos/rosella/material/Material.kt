@@ -1,9 +1,9 @@
 package me.hydos.rosella.material
 
-import me.hydos.cell.createTextureImage
-import me.hydos.cell.createTextureImageView
-import me.hydos.cell.createTextureSampler
 import me.hydos.rosella.Rosella
+import me.hydos.rosella.createTextureImage
+import me.hydos.rosella.createTextureImageView
+import me.hydos.rosella.createTextureSampler
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.model.Vertex
 import me.hydos.rosella.resource.Identifier
@@ -46,7 +46,7 @@ class Material(
 	}
 
 	fun loadTextures(device: Device, engine: Rosella) {
-		createTextureImage(device, this, engine.renderer)
+		createTextureImage(device, this, engine.renderer, engine.memory)
 		createTextureImageView(engine, this)
 		createTextureSampler(device, this)
 	}
@@ -251,7 +251,7 @@ class Material(
 
 	fun initializeShader(swapChain: SwapChain) {
 		shader.createUniformBuffers(swapChain)
-		shader.createPushConstantBuffer()
+//		shader.createPushConstantBuffer()
 		shader.createPool(swapChain)
 		shader.createDescriptorSets(swapChain, this)
 	}

@@ -1,6 +1,7 @@
 package me.hydos.rosella.shader.ubo
 
 import me.hydos.rosella.swapchain.SwapChain
+import me.hydos.rosella.util.memory.BufferInfo
 import org.joml.Matrix4f
 
 abstract class Ubo {
@@ -28,5 +29,5 @@ abstract class Ubo {
 	/**
 	 * Gets an list of pointers to ubo's
 	 */
-	abstract fun getUniformBuffers(): List<Long>
+	abstract fun getUniformBuffers(): List<BufferInfo>
 }
