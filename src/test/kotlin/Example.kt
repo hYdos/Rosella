@@ -3,7 +3,7 @@ package me.hydos.example
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.io.Window
 import me.hydos.rosella.material.Material
-import me.hydos.rosella.model.RenderObject
+import me.hydos.rosella.model.GuiRenderObject
 import me.hydos.rosella.resource.Global
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.shader.Shader
@@ -18,49 +18,66 @@ object Example {
 
 		val factCore = Identifier("rosella", "fact_core")
 		val chalet = Identifier("rosella", "chalet")
+		val guiTexture = Identifier("rosella", "gui_texture")
 
-		val exampleShaderId = Identifier("rosella", "example_shader")
+		val basicShader = Identifier("rosella", "example_shader")
 
-		val exampleShader = ShaderPair(
-			Shader(Global.ensureResource(Identifier("rosella", "shaders/base.v.glsl"))),
-			Shader(Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl"))),
-			engine.device,
-			engine.memory,
-			2,
-			ShaderPair.PoolObjType.UBO,
-			ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
-		)
-		engine.registerShader(exampleShaderId, exampleShader)
-
-		val factCoreMaterial = Material(
-			Global.ensureResource(Identifier("rosella", "textures/fact_core_0.png")),
-			exampleShaderId
+		engine.registerShader(
+			basicShader, ShaderPair(
+				Shader(Global.ensureResource(Identifier("rosella", "shaders/base.v.glsl"))),
+				Shader(Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl"))),
+				engine.device,
+				engine.memory,
+				3,
+				ShaderPair.PoolObjType.UBO,
+				ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
+			)
 		)
 
-		val chaletMaterial = Material(
-			Global.ensureResource(Identifier("rosella", "textures/fact_core_0.png")),
-			exampleShaderId
+		// Registers the materials so the engine can use them
+		engine.registerMaterial(
+			factCore, Material(
+				Global.ensureResource(Identifier("rosella", "textures/fact_core_0.png")),
+				basicShader
+			)
 		)
-		engine.registerMaterial(factCore, factCoreMaterial)
-		engine.registerMaterial(chalet, chaletMaterial)
+		engine.registerMaterial(
+			guiTexture, Material(
+				Global.ensureResource(Identifier("rosella", "textures/yortfuckinhaw.png")),
+				basicShader
+			)
+		)
+		engine.registerMaterial(
+			chalet, Material(
+				Global.ensureResource(Identifier("rosella", "textures/chalet.jpg")),
+				basicShader
+			)
+		)
 		engine.reloadMaterials()
 
+//		engine.addRenderObject(
+//			RenderObject(
+//				Global.ensureResource(Identifier("rosella", "models/fact_core.gltf")),
+//				factCore
+//			)
+//		)
+
 		engine.addRenderObject(
-			RenderObject(
-				Global.ensureResource(Identifier("rosella", "models/fact_core.gltf")),
-				factCore
+			GuiRenderObject(
+				guiTexture
 			)
 		)
-		engine.addRenderObject(
-			RenderObject(
-				Global.ensureResource(Identifier("rosella", "models/chalet.obj")),
-				Identifier("rosella", "chalet")
-			)
-		)
+
+//		engine.addRenderObject(
+//			RenderObject(
+//				Global.ensureResource(Identifier("rosella", "models/chalet.obj")),
+//				chalet
+//			)
+//		)
 
 		engine.renderer.createCommandBuffers(engine.renderer.renderPass, engine)
 
-		// Register events so we can interact and run game logic
+		// Reload the engine's command buffers so our new render objects are rendered
 		engine.renderer.createCommandBuffers(engine.renderer.renderPass, engine)
 
 		// Register events so we can interact and run game logic

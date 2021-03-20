@@ -13,9 +13,9 @@ import org.lwjgl.assimp.Assimp
 import org.lwjgl.util.vma.Vma.vmaFreeMemory
 
 
-class RenderObject(private val model: Resource, private val materialIdentifier: Identifier) {
+open class RenderObject(private val model: Resource, private val materialIdentifier: Identifier) {
 
-	private var vertices: ArrayList<Vertex> = ArrayList()
+	var vertices: ArrayList<Vertex> = ArrayList()
 	var indices: ArrayList<Int> = ArrayList()
 
 	var vertexBuffer: Long = 0
@@ -48,7 +48,7 @@ class RenderObject(private val model: Resource, private val materialIdentifier: 
 		material.shader.createDescriptorSets(engine.renderer.swapChain, this)
 	}
 
-	private fun loadModelFile() {
+	open fun loadModelFile() {
 		val model: ModelLoader.SimpleModel =
 			ModelLoader.loadModel(model, Assimp.aiProcess_FlipUVs or Assimp.aiProcess_DropNormals)
 		val vertexCount: Int = model.positions.size

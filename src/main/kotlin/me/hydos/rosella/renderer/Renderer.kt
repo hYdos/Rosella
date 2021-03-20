@@ -264,7 +264,7 @@ class Renderer {
 			val beginInfo = createBeginInfo(it)
 			val renderPassInfo = createRenderPassInfo(it, renderPass)
 			val renderArea = createRenderArea(it, 0, 0, swapChain)
-			val clearValues = createClearValues(it, 0f, 0f, 0f, 1.0f, 0)
+			val clearValues = createClearValues(it, 0f, 0.6f, 0.4f, 1.0f, 0)
 
 			renderPassInfo.renderArea(renderArea)
 				.pClearValues(clearValues)
@@ -312,42 +312,6 @@ class Renderer {
 			null
 		)
 	}
-
-//	/**
-//	 * Some basic push constant code i am playing around with.
-//	 */
-//	private fun pushConstant(model: Model, commandBuffer: VkCommandBuffer) {
-//		val it = MemoryStack.stackGet()
-//		val data = it.mallocPointer(1)
-//		val modelPushConstant = ModelPushConstant()
-//		modelPushConstant.position.add(0f, 1f, 0f)
-//		val size = sizeof(modelPushConstant.position)
-//		vkMapMemory(
-//			device.device,
-//			model.material.shader.pushConstantBuffersMemory[0], // Hardcoded to 0 for the 1 model
-//			0,
-//			size.toLong(),
-//			0,
-//			data
-//		)
-//		run {
-//			memcpy(data.getByteBuffer(0, size), modelPushConstant)
-//		}
-//		vkUnmapMemory(
-//			device.device,
-//			model.material.shader.pushConstantBuffersMemory[0]
-//		)// Hardcoded to 0 for the 1 model
-//
-//		val buffer = it.longs(1)
-//		buffer.put(model.material.shader.pushConstantBuffers[0])
-//		vkCmdPushConstants(
-//			commandBuffer,
-//			model.material.pipelineLayout,
-//			VK_SHADER_STAGE_VERTEX_BIT,
-//			0,
-//			data.getByteBuffer(0, size)
-//		)
-//	}
 
 	/**
 	 * Called after the vulkan device and instance have been initialized.
