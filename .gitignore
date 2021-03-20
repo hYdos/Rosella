@@ -5,3 +5,4 @@ target/
 *.iml
 *.class
 *.kotlin_module
+src/main/resources

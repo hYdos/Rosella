@@ -21,10 +21,23 @@ object Example {
 		val guiTexture = Identifier("rosella", "gui_texture")
 
 		val basicShader = Identifier("rosella", "example_shader")
+		val guiShader = Identifier("rosella", "gui_shader")
 
 		engine.registerShader(
 			basicShader, ShaderPair(
 				Shader(Global.ensureResource(Identifier("rosella", "shaders/base.v.glsl"))),
+				Shader(Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl"))),
+				engine.device,
+				engine.memory,
+				3,
+				ShaderPair.PoolObjType.UBO,
+				ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
+			)
+		)
+
+		engine.registerShader(
+			guiShader, ShaderPair(
+				Shader(Global.ensureResource(Identifier("rosella", "shaders/gui.v.glsl"))),
 				Shader(Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl"))),
 				engine.device,
 				engine.memory,
@@ -42,15 +55,16 @@ object Example {
 			)
 		)
 		engine.registerMaterial(
-			guiTexture, Material(
-				Global.ensureResource(Identifier("rosella", "textures/yortfuckinhaw.png")),
-				basicShader
-			)
-		)
-		engine.registerMaterial(
 			chalet, Material(
 				Global.ensureResource(Identifier("rosella", "textures/chalet.jpg")),
 				basicShader
+			)
+		)
+		// Special gui material
+		engine.registerMaterial(
+			guiTexture, Material(
+				Global.ensureResource(Identifier("rosella", "textures/yortfuckinhaw.png")),
+				guiShader
 			)
 		)
 		engine.reloadMaterials()

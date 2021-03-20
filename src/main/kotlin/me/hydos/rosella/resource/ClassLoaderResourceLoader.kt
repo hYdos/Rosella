@@ -12,7 +12,7 @@ class ClassLoaderResourceLoader(private val loader: ClassLoader) : ResourceLoade
 			override val loader: ResourceLoader
 				get() = this@ClassLoaderResourceLoader
 
-			override fun openStream(): InputStream = this@ClassLoaderResourceLoader.loader.getResourceAsStream(id.file)
+			override fun openStream(): InputStream = this@ClassLoaderResourceLoader.loader.getResourceAsStream(id.file)!!
 		}
 	}
 }
