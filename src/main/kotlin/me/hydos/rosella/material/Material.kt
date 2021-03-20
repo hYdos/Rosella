@@ -250,9 +250,7 @@ class Material(
 	}
 
 	fun initializeShader(swapChain: SwapChain) {
-		shader.createUniformBuffers(swapChain)
-//		shader.createPushConstantBuffer()
+		shader.createUbos(swapChain)
 		shader.createPool(swapChain)
-		shader.createDescriptorSets(swapChain, this)
 	}
 }

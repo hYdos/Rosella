@@ -5,7 +5,7 @@ import me.hydos.rosella.camera.Camera
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.device.Queues
 import me.hydos.rosella.io.Window
-import me.hydos.rosella.model.Model
+import me.hydos.rosella.model.RenderObject
 import me.hydos.rosella.swapchain.DepthBuffer
 import me.hydos.rosella.swapchain.Frame
 import me.hydos.rosella.swapchain.RenderPass
@@ -96,7 +96,7 @@ class Renderer {
 			val imageIndex = pImageIndex[0]
 
 			for (shader in engine.shaders.values) {
-				shader.updateUbo(imageIndex, swapChain, engine)
+				shader.updateUbos(imageIndex, swapChain, engine)
 			}
 
 			if (imagesInFlight!!.containsKey(imageIndex)) {
@@ -290,21 +290,21 @@ class Renderer {
 		}
 	}
 
-	private fun bindModel(model: Model, matrix: MemoryStack, descriptorSet: Long, commandBuffer: VkCommandBuffer) {
+	private fun bindModel(renderObject: RenderObject, matrix: MemoryStack, descriptorSet: Long, commandBuffer: VkCommandBuffer) {
 		vkCmdBindPipeline(
 			commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			model.material.graphicsPipeline
+			renderObject.material.graphicsPipeline
 		)
 
 		val offsets = matrix.longs(0)
-		val vertexBuffers = matrix.longs(model.vertexBuffer)
+		val vertexBuffers = matrix.longs(renderObject.vertexBuffer)
 		vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets)
-		vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32)
+		vkCmdBindIndexBuffer(commandBuffer, renderObject.indexBuffer, 0, VK_INDEX_TYPE_UINT32)
 		vkCmdBindDescriptorSets(
 			commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			model.material.pipelineLayout,
+			renderObject.material.pipelineLayout,
 			0,
 			matrix.longs(descriptorSet),
 			null

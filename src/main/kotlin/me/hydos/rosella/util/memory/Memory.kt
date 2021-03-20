@@ -3,7 +3,6 @@ package me.hydos.rosella.util.memory
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.model.Vertex
-import me.hydos.rosella.shader.pushconstant.ModelPushConstant
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
@@ -141,7 +140,6 @@ class Memory(val device: Device, private val instance: VkInstance) {
 			val stagingBuffer = engine.memory.createStagingBuf(size, pBuffer, it) { data ->
 				memcpy(data.getByteBuffer(0, size), indices)
 			}
-
 			createBuffer(
 				size,
 				VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -196,6 +194,7 @@ class Memory(val device: Device, private val instance: VkInstance) {
 		for (buffer in buffers) {
 			freeBuffer(buffer)
 		}
+		Vma.vmaDestroyAllocator(allocator)
 	}
 }
 
@@ -209,13 +208,6 @@ fun memcpy(buffer: ByteBuffer, indices: ArrayList<Int>) {
 		buffer.putInt(index)
 	}
 	buffer.rewind()
-}
-
-/**
- * Copies an Push Constant into the specified buffer
- */
-fun memcpy(buffer: ByteBuffer, pushConstant: ModelPushConstant) {
-	pushConstant.position[0, buffer]
 }
 
 /**

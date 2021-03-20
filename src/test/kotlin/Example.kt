@@ -3,7 +3,7 @@ package me.hydos.example
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.io.Window
 import me.hydos.rosella.material.Material
-import me.hydos.rosella.model.Model
+import me.hydos.rosella.model.RenderObject
 import me.hydos.rosella.resource.Global
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.shader.Shader
@@ -26,6 +26,7 @@ object Example {
 			Shader(Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl"))),
 			engine.device,
 			engine.memory,
+			2,
 			ShaderPair.PoolObjType.UBO,
 			ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
 		)
@@ -44,14 +45,14 @@ object Example {
 		engine.registerMaterial(chalet, chaletMaterial)
 		engine.reloadMaterials()
 
-		engine.addModel(
-			Model(
+		engine.addRenderObject(
+			RenderObject(
 				Global.ensureResource(Identifier("rosella", "models/fact_core.gltf")),
 				factCore
 			)
 		)
-		engine.addModel(
-			Model(
+		engine.addRenderObject(
+			RenderObject(
 				Global.ensureResource(Identifier("rosella", "models/chalet.obj")),
 				Identifier("rosella", "chalet")
 			)

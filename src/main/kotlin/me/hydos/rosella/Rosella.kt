@@ -4,7 +4,7 @@ import me.hydos.rosella.camera.Camera
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.io.Window
 import me.hydos.rosella.material.Material
-import me.hydos.rosella.model.Model
+import me.hydos.rosella.model.RenderObject
 import me.hydos.rosella.renderer.Renderer
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.shader.ShaderPair
@@ -21,6 +21,7 @@ import org.lwjgl.system.MemoryUtil.NULL
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR
 import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK11.VK_API_VERSION_1_1
 import java.nio.IntBuffer
 import java.nio.LongBuffer
 import java.util.function.Consumer
@@ -38,7 +39,7 @@ class Rosella(
 
 	var renderer: Renderer = Renderer()
 
-	var models = ArrayList<Model>()
+	var models = ArrayList<RenderObject>()
 	var materials = HashMap<Identifier, Material>()
 	var shaders = HashMap<Identifier, ShaderPair>()
 
@@ -79,7 +80,7 @@ class Rosella(
 				.applicationVersion(VK_MAKE_VERSION(1, 0, 0))
 				.pEngineName(stack.UTF8Safe("Rosella"))
 				.engineVersion(VK_MAKE_VERSION(0, 1, 0))
-				.apiVersion(VK12.VK_API_VERSION_1_2)
+				.apiVersion(VK_API_VERSION_1_1)
 			val createInfo = VkInstanceCreateInfo.callocStack(stack)
 				.pApplicationInfo(applicationInfo)
 				.sType(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
@@ -206,10 +207,10 @@ class Rosella(
 		}
 	}
 
-	fun addModel(model: Model) {
-		model.loadMaterial(this)
-		models.add(model)
-		model.create(this)
+	fun addRenderObject(renderObject: RenderObject) {
+		renderObject.loadMaterial(this)
+		models.add(renderObject)
+		renderObject.create(this)
 	}
 
 	fun registerMaterial(identifier: Identifier, material: Material) {

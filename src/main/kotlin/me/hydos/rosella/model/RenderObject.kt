@@ -2,16 +2,16 @@ package me.hydos.rosella.model
 
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.material.Material
-import me.hydos.rosella.util.memory.Memory
 import me.hydos.rosella.resource.Identifier
 import me.hydos.rosella.resource.Resource
+import me.hydos.rosella.util.memory.Memory
 import org.joml.Vector3f
 import org.joml.Vector3fc
 import org.lwjgl.assimp.Assimp
 import org.lwjgl.util.vma.Vma.vmaFreeMemory
 
 
-class Model(private val model: Resource, private val materialIdentifier: Identifier) {
+class RenderObject(private val model: Resource, private val materialIdentifier: Identifier) {
 
 	private var vertices: ArrayList<Vertex> = ArrayList()
 	var indices: ArrayList<Int> = ArrayList()
@@ -24,7 +24,7 @@ class Model(private val model: Resource, private val materialIdentifier: Identif
 
 	fun loadMaterial(engine: Rosella) {
 		val retrievedMaterial = engine.materials[materialIdentifier]
-			?: error("The material $materialIdentifier couldn't be found. (Are you registering it?)")
+			?: error("The material $materialIdentifier couldn't be found. (Are you registering the material?)")
 		material = retrievedMaterial
 	}
 
@@ -33,11 +33,11 @@ class Model(private val model: Resource, private val materialIdentifier: Identif
 		vmaFreeMemory(memory.allocator, indexBuffer)
 	}
 
-	fun create(engine: Rosella): Model {
+	fun create(engine: Rosella) {
 		loadModelFile()
 		vertexBuffer = engine.memory.createVertexBuffer(engine, vertices)
 		indexBuffer = engine.memory.createIndexBuffer(engine, indices)
-		return this
+		material.shader.createDescriptorSets(engine.renderer.swapChain, this)
 	}
 
 	private fun loadModelFile() {

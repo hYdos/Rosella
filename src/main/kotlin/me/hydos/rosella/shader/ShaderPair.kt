@@ -2,7 +2,7 @@ package me.hydos.rosella.shader
 
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.device.Device
-import me.hydos.rosella.material.Material
+import me.hydos.rosella.model.RenderObject
 import me.hydos.rosella.shader.ubo.BasicUbo
 import me.hydos.rosella.swapchain.SwapChain
 import me.hydos.rosella.util.memory.Memory
@@ -16,41 +16,22 @@ class ShaderPair(
 	val fragmentShader: Shader,
 	val device: Device,
 	val memory: Memory,
+	var maxObjCount: Int,
 	vararg var poolObjects: PoolObjType
 ) {
 	var ubo = BasicUbo(device, memory)
-
-	var pushConstantBuffers: MutableList<Long> = ArrayList()
 
 	var descriptorPool: Long = 0
 	var descriptorSetLayout: Long = 0
 	var descriptorSets: MutableList<Long> = ArrayList()
 
-	fun updateUbo(currentImage: Int, swapChain: SwapChain, engine: Rosella) {
+	fun updateUbos(currentImage: Int, swapChain: SwapChain, engine: Rosella) {
 		ubo.update(currentImage, swapChain, engine.camera.view, engine.camera.proj)
 	}
 
-	fun createUniformBuffers(swapChain: SwapChain) {
+	fun createUbos(swapChain: SwapChain) {
 		ubo.create(swapChain)
 	}
-
-//	fun createPushConstantBuffer() {
-//		MemoryStack.stackPush().use {
-//			val pBuffer = it.mallocLong(1)
-//			val pBufferMemory = it.mallocLong(1)
-//			createBuffer(
-//				sizeof(Vector3f::class),
-//				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-//				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-//				pBuffer,
-//				pBufferMemory,
-//				device
-//			)
-//
-//			pushConstantBuffers.add(pBuffer[0])
-//			pushConstantBuffersMemory.add(pBufferMemory[0])
-//		}
-//	}
 
 	fun createPool(swapChain: SwapChain) {
 		MemoryStack.stackPush().use { stack ->
@@ -65,7 +46,7 @@ class ShaderPair(
 			val poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
 				.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
 				.pPoolSizes(poolSizes)
-				.maxSets(swapChain.swapChainImages.size)
+				.maxSets(swapChain.swapChainImages.size * maxObjCount)
 
 			val pDescriptorPool = stack.mallocLong(1)
 			vkCreateDescriptorPool(
@@ -106,7 +87,7 @@ class ShaderPair(
 		}
 	}
 
-	fun createDescriptorSets(swapChain: SwapChain, material: Material) {
+	fun createDescriptorSets(swapChain: SwapChain, renderObject: RenderObject) {
 		MemoryStack.stackPush().use { stack ->
 			val layouts = stack.mallocLong(swapChain.swapChainImages.size)
 			for (i in 0 until layouts.capacity()) {
@@ -129,14 +110,14 @@ class ShaderPair(
 
 			val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
 				.imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-				.imageView(material.textureImageView)
-				.sampler(material.textureSampler)
+				.imageView(renderObject.material.textureImageView)
+				.sampler(renderObject.material.textureSampler)
 
 			val descriptorWrites = VkWriteDescriptorSet.callocStack(poolObjects.size, stack)
 
 			for (i in 0 until pDescriptorSets.capacity()) {
 				val descriptorSet = pDescriptorSets[i]
-				bufferInfo.buffer(ubo.getUniformBuffers()[i].buffer)
+				bufferInfo.buffer(ubo.getUniformBuffers()[i].buffer) //TODO: the line which will save us all. Hail FREX
 				poolObjects.forEachIndexed { index, poolObj ->
 					val descriptorWrite = descriptorWrites[index]
 						.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
