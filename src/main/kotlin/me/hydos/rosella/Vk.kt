@@ -21,6 +21,8 @@ import org.lwjgl.vulkan.VK10.*
 import java.nio.ByteBuffer
 import java.nio.LongBuffer
 
+const val IMAGE_FORMAT: Int = VK_FORMAT_R8G8B8A8_UNORM
+
 fun allocateCmdBuffers(
 	stack: MemoryStack,
 	device: Device,
@@ -207,7 +209,7 @@ fun createTextureSampler(device: Device, material: Material) {
 fun createTextureImageView(engine: Rosella, material: Material) {
 	material.textureImageView = createImageView(
 		material.textureImage,
-		VK_FORMAT_R8G8B8A8_SRGB,
+		IMAGE_FORMAT,
 		VK_IMAGE_ASPECT_COLOR_BIT,
 		engine.device
 	)
@@ -347,7 +349,7 @@ fun createTextureImage(device: Device, material: Material, renderer: Renderer, m
 		val pTextureImageMemory = stack.mallocLong(1)
 		createImage(
 			pWidth[0], pHeight[0],
-			VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+			IMAGE_FORMAT, VK_IMAGE_TILING_OPTIMAL,
 			VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK_IMAGE_USAGE_SAMPLED_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			pTextureImage,
@@ -361,7 +363,7 @@ fun createTextureImage(device: Device, material: Material, renderer: Renderer, m
 
 		transitionImageLayout(
 			material.textureImage,
-			VK_FORMAT_R8G8B8A8_SRGB,
+			IMAGE_FORMAT,
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			renderer.depthBuffer,
@@ -371,7 +373,7 @@ fun createTextureImage(device: Device, material: Material, renderer: Renderer, m
 		copyBufferToImage(stagingBuf.buffer, material.textureImage, pWidth[0], pHeight[0], device, renderer)
 		transitionImageLayout(
 			material.textureImage,
-			VK_FORMAT_R8G8B8A8_SRGB,
+			IMAGE_FORMAT,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 			renderer.depthBuffer,

@@ -1,5 +1,6 @@
 package me.hydos.rosella
 
+import me.hydos.rosella.audio.soundInit
 import me.hydos.rosella.camera.Camera
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.io.Window
@@ -53,6 +54,7 @@ class Rosella(
 	var surface: Long = 0
 
 	init {
+		soundInit()
 		val validationLayers = defaultValidationLayers.toSet()
 		if (enableValidationLayers && !validationLayersSupported(validationLayers)) {
 			throw RuntimeException("Validation Layers are not available!")
