@@ -23,4 +23,15 @@ interface Resource {
 
 		return ByteBuffer.wrap(bytes)
 	}
+
+	object Empty : Resource {
+		override val identifier: Identifier
+			get() = TODO("Not yet implemented")
+		override val loader: ResourceLoader
+			get() = TODO("Not yet implemented")
+
+		override fun openStream(): InputStream {
+			TODO("Not yet implemented")
+		}
+	}
 }
