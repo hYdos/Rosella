@@ -18,9 +18,6 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
 
-const val MAX_FRAMES_IN_FLIGHT = 2
-const val UINT64_MAX = -0x1L
-
 class Renderer {
 
 	var depthBuffer = DepthBuffer()
@@ -320,5 +317,10 @@ class Renderer {
 		device = engine.device
 		createCmdPool(this, engine.surface)
 		createSwapChain(engine)
+	}
+
+	companion object {
+		const val MAX_FRAMES_IN_FLIGHT = 2
+		const val UINT64_MAX = -0x1L
 	}
 }

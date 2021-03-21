@@ -129,23 +129,23 @@ class SwapChain(
 
 	companion object {
 		private const val UINT32_MAX = -0x1
-	}
-}
 
-fun querySwapChainSupport(device: VkPhysicalDevice, stack: MemoryStack, surface: Long): SwapChainSupportDetails {
-	val details = SwapChainSupportDetails()
-	details.capabilities = VkSurfaceCapabilitiesKHR.mallocStack(stack)
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, details.capabilities)
-	val count = stack.ints(0)
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, count, null)
-	if (count[0] != 0) {
-		details.formats = VkSurfaceFormatKHR.mallocStack(count[0], stack)
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, count, details.formats)
+		fun querySwapChainSupport(device: VkPhysicalDevice, stack: MemoryStack, surface: Long): SwapChainSupportDetails {
+			val details = SwapChainSupportDetails()
+			details.capabilities = VkSurfaceCapabilitiesKHR.mallocStack(stack)
+			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, details.capabilities)
+			val count = stack.ints(0)
+			vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, count, null)
+			if (count[0] != 0) {
+				details.formats = VkSurfaceFormatKHR.mallocStack(count[0], stack)
+				vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, count, details.formats)
+			}
+			vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, count, null)
+			if (count[0] != 0) {
+				details.presentModes = stack.mallocInt(count[0])
+				vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, count, details.presentModes)
+			}
+			return details
+		}
 	}
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, count, null)
-	if (count[0] != 0) {
-		details.presentModes = stack.mallocInt(count[0])
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, count, details.presentModes)
-	}
-	return details
 }

@@ -237,15 +237,15 @@ class Rosella(
 		}
 		renderer.recreateSwapChain(window, camera, this)
 	}
-}
 
-private fun createDebugUtilsMessengerEXT(
-	instance: VkInstance,
-	createInfo: VkDebugUtilsMessengerCreateInfoEXT,
-	allocationCallbacks: VkAllocationCallbacks?,
-	pDebugMessenger: LongBuffer
-): Int {
-	return if (vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") != NULL) {
-		EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, createInfo, allocationCallbacks, pDebugMessenger)
-	} else VK_ERROR_EXTENSION_NOT_PRESENT
+	private fun createDebugUtilsMessengerEXT(
+		instance: VkInstance,
+		createInfo: VkDebugUtilsMessengerCreateInfoEXT,
+		allocationCallbacks: VkAllocationCallbacks?,
+		pDebugMessenger: LongBuffer
+	): Int {
+		return if (vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") != NULL) {
+			EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, createInfo, allocationCallbacks, pDebugMessenger)
+		} else VK_ERROR_EXTENSION_NOT_PRESENT
+	}
 }

@@ -38,7 +38,7 @@ class Window(title: String, width: Int, height: Int, windowResizable: Boolean = 
 		}
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API)
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE)
-		glfwWindowHint(GLFW_RESIZABLE, windowResizable.asGlfw())
+		glfwWindowHint(GLFW_RESIZABLE, if (windowResizable) GLFW_TRUE else GLFW_FALSE)
 		windowPtr = glfwCreateWindow(width, height, title, 0, 0)
 
 		Runtime.getRuntime().addShutdownHook(Thread {
@@ -50,5 +50,3 @@ class Window(title: String, width: Int, height: Int, windowResizable: Boolean = 
 		})
 	}
 }
-
-private fun Boolean.asGlfw(): Int = if (this) GLFW_TRUE else GLFW_FALSE
