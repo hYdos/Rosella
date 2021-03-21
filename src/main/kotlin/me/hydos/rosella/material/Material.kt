@@ -25,7 +25,8 @@ import java.nio.LongBuffer
  */
 class Material(
 	val texture: Resource,
-	private val shaderId: Identifier
+	private val shaderId: Identifier,
+	private val imgFormat: Int
 ) {
 
 	var pipelineLayout: Long = 0
@@ -46,8 +47,8 @@ class Material(
 	}
 
 	fun loadTextures(device: Device, engine: Rosella) {
-		createTextureImage(device, this, engine.renderer, engine.memory)
-		createTextureImageView(engine, this)
+		createTextureImage(device, this, engine.renderer, engine.memory, imgFormat)
+		createTextureImageView(engine, this, imgFormat)
 		createTextureSampler(device, this)
 	}
 

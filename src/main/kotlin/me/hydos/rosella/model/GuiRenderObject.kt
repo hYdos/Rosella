@@ -1,15 +1,15 @@
 package me.hydos.rosella.model
 
 import me.hydos.rosella.Rosella
-import me.hydos.rosella.resource.Global
 import me.hydos.rosella.resource.Identifier
+import me.hydos.rosella.resource.Resource
 import me.hydos.rosella.shader.ubo.BasicUbo
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector3fc
 
 class GuiRenderObject(materialIdentifier: Identifier, private val z: Float = -1f) :
-	RenderObject(Global.ensureResource(Identifier("missing", "missing")), materialIdentifier) {
+	RenderObject(Resource.Empty, materialIdentifier) {
 
 	override fun loadModelInfo() {
 		vertices = ArrayList()

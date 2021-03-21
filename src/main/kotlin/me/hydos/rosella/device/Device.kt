@@ -1,9 +1,9 @@
 package me.hydos.rosella.device
 
-import me.hydos.rosella.findQueueFamilies
 import me.hydos.rosella.Rosella
+import me.hydos.rosella.findQueueFamilies
+import me.hydos.rosella.swapchain.SwapChain.Companion.querySwapChainSupport
 import me.hydos.rosella.swapchain.SwapChainSupportDetails
-import me.hydos.rosella.swapchain.querySwapChainSupport
 import me.hydos.rosella.util.ok
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack.stackPush
