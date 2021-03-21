@@ -1,6 +1,6 @@
 package me.hydos.rosella.audio
 
-import me.hydos.rosella.texture.ioResourceToByteBuffer
+import me.hydos.rosella.resource.Resource
 import org.lwjgl.BufferUtils
 import org.lwjgl.openal.AL
 import org.lwjgl.openal.AL10.*
@@ -13,89 +13,87 @@ import org.lwjgl.stb.STBVorbis.*
 import org.lwjgl.stb.STBVorbisInfo
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.system.MemoryUtil.NULL
-import java.io.IOException
-import java.nio.ByteBuffer
 import java.nio.IntBuffer
 import java.nio.ShortBuffer
 
-var stopEverything: Boolean = false
+object SoundManager {
 
-fun soundInit() {
-	val device = alcOpenDevice(BufferUtils.createByteBuffer(1))
-	check(device != NULL) { "Failed to open an OpenAL device." }
-	val deviceCaps = ALC.createCapabilities(device)
-	check(deviceCaps.OpenALC10)
-	val context = alcCreateContext(device, null as IntBuffer?)
-	val useTLC = deviceCaps.ALC_EXT_thread_local_context && alcSetThreadContext(context)
-	if (!useTLC) {
-		check(alcMakeContextCurrent(context))
-	}
-	AL.createCapabilities(deviceCaps) { num: Int ->
-		MemoryUtil.memCallocPointer(
-			num
-		)
-	}
-}
+	fun initialize() {
+		val device = alcOpenDevice(BufferUtils.createByteBuffer(1))
+		check(device != NULL) { "Failed to open an OpenAL device." }
 
-fun playback(file: String) {
-	val buffer: Int = alGenBuffers()
-	val source: Int = alGenSources()
-	STBVorbisInfo.malloc().use { info ->
-		val pcm = readVorbis(file, 32 * 1024, info)
+		val deviceCaps = ALC.createCapabilities(device)
+		check(deviceCaps.OpenALC10)
 
-		alBufferData(
-			buffer,
-			if (info.channels() == 1) AL_FORMAT_MONO16 else AL_FORMAT_STEREO16,
-			pcm,
-			info.sample_rate()
-		)
-	}
+		val context = alcCreateContext(device, null as IntBuffer?)
+		val useTLC = deviceCaps.ALC_EXT_thread_local_context && alcSetThreadContext(context)
 
-	//set up source input
-	alSourcei(source, AL_BUFFER, buffer)
-
-	//play source
-	alSourcePlay(source)
-
-	Thread {
-		while (true) {
-			if (stopEverything) {
-				break
-			}
-			try {
-				Thread.sleep(1000)
-			} catch (ignored: InterruptedException) {
-				break
-			}
-			if (alGetSourcei(source, AL_SOURCE_STATE) == AL_STOPPED) {
-				break
-			}
+		if (!useTLC) {
+			check(alcMakeContextCurrent(context))
 		}
-		alSourceStop(source)
-		alDeleteSources(source)
-		alDeleteBuffers(buffer)
-	}.apply {
-		isDaemon = true
-		start()
-	}
-}
 
-private fun readVorbis(resource: String, bufferSize: Int, info: STBVorbisInfo): ShortBuffer {
-	val vorbis: ByteBuffer
-	try {
-		vorbis = ioResourceToByteBuffer(resource, bufferSize)
-	} catch (e: IOException) {
-		throw RuntimeException(e)
+		AL.createCapabilities(deviceCaps, MemoryUtil::memCallocPointer)
 	}
-	val error = BufferUtils.createIntBuffer(1)
-	val decoder: Long = stb_vorbis_open_memory(vorbis, error, null)
-	if (decoder == NULL) {
-		throw RuntimeException("Failed to open Ogg Vorbis file. Error: " + error[0])
+
+	fun playback(file: Resource) {
+		val buffer: Int = alGenBuffers()
+		val source: Int = alGenSources()
+		STBVorbisInfo.malloc().use { info ->
+			val pcm = readVorbis(file, info)
+
+			alBufferData(
+				buffer,
+				if (info.channels() == 1) AL_FORMAT_MONO16 else AL_FORMAT_STEREO16,
+				pcm,
+				info.sample_rate()
+			)
+		}
+
+		//set up source input
+		alSourcei(source, AL_BUFFER, buffer)
+
+		//play source
+		alSourcePlay(source)
+
+		Thread {
+			while (true) {
+				try {
+					Thread.sleep(1000)
+				} catch (ignored: InterruptedException) {
+					break
+				}
+
+				if (alGetSourcei(source, AL_SOURCE_STATE) == AL_STOPPED) {
+					break
+				}
+			}
+
+			alSourceStop(source)
+			alDeleteSources(source)
+			alDeleteBuffers(buffer)
+		}.apply {
+			isDaemon = true
+			start()
+		}
 	}
-	stb_vorbis_get_info(decoder, info)
-	val channels = info.channels()
-	val pcm = BufferUtils.createShortBuffer(stb_vorbis_stream_length_in_samples(decoder) * channels)
-	stb_vorbis_get_samples_short_interleaved(decoder, channels, pcm)
-	stb_vorbis_close(decoder)
-	return pcm
+
+	private fun readVorbis(resource: Resource, info: STBVorbisInfo): ShortBuffer {
+		val vorbis = resource.readAllBytes(true)
+		val error = BufferUtils.createIntBuffer(1)
+		val decoder = stb_vorbis_open_memory(vorbis, error, null)
+
+		if (decoder == NULL) {
+			throw RuntimeException("Failed to open Ogg Vorbis file. Error: " + error[0])
+		}
+
+		stb_vorbis_get_info(decoder, info)
+
+		val channels = info.channels()
+		val pcm = BufferUtils.createShortBuffer(stb_vorbis_stream_length_in_samples(decoder) * channels)
+
+		stb_vorbis_get_samples_short_interleaved(decoder, channels, pcm)
+		stb_vorbis_close(decoder)
+
+		return pcm
+	}
 }

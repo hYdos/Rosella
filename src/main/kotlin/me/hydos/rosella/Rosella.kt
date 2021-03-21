@@ -1,6 +1,6 @@
 package me.hydos.rosella
 
-import me.hydos.rosella.audio.soundInit
+import me.hydos.rosella.audio.SoundManager
 import me.hydos.rosella.camera.Camera
 import me.hydos.rosella.device.Device
 import me.hydos.rosella.io.Window
@@ -54,7 +54,7 @@ class Rosella(
 	var surface: Long = 0
 
 	init {
-		soundInit()
+		SoundManager.initialize()
 		val validationLayers = defaultValidationLayers.toSet()
 		if (enableValidationLayers && !validationLayersSupported(validationLayers)) {
 			throw RuntimeException("Validation Layers are not available!")
@@ -237,15 +237,15 @@ class Rosella(
 		}
 		renderer.recreateSwapChain(window, camera, this)
 	}
-}
 
-private fun createDebugUtilsMessengerEXT(
-	instance: VkInstance,
-	createInfo: VkDebugUtilsMessengerCreateInfoEXT,
-	allocationCallbacks: VkAllocationCallbacks?,
-	pDebugMessenger: LongBuffer
-): Int {
-	return if (vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") != NULL) {
-		EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, createInfo, allocationCallbacks, pDebugMessenger)
-	} else VK_ERROR_EXTENSION_NOT_PRESENT
+	private fun createDebugUtilsMessengerEXT(
+		instance: VkInstance,
+		createInfo: VkDebugUtilsMessengerCreateInfoEXT,
+		allocationCallbacks: VkAllocationCallbacks?,
+		pDebugMessenger: LongBuffer
+	): Int {
+		return if (vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT") != NULL) {
+			EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, createInfo, allocationCallbacks, pDebugMessenger)
+		} else VK_ERROR_EXTENSION_NOT_PRESENT
+	}
 }
