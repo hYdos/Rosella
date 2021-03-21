@@ -7,6 +7,7 @@ import me.hydos.rosella.resource.Resource
 import me.hydos.rosella.shader.ubo.BasicUbo
 import me.hydos.rosella.shader.ubo.Ubo
 import me.hydos.rosella.util.memory.Memory
+import org.joml.Matrix4f
 import org.joml.Vector3f
 import org.joml.Vector3fc
 import org.lwjgl.assimp.Assimp
@@ -22,6 +23,8 @@ open class RenderObject(private val model: Resource, val materialIdentifier: Ide
 	var indexBuffer: Long = 0
 
 	var descriptorSets: MutableList<Long> = ArrayList()
+
+	var modelTransformMatrix: Matrix4f = Matrix4f()
 
 	lateinit var ubo: Ubo
 

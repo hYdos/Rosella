@@ -16,8 +16,6 @@ class BasicUbo(val device: Device, val memory: Memory) : Ubo() {
 
 	var ubos: MutableList<BufferInfo> = ArrayList()
 
-	var modelMatrix: Matrix4f = Matrix4f()
-
 	override fun create(swapChain: SwapChain) {
 		MemoryStack.stackPush().use { stack ->
 			ubos = ArrayList(swapChain.swapChainImages.size)
@@ -35,7 +33,7 @@ class BasicUbo(val device: Device, val memory: Memory) : Ubo() {
 		}
 	}
 
-	override fun update(currentImg: Int, swapChain: SwapChain, view: Matrix4f, proj: Matrix4f) {
+	override fun update(currentImg: Int, swapChain: SwapChain, view: Matrix4f, proj: Matrix4f, modelMatrix: Matrix4f) {
 		if (ubos.size == 0) {
 			create(swapChain) //TODO: CONCERN. why did i write this
 		}

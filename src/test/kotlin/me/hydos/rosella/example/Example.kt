@@ -34,14 +34,19 @@ object Example {
 		engine.addRenderObject(
 			GuiRenderObject(
 				menuBackground
-			)
+			).apply {
+				scale(1.5f, 1f, 1f)
+			}
 		)
 
-		// engine.addRenderObject(
-		// 	GuiRenderObject(
-		// 		portalLogo
-		// 	)
-		// )
+		engine.addRenderObject(
+			GuiRenderObject(
+				portalLogo,
+				-0.9f
+			).apply {
+				scale(0.5f, 0.2f, 0.5f)
+			}
+		)
 	}
 
 	private fun loadMaterials() {

@@ -14,7 +14,7 @@ abstract class Ubo {
 	/**
 	 * Called before each frame to update the ubo
 	 */
-	abstract fun update(currentImg: Int, swapChain: SwapChain, view: Matrix4f, proj: Matrix4f)
+	abstract fun update(currentImg: Int, swapChain: SwapChain, view: Matrix4f, proj: Matrix4f, modelMatrix: Matrix4f)
 
 	/**
 	 * Called when the program is closing and free's memory

@@ -23,7 +23,13 @@ class ShaderPair(
 
 	fun updateUbos(currentImage: Int, swapChain: SwapChain, engine: Rosella) {
 		for (renderObject in engine.renderObjects) {
-			renderObject.ubo.update(currentImage, swapChain, engine.camera.view, engine.camera.proj)
+			renderObject.ubo.update(
+				currentImage,
+				swapChain,
+				engine.camera.view,
+				engine.camera.proj,
+				renderObject.modelTransformMatrix
+			)
 		}
 	}
 

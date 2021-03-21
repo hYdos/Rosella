@@ -8,8 +8,8 @@ import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector3fc
 
-class GuiRenderObject(materialIdentifier: Identifier) :
-	RenderObject(Global.ensureResource(Identifier("null", "null")), materialIdentifier) {
+class GuiRenderObject(materialIdentifier: Identifier, private val z: Float = -1f) :
+	RenderObject(Global.ensureResource(Identifier("missing", "missing")), materialIdentifier) {
 
 	override fun loadModelInfo() {
 		vertices = ArrayList()
@@ -35,7 +35,10 @@ class GuiRenderObject(materialIdentifier: Identifier) :
 		material = retrievedMaterial
 		ubo = BasicUbo(engine.device, engine.memory)
 		ubo.create(engine.renderer.swapChain)
-		(ubo as BasicUbo).modelMatrix.scale(1.5f, 1f, 1f)
-		(ubo as BasicUbo).modelMatrix.translate(0f, 0f, -1f)
+		modelTransformMatrix.translate(0f, 0f, z)
+	}
+
+	fun scale(x: Float, y: Float, z:Float) {
+		modelTransformMatrix.scale(x, y, z)
 	}
 }
