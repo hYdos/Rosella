@@ -37,11 +37,11 @@ object Example {
 			)
 		)
 
-		engine.addRenderObject(
-			GuiRenderObject(
-				portalLogo
-			)
-		)
+		// engine.addRenderObject(
+		// 	GuiRenderObject(
+		// 		portalLogo
+		// 	)
+		// )
 	}
 
 	private fun loadMaterials() {

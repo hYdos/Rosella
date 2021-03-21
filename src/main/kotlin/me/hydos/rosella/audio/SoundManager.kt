@@ -59,7 +59,7 @@ fun playback(file: String) {
 
 	Thread {
 		while (true) {
-			if(stopEverything) {
+			if (stopEverything) {
 				break
 			}
 			try {
@@ -74,7 +74,10 @@ fun playback(file: String) {
 		alSourceStop(source)
 		alDeleteSources(source)
 		alDeleteBuffers(buffer)
-	}.start()
+	}.apply {
+		isDaemon = true
+		start()
+	}
 }
 
 private fun readVorbis(resource: String, bufferSize: Int, info: STBVorbisInfo): ShortBuffer {
