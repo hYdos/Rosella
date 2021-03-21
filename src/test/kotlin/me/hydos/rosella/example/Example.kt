@@ -1,7 +1,7 @@
 package me.hydos.rosella.example
 
 import me.hydos.rosella.Rosella
-import me.hydos.rosella.audio.playback
+import me.hydos.rosella.audio.SoundManager
 import me.hydos.rosella.io.Window
 import me.hydos.rosella.material.Material
 import me.hydos.rosella.model.GuiRenderObject
@@ -21,12 +21,14 @@ object Example {
 	val basicShader = Identifier("rosella", "example_shader")
 	val guiShader = Identifier("rosella", "gui_shader")
 
+	val background = Identifier("rosella", "sounds/music/mainmenu/portal2_background01.ogg")
+
 	@JvmStatic
 	fun main(args: Array<String>) {
 		loadShaders()
 		loadMaterials()
 		setupMainMenuScene()
-		playback("rosella/sounds/music/mainmenu/portal2_background01.ogg")
+		SoundManager.playback(Global.ensureResource(background))
 		doMainLoop()
 	}
 

@@ -2,7 +2,6 @@ package me.hydos.rosella.io
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
 import me.hydos.rosella.Rosella
-import me.hydos.rosella.audio.stopEverything
 import org.lwjgl.glfw.GLFW.*
 
 /**
@@ -43,7 +42,6 @@ class Window(title: String, width: Int, height: Int, windowResizable: Boolean = 
 		windowPtr = glfwCreateWindow(width, height, title, 0, 0)
 
 		Runtime.getRuntime().addShutdownHook(Thread {
-			stopEverything = true
 			for (callback in closeCallbacks) {
 				callback()
 			}
