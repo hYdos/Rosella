@@ -14,7 +14,7 @@ import org.lwjgl.vulkan.VK10
 object Example {
 
 	val screen = Window("Rosella Engine", 1280, 720)
-	val engine = Rosella("Portal2 in Rosella", false, screen)
+	val engine = Rosella("Portal2 in Rosella", true, screen)
 
 	val menuBackground = Identifier("rosella", "menu_background")
 	val portalLogo = Identifier("rosella", "portal_logo")

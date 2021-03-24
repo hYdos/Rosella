@@ -181,7 +181,6 @@ class Memory(val device: Device, private val instance: VkInstance) {
 	 */
 	fun freeBuffer(buffer: BufferInfo) {
 		Vma.vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation)
-		Vma.vmaFreeMemory(allocator, buffer.buffer)
 	}
 
 	/**
