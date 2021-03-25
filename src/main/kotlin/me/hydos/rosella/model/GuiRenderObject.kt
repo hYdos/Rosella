@@ -38,7 +38,11 @@ class GuiRenderObject(materialIdentifier: Identifier, private val z: Float = -1f
 		modelTransformMatrix.translate(0f, 0f, z)
 	}
 
-	fun scale(x: Float, y: Float, z:Float) {
-		modelTransformMatrix.scale(x, y, z)
+	fun scale(x: Float, y: Float) {
+		modelTransformMatrix.scale(x, y, 1f)
+	}
+
+	fun translate(x: Float, y: Float) {
+		modelTransformMatrix.translate(x, -y, 0f)
 	}
 }

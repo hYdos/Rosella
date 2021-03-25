@@ -94,10 +94,10 @@ class Rosella(
 				createInfo.pNext(debugCreateInfo.address())
 			}
 
-			val instancePtr = stack.mallocPointer(1)
-			vkCreateInstance(createInfo, null, instancePtr).ok()
+			val pInstance = stack.mallocPointer(1)
+			vkCreateInstance(createInfo, null, pInstance).ok()
 
-			vulkanInstance = VkInstance(instancePtr[0], createInfo)
+			vulkanInstance = VkInstance(pInstance[0], createInfo)
 		}
 	}
 
@@ -116,7 +116,7 @@ class Rosella(
 
 		renderer.freeSwapChain(this)
 
-		renderer.inFlightFrames!!.forEach(Consumer { frame: Frame ->
+		renderer.inFlightFrames.forEach(Consumer { frame: Frame ->
 			vkDestroySemaphore(device.device, frame.renderFinishedSemaphore(), null)
 			vkDestroySemaphore(device.device, frame.imageAvailableSemaphore(), null)
 			vkDestroyFence(device.device, frame.fence(), null)

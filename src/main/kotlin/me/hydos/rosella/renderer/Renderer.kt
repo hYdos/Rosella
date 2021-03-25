@@ -22,11 +22,12 @@ class Renderer {
 
 	var depthBuffer = DepthBuffer()
 
-	var inFlightFrames: MutableList<Frame>? = null
-	var imagesInFlight: MutableMap<Int, Frame>? = null
+	lateinit var inFlightFrames: MutableList<Frame>
+	lateinit var imagesInFlight: MutableMap<Int, Frame>
 	private var currentFrame = 0
 
 	private var resizeFramebuffer: Boolean = false
+
 
 	lateinit var swapChain: SwapChain
 	lateinit var renderPass: RenderPass

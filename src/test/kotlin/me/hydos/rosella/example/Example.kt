@@ -38,7 +38,7 @@ object Example {
 			GuiRenderObject(
 				menuBackground
 			).apply {
-				scale(1.5f, 1f, 1f)
+				scale(1.5f, 1f)
 			}
 		)
 
@@ -47,7 +47,8 @@ object Example {
 				portalLogo,
 				-0.9f
 			).apply {
-				scale(0.5f, 0.2f, 0.5f)
+				scale(0.4f, 0.1f)
+				translate(-1f, -2.6f)
 			}
 		)
 	}
@@ -86,7 +87,7 @@ object Example {
 		engine.registerShader(
 			guiShader, ShaderPair(
 				Shader(Global.ensureResource(Identifier("rosella", "shaders/gui.v.glsl"))),
-				Shader(Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl"))),
+				Shader(Global.ensureResource(Identifier("rosella", "shaders/gui.f.glsl"))),
 				engine.device,
 				engine.memory,
 				3,
