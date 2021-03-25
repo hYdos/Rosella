@@ -58,14 +58,16 @@ object Example {
 			menuBackground, Material(
 				Global.ensureResource(Identifier("rosella", "textures/background/background01.png")),
 				guiShader,
-				VK10.VK_FORMAT_R8G8B8A8_UNORM
+				VK10.VK_FORMAT_R8G8B8A8_UNORM,
+				false
 			)
 		)
 		engine.registerMaterial(
 			portalLogo, Material(
 				Global.ensureResource(Identifier("rosella", "textures/gui/portal2logo.png")),
 				guiShader,
-				VK10.VK_FORMAT_R8G8B8A8_SRGB
+				VK10.VK_FORMAT_R8G8B8A8_SRGB,
+				true
 			)
 		)
 		engine.reloadMaterials()

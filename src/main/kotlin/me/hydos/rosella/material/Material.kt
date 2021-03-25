@@ -15,6 +15,7 @@ import me.hydos.rosella.util.*
 import org.joml.Vector3f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.VK10.*
 import java.nio.ByteBuffer
 import java.nio.LongBuffer
 
@@ -26,7 +27,8 @@ import java.nio.LongBuffer
 class Material(
 	val texture: Resource,
 	private val shaderId: Identifier,
-	private val imgFormat: Int
+	private val imgFormat: Int,
+	private val useBlend: Boolean
 ) {
 
 	var pipelineLayout: Long = 0
@@ -71,14 +73,14 @@ class Material(
 			val shaderStages = VkPipelineShaderStageCreateInfo.callocStack(2, it)
 
 			shaderStages[0]
-				.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
-				.stage(VK10.VK_SHADER_STAGE_VERTEX_BIT)
+				.sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
+				.stage(VK_SHADER_STAGE_VERTEX_BIT)
 				.module(vertShaderModule)
 				.pName(entryPoint)
 
 			shaderStages[1]
-				.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
-				.stage(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
+				.sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
+				.stage(VK_SHADER_STAGE_FRAGMENT_BIT)
 				.module(fragShaderModule)
 				.pName(entryPoint)
 
@@ -88,7 +90,7 @@ class Material(
 			 */
 			val vertexInputInfo: VkPipelineVertexInputStateCreateInfo =
 				VkPipelineVertexInputStateCreateInfo.callocStack(it)
-					.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
+					.sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
 					.pVertexBindingDescriptions(Vertex.bindingDescription)
 					.pVertexAttributeDescriptions(Vertex.attributeDescriptions)
 
@@ -97,8 +99,8 @@ class Material(
 			 */
 			val inputAssembly: VkPipelineInputAssemblyStateCreateInfo =
 				VkPipelineInputAssemblyStateCreateInfo.callocStack(it)
-					.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
-					.topology(VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+					.sType(VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO)
+					.topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
 					.primitiveRestartEnable(false)
 
 			/**
@@ -123,7 +125,7 @@ class Material(
 			 * Viewport State
 			 */
 			val viewportState: VkPipelineViewportStateCreateInfo = VkPipelineViewportStateCreateInfo.callocStack(it)
-				.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO)
+				.sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO)
 				.pViewports(viewport)
 				.pScissors(scissor)
 
@@ -132,13 +134,13 @@ class Material(
 			 */
 			val rasterizer: VkPipelineRasterizationStateCreateInfo =
 				VkPipelineRasterizationStateCreateInfo.callocStack(it)
-					.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
+					.sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
 					.depthClampEnable(false)
 					.rasterizerDiscardEnable(false)
-					.polygonMode(VK10.VK_POLYGON_MODE_FILL)
+					.polygonMode(VK_POLYGON_MODE_FILL)
 					.lineWidth(1.0f)
-					.cullMode(VK10.VK_CULL_MODE_BACK_BIT)
-					.frontFace(VK10.VK_FRONT_FACE_COUNTER_CLOCKWISE) //TODO: make the user be able to specify this
+					.cullMode(VK_CULL_MODE_BACK_BIT)
+					.frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE) //TODO: make the user be able to specify this
 					.depthBiasEnable(false)
 
 			/**
@@ -146,16 +148,16 @@ class Material(
 			 */
 			val multisampling: VkPipelineMultisampleStateCreateInfo =
 				VkPipelineMultisampleStateCreateInfo.callocStack(it)
-					.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
+					.sType(VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO)
 					.sampleShadingEnable(false)
-					.rasterizationSamples(VK10.VK_SAMPLE_COUNT_1_BIT)
+					.rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
 
 			val depthStencil: VkPipelineDepthStencilStateCreateInfo =
 				VkPipelineDepthStencilStateCreateInfo.callocStack(it)
-					.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
+					.sType(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
 					.depthTestEnable(true)
 					.depthWriteEnable(true)
-					.depthCompareOp(VK10.VK_COMPARE_OP_LESS)
+					.depthCompareOp(VK_COMPARE_OP_LESS)
 					.depthBoundsTestEnable(false)
 					.minDepthBounds(0.0f)
 					.maxDepthBounds(1.0f)
@@ -164,23 +166,30 @@ class Material(
 			/**
 			 * Colour Blending
 			 */
-			val colorBlendAttachment = VkPipelineColorBlendAttachmentState.callocStack(1, it)
-				.colorWriteMask(VK10.VK_COLOR_COMPONENT_R_BIT or VK10.VK_COLOR_COMPONENT_G_BIT or VK10.VK_COLOR_COMPONENT_B_BIT or VK10.VK_COLOR_COMPONENT_A_BIT)
-				.blendEnable(false)
+			val colourBlendAttachment = VkPipelineColorBlendAttachmentState.callocStack(1, it)
+				.colorWriteMask(VK_COLOR_COMPONENT_R_BIT or VK_COLOR_COMPONENT_G_BIT or VK_COLOR_COMPONENT_B_BIT or VK_COLOR_COMPONENT_A_BIT)
+				.blendEnable(useBlend)
+				.srcColorBlendFactor(VK_BLEND_FACTOR_SRC_ALPHA)
+				.dstColorBlendFactor(VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+				.colorBlendOp(VK_BLEND_OP_ADD)
 
-			val colorBlending: VkPipelineColorBlendStateCreateInfo =
+				.srcAlphaBlendFactor(VK_BLEND_FACTOR_ZERO)
+				.dstAlphaBlendFactor(VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+				.alphaBlendOp(VK_BLEND_OP_SUBTRACT)
+
+			val colourBlending: VkPipelineColorBlendStateCreateInfo =
 				VkPipelineColorBlendStateCreateInfo.callocStack(it)
-					.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
+					.sType(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
 					.logicOpEnable(false)
-					.logicOp(VK10.VK_LOGIC_OP_COPY)
-					.pAttachments(colorBlendAttachment)
+					.logicOp(VK_LOGIC_OP_COPY)
+					.pAttachments(colourBlendAttachment)
 					.blendConstants(it.floats(0.0f, 0.0f, 0.0f, 0.0f))
 
 			/**
 			 * Create Push Constants
 			 */
 			val pushConstantRange = VkPushConstantRange.callocStack(1, it)
-				.stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
+				.stageFlags(VK_SHADER_STAGE_VERTEX_BIT)
 				.offset(0)
 				.size(sizeof(Vector3f::class))
 
@@ -188,19 +197,19 @@ class Material(
 			 * Pipeline Layout Creation
 			 */
 			val pipelineLayoutInfo: VkPipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.callocStack(it)
-				.sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+				.sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
 				.pSetLayouts(it.longs(descriptorSetLayout))
 				.pPushConstantRanges(pushConstantRange)
 
-			val pPipelineLayout = it.longs(VK10.VK_NULL_HANDLE)
-			VK10.vkCreatePipelineLayout(device.device, pipelineLayoutInfo, null, pPipelineLayout).ok()
+			val pPipelineLayout = it.longs(VK_NULL_HANDLE)
+			vkCreatePipelineLayout(device.device, pipelineLayoutInfo, null, pPipelineLayout).ok()
 			pipelineLayout = pPipelineLayout[0]
 
 			/**
 			 * Pipeline Creation
 			 */
 			val pipelineInfo = VkGraphicsPipelineCreateInfo.callocStack(1, it)
-				.sType(VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
+				.sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
 				.pStages(shaderStages)
 				.pVertexInputState(vertexInputInfo)
 				.pInputAssemblyState(inputAssembly)
@@ -208,23 +217,23 @@ class Material(
 				.pRasterizationState(rasterizer)
 				.pMultisampleState(multisampling)
 				.pDepthStencilState(depthStencil)
-				.pColorBlendState(colorBlending)
+				.pColorBlendState(colourBlending)
 				.layout(pipelineLayout)
 				.renderPass(renderPass.renderPass)
 				.subpass(0)
-				.basePipelineHandle(VK10.VK_NULL_HANDLE)
+				.basePipelineHandle(VK_NULL_HANDLE)
 				.basePipelineIndex(-1)
 
 			val pGraphicsPipeline: LongBuffer = it.mallocLong(1)
-			VK10.vkCreateGraphicsPipelines(device.device, VK10.VK_NULL_HANDLE, pipelineInfo, null, pGraphicsPipeline)
+			vkCreateGraphicsPipelines(device.device, VK_NULL_HANDLE, pipelineInfo, null, pGraphicsPipeline)
 				.ok()
 			graphicsPipeline = pGraphicsPipeline[0]
 
 			/**
-			 * Free Resources
+			 * Free Shaders
 			 */
-			VK10.vkDestroyShaderModule(device.device, vertShaderModule, null)
-			VK10.vkDestroyShaderModule(device.device, fragShaderModule, null)
+			vkDestroyShaderModule(device.device, vertShaderModule, null)
+			vkDestroyShaderModule(device.device, fragShaderModule, null)
 
 			vertShaderSPIRV.free()
 			fragShaderSPIRV.free()
@@ -237,7 +246,7 @@ class Material(
 	private fun createShader(spirvCode: ByteBuffer, device: Device): Long {
 		MemoryStack.stackPush().use { stack ->
 			val createInfo = VkShaderModuleCreateInfo.callocStack(stack)
-				.sType(VK10.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
+				.sType(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
 				.pCode(spirvCode)
 			val pShaderModule = stack.mallocLong(1)
 			VK10.vkCreateShaderModule(device.device, createInfo, null, pShaderModule).ok()
