@@ -8,7 +8,7 @@ import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector3fc
 
-class GuiRenderObject(materialIdentifier: Identifier, private val z: Float = -1f) :
+open class GuiRenderObject(materialIdentifier: Identifier, private val z: Float = -1f) :
 	RenderObject(Resource.Empty, materialIdentifier) {
 
 	override fun loadModelInfo() {
