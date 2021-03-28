@@ -263,7 +263,7 @@ class Renderer {
 			val beginInfo = createBeginInfo(it)
 			val renderPassInfo = createRenderPassInfo(it, renderPass)
 			val renderArea = createRenderArea(it, 0, 0, swapChain)
-			val clearValues = createClearValues(it, 0f, 0.6f, 0.4f, 1.0f, 0)
+			val clearValues = createClearValues(it, 50 / 255f, 138 / 255f, 201 / 255f, 1.0f, 0)
 
 			renderPassInfo.renderArea(renderArea)
 				.pClearValues(clearValues)
