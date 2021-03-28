@@ -255,8 +255,8 @@ class Material(
 	}
 
 	fun free(device: Device) {
-		VK10.vkDestroyPipeline(device.device, graphicsPipeline, null)
-		VK10.vkDestroyPipelineLayout(device.device, pipelineLayout, null)
+		vkDestroyPipeline(device.device, graphicsPipeline, null)
+		vkDestroyPipelineLayout(device.device, pipelineLayout, null)
 	}
 
 	fun initializeShader(swapChain: SwapChain) {

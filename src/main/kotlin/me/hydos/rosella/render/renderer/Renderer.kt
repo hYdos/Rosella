@@ -50,9 +50,6 @@ class Renderer {
 		depthBuffer.createDepthResources(device, swapChain, this)
 		createFrameBuffers()
 		engine.camera.createViewAndProj(swapChain)
-		for (material in engine.materials.values) {
-			material.initializeShader(swapChain)
-		}
 		rebuildCommandBuffers(renderPass, engine)
 		createSyncObjects()
 	}
@@ -74,7 +71,7 @@ class Renderer {
 
 	fun render(engine: Rosella) {
 		MemoryStack.stackPush().use { stack ->
-			val thisFrame = inFlightFrames!![currentFrame]
+			val thisFrame = inFlightFrames[currentFrame]
 			vkWaitForFences(device.device, thisFrame.pFence(), true, UINT64_MAX)
 			val pImageIndex = stack.mallocInt(1)
 
@@ -98,10 +95,10 @@ class Renderer {
 				shader.updateUbos(imageIndex, swapChain, engine)
 			}
 
-			if (imagesInFlight!!.containsKey(imageIndex)) {
-				vkWaitForFences(device.device, imagesInFlight!![imageIndex]!!.fence(), true, UINT64_MAX)
+			if (imagesInFlight.containsKey(imageIndex)) {
+				vkWaitForFences(device.device, imagesInFlight[imageIndex]!!.fence(), true, UINT64_MAX)
 			}
-			imagesInFlight!![imageIndex] = thisFrame
+			imagesInFlight[imageIndex] = thisFrame
 			val submitInfo = VkSubmitInfo.callocStack(stack)
 				.sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
 				.waitSemaphoreCount(1)
@@ -239,6 +236,13 @@ class Renderer {
 	 * TODO: instancing
 	 */
 	fun rebuildCommandBuffers(renderPass: RenderPass, engine: Rosella) {
+		for (material in engine.materials.values) {
+			material.initializeShader(swapChain)
+		}
+		for (renderObject in engine.renderObjects) {
+			renderObject.funeResizeTest(this)
+		}
+
 		MemoryStack.stackPush().use {
 			val commandBuffersCount: Int = swapChain.frameBuffers.size
 

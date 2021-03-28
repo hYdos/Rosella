@@ -117,7 +117,7 @@ class ShaderPair(
 
 			for (i in 0 until pDescriptorSets.capacity()) {
 				val descriptorSet = pDescriptorSets[i]
-				bufferInfo.buffer(renderObject.ubo.getUniformBuffers()[i].buffer) //TODO: the line which will save us all. Hail FREX
+				bufferInfo.buffer(renderObject.ubo.getUniformBuffers()[i].buffer)
 				poolObjects.forEachIndexed { index, poolObj ->
 					val descriptorWrite = descriptorWrites[index]
 						.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)

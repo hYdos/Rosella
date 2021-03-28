@@ -2,6 +2,7 @@ package me.hydos.rosella.render.model
 
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.render.material.Material
+import me.hydos.rosella.render.renderer.Renderer
 import me.hydos.rosella.render.resource.Identifier
 import me.hydos.rosella.render.resource.Resource
 import me.hydos.rosella.render.shader.ubo.BasicUbo
@@ -49,6 +50,10 @@ open class RenderObject(private val model: Resource, val materialIdentifier: Ide
 		vertexBuffer = engine.memory.createVertexBuffer(engine, vertices)
 		indexBuffer = engine.memory.createIndexBuffer(engine, indices)
 		material.shader.createDescriptorSets(engine.renderer.swapChain, this)
+	}
+
+	fun funeResizeTest(renderer: Renderer) {
+		material.shader.createDescriptorSets(renderer.swapChain, this)
 	}
 
 	open fun loadModelInfo() {
