@@ -73,7 +73,7 @@ object Editor {
 				Vector3f(41 / 255f, 41 / 255f, 41 / 255f)
 			).apply {
 				scale(0.3f, 0.5f)
-				translate(-2f, -0.33f)
+				translate(-2f, 1.5f / rosella.renderer.swapChain.swapChainExtent.height().toFloat())
 			}
 		)
 	}
