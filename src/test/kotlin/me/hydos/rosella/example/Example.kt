@@ -80,7 +80,7 @@ object Example {
 				Shader(Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl"))),
 				engine.device,
 				engine.memory,
-				3,
+				10,
 				ShaderPair.PoolObjType.UBO,
 				ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
 			)
@@ -92,7 +92,7 @@ object Example {
 				Shader(Global.ensureResource(Identifier("rosella", "shaders/gui.f.glsl"))),
 				engine.device,
 				engine.memory,
-				3,
+				10,
 				ShaderPair.PoolObjType.UBO,
 				ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
 			)

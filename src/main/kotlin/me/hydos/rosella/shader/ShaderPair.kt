@@ -40,7 +40,7 @@ class ShaderPair(
 			poolObjects.forEachIndexed { i, poolObj ->
 				poolSizes[i]
 					.type(poolObj.vkType)
-					.descriptorCount(swapChain.swapChainImages.size)
+					.descriptorCount(swapChain.swapChainImages.size * maxObjCount)
 			}
 
 			val poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
