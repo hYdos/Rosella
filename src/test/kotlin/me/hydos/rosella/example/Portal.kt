@@ -11,7 +11,7 @@ import me.hydos.rosella.render.shader.Shader
 import me.hydos.rosella.render.shader.ShaderPair
 import org.lwjgl.vulkan.VK10
 
-object Example {
+object Portal {
 
 	val screen = Window("Rosella Engine", 1280, 720)
 	val engine = Rosella("Portal2 in Rosella", true, screen)
@@ -100,7 +100,7 @@ object Example {
 	}
 
 	private fun doMainLoop() {
-		engine.renderer.createCommandBuffers(engine.renderer.renderPass, engine)
+		engine.renderer.rebuildCommandBuffers(engine.renderer.renderPass, engine)
 		screen.onMainLoop {
 			engine.renderer.render(engine)
 		}

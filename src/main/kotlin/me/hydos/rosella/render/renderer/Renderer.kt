@@ -1,6 +1,6 @@
 package me.hydos.rosella.render.renderer
 
-import me.hydos.rosella.*
+import me.hydos.rosella.Rosella
 import me.hydos.rosella.render.*
 import me.hydos.rosella.render.camera.Camera
 import me.hydos.rosella.render.device.Device
@@ -53,7 +53,7 @@ class Renderer {
 		for (material in engine.materials.values) {
 			material.initializeShader(swapChain)
 		}
-		createCommandBuffers(renderPass, engine)
+		rebuildCommandBuffers(renderPass, engine)
 		createSyncObjects()
 	}
 
@@ -238,7 +238,7 @@ class Renderer {
 	 * Create the Command Buffers
 	 * TODO: instancing
 	 */
-	fun createCommandBuffers(renderPass: RenderPass, engine: Rosella) {
+	fun rebuildCommandBuffers(renderPass: RenderPass, engine: Rosella) {
 		MemoryStack.stackPush().use {
 			val commandBuffersCount: Int = swapChain.frameBuffers.size
 
