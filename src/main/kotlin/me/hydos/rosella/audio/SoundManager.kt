@@ -1,6 +1,6 @@
 package me.hydos.rosella.audio
 
-import me.hydos.rosella.resource.Resource
+import me.hydos.rosella.render.resource.Resource
 import org.lwjgl.BufferUtils
 import org.lwjgl.openal.AL
 import org.lwjgl.openal.AL10.*

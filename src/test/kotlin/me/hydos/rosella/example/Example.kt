@@ -2,13 +2,13 @@ package me.hydos.rosella.example
 
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.audio.SoundManager
-import me.hydos.rosella.io.Window
-import me.hydos.rosella.material.Material
-import me.hydos.rosella.model.GuiRenderObject
-import me.hydos.rosella.resource.Global
-import me.hydos.rosella.resource.Identifier
-import me.hydos.rosella.shader.Shader
-import me.hydos.rosella.shader.ShaderPair
+import me.hydos.rosella.render.io.Window
+import me.hydos.rosella.render.material.Material
+import me.hydos.rosella.render.model.GuiRenderObject
+import me.hydos.rosella.render.resource.Global
+import me.hydos.rosella.render.resource.Identifier
+import me.hydos.rosella.render.shader.Shader
+import me.hydos.rosella.render.shader.ShaderPair
 import org.lwjgl.vulkan.VK10
 
 object Example {
