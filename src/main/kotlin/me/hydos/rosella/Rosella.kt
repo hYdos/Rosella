@@ -248,4 +248,12 @@ class Rosella(
 			EXTDebugUtils.vkCreateDebugUtilsMessengerEXT(instance, createInfo, allocationCallbacks, pDebugMessenger)
 		} else VK_ERROR_EXTENSION_NOT_PRESENT
 	}
+
+	fun getHeight(): Float {
+		return renderer.swapChain.swapChainExtent.height().toFloat()
+	}
+
+	fun getWidth(): Float {
+		return renderer.swapChain.swapChainExtent.width().toFloat()
+	}
 }
