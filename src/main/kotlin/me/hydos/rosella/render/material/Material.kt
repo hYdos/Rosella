@@ -21,7 +21,7 @@ import java.nio.LongBuffer
 
 /**
  * A Material is like texture information, normal information, and all of those things which give an object character wrapped into one class.
- * similar to how unity works
+ * similar to how unity material's works
  * guaranteed to change once and a while
  */
 class Material(

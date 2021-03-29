@@ -4,6 +4,7 @@ import me.hydos.rosella.Rosella
 import me.hydos.rosella.render.io.Window
 import me.hydos.rosella.render.material.Material
 import me.hydos.rosella.render.model.ColourGuiRenderObject
+import me.hydos.rosella.render.model.GuiRenderObject
 import me.hydos.rosella.render.resource.Global
 import me.hydos.rosella.render.resource.Identifier
 import me.hydos.rosella.render.shader.Shader
@@ -21,6 +22,7 @@ object Editor {
 
 	//Panels
 	val leftPanel = Identifier("rosella", "leftPanel")
+	val folder = Identifier("rosella", "folder")
 
 	@JvmStatic
 	fun main(args: Array<String>) {
@@ -59,10 +61,18 @@ object Editor {
 
 		rosella.registerMaterial(
 			leftPanel, Material(
-				Global.ensureResource(Identifier("rosella", "textures/background/background01.png")),
+				Global.ensureResource(Identifier("example", "textures/background/background01.png")), //TODO: make this part not be needed
 				colourGuiShader,
 				VK10.VK_FORMAT_R8G8B8A8_SRGB,
 				false
+			)
+		)
+		rosella.registerMaterial(
+			folder, Material(
+				Global.ensureResource(Identifier("rosella", "editor/gui/folder.png")),
+				guiShader,
+				VK10.VK_FORMAT_R8G8B8A8_SRGB,
+				true
 			)
 		)
 		rosella.reloadMaterials()
@@ -74,6 +84,26 @@ object Editor {
 			).apply {
 				scale(0.3f, 0.5f)
 				translate(2.2f / rosella.getWidth(), 1.5f / rosella.getHeight())
+			}
+		)
+
+		rosella.addRenderObject(
+			GuiRenderObject(
+				folder,
+				-0.9f
+			).apply {
+				scale(0.05f, 0.04f)
+				translate(1.5f / rosella.getWidth() + 0.75f, 1.5f / rosella.getHeight())
+			}
+		)
+
+		rosella.addRenderObject(
+			GuiRenderObject(
+				folder,
+				-0.9f
+			).apply {
+				scale(0.05f, 0.04f)
+				translate(1.5f / rosella.getWidth() - 0.75f, 1.5f / rosella.getHeight())
 			}
 		)
 	}

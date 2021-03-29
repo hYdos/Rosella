@@ -7,12 +7,9 @@ an work in progress, vulkan, modern jvm render engine
 3. be "just enough" abstraction
 
 ## Progress
-Currently im:
-1. unfucking the engine internals
-2. making it so every object has its own descriptor sets 
-3. fixing countless bugs
-4. refactors
-5. gui system TMTMTMTMT
+Currently im doing:
+#### refactors
+#### gui system TMTMTMTMT
 
 ## Long Term goals
 1. use "modern rendering techniques" such as gpu driven rendering (https://vkguide.dev/docs/gpudriven)
