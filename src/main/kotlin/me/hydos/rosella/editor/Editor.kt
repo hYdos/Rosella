@@ -20,8 +20,9 @@ object Editor {
 	private val guiShader = Identifier("rosella", "guiShader")
 	private val colourGuiShader = Identifier("rosella", "colourGuiShader")
 
-	//Panels
-	val leftPanel = Identifier("rosella", "leftPanel")
+	val panel = Identifier("rosella", "behindPanel")
+
+	// Icons
 	val folder = Identifier("rosella", "folder")
 
 	@JvmStatic
@@ -41,7 +42,7 @@ object Editor {
 				Shader(Global.ensureResource(Identifier("rosella", "shaders/gui.f.glsl"))),
 				rosella.device,
 				rosella.memory,
-				10,
+				100,
 				ShaderPair.PoolObjType.UBO,
 				ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
 			)
@@ -53,20 +54,21 @@ object Editor {
 				Shader(Global.ensureResource(Identifier("rosella", "shaders/gui.colour.f.glsl"))),
 				rosella.device,
 				rosella.memory,
-				10,
+				100,
 				ShaderPair.PoolObjType.UBO,
 				ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
 			)
 		)
 
 		rosella.registerMaterial(
-			leftPanel, Material(
+			panel, Material(
 				Global.ensureResource(Identifier("example", "textures/background/background01.png")), //TODO: make this part not be needed
 				colourGuiShader,
 				VK10.VK_FORMAT_R8G8B8A8_SRGB,
 				false
 			)
 		)
+
 		rosella.registerMaterial(
 			folder, Material(
 				Global.ensureResource(Identifier("rosella", "editor/gui/folder.png")),
@@ -77,34 +79,44 @@ object Editor {
 		)
 		rosella.reloadMaterials()
 
+		// Left Panel
 		rosella.addRenderObject(
 			ColourGuiRenderObject(
-				leftPanel,
+				panel,
 				Vector3f(41 / 255f, 41 / 255f, 41 / 255f)
 			).apply {
 				scale(0.3f, 0.5f)
-				translate(2.2f / rosella.getWidth(), 1.5f / rosella.getHeight())
+				translate(2.2f / rosella.getWidth() - 2.2f, 1.5f / rosella.getHeight() - 0.33f)
 			}
 		)
 
+		// Bottom Panel
 		rosella.addRenderObject(
-			GuiRenderObject(
-				folder,
-				-0.9f
+			ColourGuiRenderObject(
+				panel,
+				Vector3f(51 / 255f, 51 / 255f, 51 / 255f)
 			).apply {
-				scale(0.05f, 0.04f)
-				translate(1.5f / rosella.getWidth() + 0.75f, 1.5f / rosella.getHeight())
+				scale(2f, 0.28f)
+				translate(2.2f / rosella.getWidth() - 0.001f, 1.5f / rosella.getHeight() + 0.8f)
 			}
 		)
 
-		rosella.addRenderObject(
-			GuiRenderObject(
-				folder,
-				-0.9f
-			).apply {
-				scale(0.05f, 0.04f)
-				translate(1.5f / rosella.getWidth() - 0.75f, 1.5f / rosella.getHeight())
+		var y = 0
+		while(y <= 2) {
+			var x = 0
+			while(x <= 13) {
+				rosella.addRenderObject(
+					GuiRenderObject(
+						folder,
+						-0.8f
+					).apply {
+						scale(0.05f, 0.04f)
+						translate(1.5f / rosella.getWidth() - 7.4f + 1.33f * x, 1.5f / rosella.getHeight() + 2.88f + y * 1.6f)
+					}
+				)
+				x++
 			}
-		)
+			y++
+		}
 	}
 }
