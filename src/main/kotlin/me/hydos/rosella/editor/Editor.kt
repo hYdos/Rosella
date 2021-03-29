@@ -7,6 +7,7 @@ import me.hydos.rosella.render.model.ColourGuiRenderObject
 import me.hydos.rosella.render.model.GuiRenderObject
 import me.hydos.rosella.render.resource.Global
 import me.hydos.rosella.render.resource.Identifier
+import me.hydos.rosella.render.resource.Resource
 import me.hydos.rosella.render.shader.Shader
 import me.hydos.rosella.render.shader.ShaderPair
 import org.joml.Vector3f
@@ -55,14 +56,13 @@ object Editor {
 				rosella.device,
 				rosella.memory,
 				100,
-				ShaderPair.PoolObjType.UBO,
-				ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
+				ShaderPair.PoolObjType.UBO
 			)
 		)
 
 		rosella.registerMaterial(
 			panel, Material(
-				Global.ensureResource(Identifier("example", "textures/background/background01.png")), //TODO: make this part not be needed
+				Resource.Empty,
 				colourGuiShader,
 				VK10.VK_FORMAT_R8G8B8A8_SRGB,
 				false
@@ -101,17 +101,21 @@ object Editor {
 			}
 		)
 
+		// Render Folders
 		var y = 0
-		while(y <= 2) {
+		while (y <= 2) {
 			var x = 0
-			while(x <= 13) {
+			while (x <= 13) {
 				rosella.addRenderObject(
 					GuiRenderObject(
 						folder,
 						-0.8f
 					).apply {
-						scale(0.05f, 0.04f)
-						translate(1.5f / rosella.getWidth() - 7.4f + 1.33f * x, 1.5f / rosella.getHeight() + 2.88f + y * 1.6f)
+						scale(0.03f, 0.02f)
+						translate(
+							1.5f / rosella.getWidth() - 7.4f + 1.33f * x,
+							1.5f / rosella.getHeight() + 2.88f + y * 1.6f
+						)
 					}
 				)
 				x++

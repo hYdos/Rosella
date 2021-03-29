@@ -359,7 +359,6 @@ fun createTextureImage(device: Device, material: Material, renderer: Renderer, m
 		material.textureImageMemory = pTextureImageMemory[0]
 
 
-
 		transitionImageLayout(
 			material.textureImage,
 			imgFormat,

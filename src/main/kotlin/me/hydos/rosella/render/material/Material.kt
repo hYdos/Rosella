@@ -49,9 +49,11 @@ class Material(
 	}
 
 	fun loadTextures(device: Device, engine: Rosella) {
-		createTextureImage(device, this, engine.renderer, engine.memory, imgFormat)
-		createTextureImageView(engine, this, imgFormat)
-		createTextureSampler(device, this)
+		if(texture != Resource.Empty) {
+			createTextureImage(device, this, engine.renderer, engine.memory, imgFormat)
+			createTextureImageView(engine, this, imgFormat)
+			createTextureSampler(device, this)
+		}
 	}
 
 	/**
@@ -249,7 +251,7 @@ class Material(
 				.sType(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
 				.pCode(spirvCode)
 			val pShaderModule = stack.mallocLong(1)
-			VK10.vkCreateShaderModule(device.device, createInfo, null, pShaderModule).ok()
+			vkCreateShaderModule(device.device, createInfo, null, pShaderModule).ok()
 			return pShaderModule[0]
 		}
 	}
