@@ -52,7 +52,7 @@ open class RenderObject(private val model: Resource, val materialIdentifier: Ide
 		material.shader.createDescriptorSets(engine.renderer.swapChain, this)
 	}
 
-	fun funeResizeTest(renderer: Renderer) {
+	fun resize(renderer: Renderer) {
 		material.shader.createDescriptorSets(renderer.swapChain, this)
 	}
 
