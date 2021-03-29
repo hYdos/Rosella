@@ -240,7 +240,7 @@ class Renderer {
 			material.initializeShader(swapChain)
 		}
 		for (renderObject in engine.renderObjects) {
-			renderObject.funeResizeTest(this)
+			renderObject.resize(this)
 		}
 
 		MemoryStack.stackPush().use {
