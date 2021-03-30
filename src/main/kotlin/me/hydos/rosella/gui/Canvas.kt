@@ -9,20 +9,13 @@ import me.hydos.rosella.render.resource.Identifier
 import me.hydos.rosella.render.resource.Resource
 import me.hydos.rosella.render.shader.Shader
 import me.hydos.rosella.render.shader.ShaderPair
-import org.joml.Vector2f
 import org.joml.Vector3f
 import org.lwjgl.vulkan.VK10
 
-class Canvas(val rosella: Rosella, window: Window, scale: Vector2f = Vector2f(1920000f, 1080000f)) {
+class Canvas(val rosella: Rosella, val window: Window) {
 
 	private var width = rosella.getWidth().toInt()
 	private var height = rosella.getHeight().toInt()
-	private var oldXPixelScale = width / scale.x
-	private var oldYPixelScale = height / scale.y
-	private var xPixelScale = oldXPixelScale
-	private var yPixelScale = oldYPixelScale
-
-	private val scaleMagicConstant = 0.000307f
 
 	var canvasObjects = ArrayList<String>()
 
@@ -72,12 +65,6 @@ class Canvas(val rosella: Rosella, window: Window, scale: Vector2f = Vector2f(19
 	private fun onResize(width: Int, height: Int) {
 		this.width = width
 		this.height = height
-		oldXPixelScale = xPixelScale
-		oldYPixelScale = yPixelScale
-		xPixelScale = width / 1920f
-		yPixelScale = height / 1080f
-
-
 	}
 
 	fun createGuiMaterial(texture: Identifier, textureFormat: Int, blend: Boolean): Material {
@@ -109,20 +96,23 @@ class Canvas(val rosella: Rosella, window: Window, scale: Vector2f = Vector2f(19
 				layer.z,
 				colour
 			).apply {
-				translate(x * xPixelScale, y * yPixelScale)
-				scale(width * (xPixelScale * scaleMagicConstant), height * (yPixelScale * scaleMagicConstant))
+				translate(x.toFloat(), y.toFloat())
+				scale(
+					width * getXScale(),
+					height * getYScale()
+				)
 			},
 			name
 		)
 		canvasObjects.add(name)
 	}
 
-	fun getWidth(): Int {
-		return (width / xPixelScale).toInt()
+	fun getXScale(): Float {
+		return 0.1f / 1920
 	}
 
-	fun getHeight(): Int {
-		return (height / yPixelScale).toInt()
+	fun getYScale(): Float {
+		return 0.1f / 1080
 	}
 }
 
