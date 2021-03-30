@@ -40,7 +40,7 @@ class Rosella(
 
 	var renderer: Renderer = Renderer()
 
-	var renderObjects = ArrayList<RenderObject>()
+	var renderObjects = HashMap<String, RenderObject>()
 	var materials = HashMap<Identifier, Material>()
 	var shaders = HashMap<Identifier, ShaderPair>()
 
@@ -55,6 +55,8 @@ class Rosella(
 
 	init {
 		SoundManager.initialize()
+		window.onWindowResize(renderer::windowResizeCallback)
+
 		val validationLayers = defaultValidationLayers.toSet()
 		if (enableValidationLayers && !validationLayersSupported(validationLayers)) {
 			throw RuntimeException("Validation Layers are not available!")
@@ -110,7 +112,7 @@ class Rosella(
 	}
 
 	fun free() {
-		for (model in renderObjects) {
+		for (model in renderObjects.values) {
 			model.free(memory)
 		}
 
@@ -209,9 +211,12 @@ class Rosella(
 		}
 	}
 
-	fun addRenderObject(renderObject: RenderObject) {
+	fun addRenderObject(renderObject: RenderObject, name: String) {
+		if(renderObjects.containsKey(name)) {
+			error("An render object already exists with that name!")
+		}
 		renderObject.load(this)
-		renderObjects.add(renderObject)
+		renderObjects.put(name, renderObject)
 		renderObject.create(this)
 	}
 

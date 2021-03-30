@@ -6,20 +6,22 @@ import me.hydos.rosella.render.resource.Resource
 import me.hydos.rosella.render.shader.ubo.BasicUbo
 import org.joml.Vector2f
 import org.joml.Vector3f
-import org.joml.Vector3fc
 
-open class GuiRenderObject(materialIdentifier: Identifier, private val z: Float = -1f) :
+class GuiRenderObject(
+	materialIdentifier: Identifier,
+	private val z: Float = -1f,
+	private val colour: Vector3f = Vector3f(0f, 0f, 0f)
+) :
 	RenderObject(Resource.Empty, materialIdentifier) {
 
 	override fun loadModelInfo() {
 		vertices = ArrayList()
 		indices = ArrayList()
-		val color: Vector3fc = Vector3f(1.0f, 1.0f, 1.0f)
 
-		vertices.add(Vertex(Vector3f(-0.5f, -0.5f, 0f), color, Vector2f(0f, 0f)))
-		vertices.add(Vertex(Vector3f(0.5f, -0.5f, 0f), color, Vector2f(1f, 0f)))
-		vertices.add(Vertex(Vector3f(0.5f, 0.5f, 0f), color, Vector2f(1f, 1f)))
-		vertices.add(Vertex(Vector3f(-0.5f, 0.5f, 0f), color, Vector2f(0f, 1f)))
+		vertices.add(Vertex(Vector3f(-0.5f, -0.5f, 0f), colour, Vector2f(0f, 0f)))
+		vertices.add(Vertex(Vector3f(0.5f, -0.5f, 0f), colour, Vector2f(1f, 0f)))
+		vertices.add(Vertex(Vector3f(0.5f, 0.5f, 0f), colour, Vector2f(1f, 1f)))
+		vertices.add(Vertex(Vector3f(-0.5f, 0.5f, 0f), colour, Vector2f(0f, 1f)))
 
 		indices.add(0)
 		indices.add(1)

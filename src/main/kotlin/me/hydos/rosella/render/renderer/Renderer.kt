@@ -207,7 +207,7 @@ class Renderer {
 		}
 	}
 
-	fun windowResizeCallback(windowPtr: Long, width: Int, height: Int) {
+	fun windowResizeCallback(width: Int, height: Int) {
 		this.resizeFramebuffer = true
 	}
 
@@ -239,7 +239,7 @@ class Renderer {
 		for (material in engine.materials.values) {
 			material.initializeShader(swapChain)
 		}
-		for (renderObject in engine.renderObjects) {
+		for (renderObject in engine.renderObjects.values) {
 			renderObject.resize(this)
 		}
 
@@ -279,7 +279,7 @@ class Renderer {
 
 				vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE)
 				run {
-					for (renderObject in engine.renderObjects) {
+					for (renderObject in engine.renderObjects.values) {
 						bindModel(renderObject, it, renderObject.descriptorSets[i], commandBuffer)
 						vkCmdDrawIndexed(commandBuffer, renderObject.indices.size, 1, 0, 0, 0)
 					}

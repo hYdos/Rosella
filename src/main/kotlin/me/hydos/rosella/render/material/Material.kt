@@ -66,11 +66,10 @@ class Material(
 		descriptorSetLayout: Long
 	) {
 		MemoryStack.stackPush().use {
-			val vertShaderSPIRV: SpirV = compileShaderFile(shader.vertexShader.shaderLocation, ShaderType.VERTEX_SHADER)
-			val fragShaderSPIRV: SpirV =
-				compileShaderFile(shader.fragmentShader.shaderLocation, ShaderType.FRAGMENT_SHADER)
-			val vertShaderModule = createShader(vertShaderSPIRV.bytecode(), device)
-			val fragShaderModule = createShader(fragShaderSPIRV.bytecode(), device)
+			val vertexShader: SpirV = compileShaderFile(shader.vertexShader.shaderLocation, ShaderType.VERTEX_SHADER)
+			val fragmentShader: SpirV = compileShaderFile(shader.fragmentShader.shaderLocation, ShaderType.FRAGMENT_SHADER)
+			val vertShaderModule = createShader(vertexShader.bytecode(), device)
+			val fragShaderModule = createShader(fragmentShader.bytecode(), device)
 			val entryPoint: ByteBuffer = it.UTF8("main")
 			val shaderStages = VkPipelineShaderStageCreateInfo.callocStack(2, it)
 
@@ -86,7 +85,6 @@ class Material(
 				.module(fragShaderModule)
 				.pName(entryPoint)
 
-			// Stages
 			/**
 			 * Vertex
 			 */
@@ -142,7 +140,7 @@ class Material(
 					.polygonMode(VK_POLYGON_MODE_FILL)
 					.lineWidth(1.0f)
 					.cullMode(VK_CULL_MODE_BACK_BIT)
-					.frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE) //TODO: make the user be able to specify this
+					.frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
 					.depthBiasEnable(false)
 
 			/**
@@ -237,8 +235,8 @@ class Material(
 			vkDestroyShaderModule(device.device, vertShaderModule, null)
 			vkDestroyShaderModule(device.device, fragShaderModule, null)
 
-			vertShaderSPIRV.free()
-			fragShaderSPIRV.free()
+			vertexShader.free()
+			fragmentShader.free()
 		}
 	}
 

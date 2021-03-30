@@ -22,7 +22,7 @@ class ShaderPair(
 	var descriptorSetLayout: Long = 0
 
 	fun updateUbos(currentImage: Int, swapChain: SwapChain, engine: Rosella) {
-		for (renderObject in engine.renderObjects) {
+		for (renderObject in engine.renderObjects.values) {
 			renderObject.ubo.update(
 				currentImage,
 				swapChain,

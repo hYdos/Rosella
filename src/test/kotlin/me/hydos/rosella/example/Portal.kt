@@ -39,7 +39,8 @@ object Portal {
 				menuBackground
 			).apply {
 				scale(1.5f, 1f)
-			}
+			},
+			"mainMenuBackground"
 		)
 
 		engine.addRenderObject(
@@ -49,7 +50,8 @@ object Portal {
 			).apply {
 				scale(0.4f, 0.1f)
 				translate(-1f, -2.6f)
-			}
+			},
+			"portalLogo"
 		)
 	}
 
@@ -104,6 +106,6 @@ object Portal {
 		screen.onMainLoop {
 			engine.renderer.render(engine)
 		}
-		screen.start(engine)
+		screen.start()
 	}
 }
