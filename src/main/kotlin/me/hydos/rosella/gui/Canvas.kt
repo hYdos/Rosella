@@ -15,10 +15,14 @@ import org.lwjgl.vulkan.VK10
 
 class Canvas(val rosella: Rosella, window: Window, scale: Vector2f = Vector2f(1920000f, 1080000f)) {
 
-	private var oldXPixelScale = rosella.getWidth() / scale.x
-	private var oldYPixelScale = rosella.getHeight() / scale.y
+	private var width = rosella.getWidth().toInt()
+	private var height = rosella.getHeight().toInt()
+	private var oldXPixelScale = width / scale.x
+	private var oldYPixelScale = height / scale.y
 	private var xPixelScale = oldXPixelScale
 	private var yPixelScale = oldYPixelScale
+
+	private val scaleMagicConstant = 0.000307f
 
 	var canvasObjects = ArrayList<String>()
 
@@ -66,6 +70,8 @@ class Canvas(val rosella: Rosella, window: Window, scale: Vector2f = Vector2f(19
 	}
 
 	private fun onResize(width: Int, height: Int) {
+		this.width = width
+		this.height = height
 		oldXPixelScale = xPixelScale
 		oldYPixelScale = yPixelScale
 		xPixelScale = width / 1920f
@@ -104,11 +110,19 @@ class Canvas(val rosella: Rosella, window: Window, scale: Vector2f = Vector2f(19
 				colour
 			).apply {
 				translate(x * xPixelScale, y * yPixelScale)
-				scale(width * xPixelScale, height * yPixelScale)
+				scale(width * (xPixelScale * scaleMagicConstant), height * (yPixelScale * scaleMagicConstant))
 			},
 			name
 		)
 		canvasObjects.add(name)
+	}
+
+	fun getWidth(): Int {
+		return (width / xPixelScale).toInt()
+	}
+
+	fun getHeight(): Int {
+		return (height / yPixelScale).toInt()
 	}
 }
 

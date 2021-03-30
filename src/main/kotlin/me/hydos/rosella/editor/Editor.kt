@@ -37,6 +37,6 @@ object Editor {
 		)
 		rosella.reloadMaterials()
 
-		canvas.addRect("testSquare", 0, 0, 1, 1, Layer.FOREGROUND1, Vector3f(46 / 255f, 209 / 255f, 84 / 255f))
+		canvas.addRect("testSquare", 0, 0, canvas.getWidth() / 2, canvas.getHeight() / 2, Layer.FOREGROUND1, Vector3f(46 / 255f, 209 / 255f, 84 / 255f))
 	}
 }
