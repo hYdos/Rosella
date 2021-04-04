@@ -66,8 +66,8 @@ class Material(
 		descriptorSetLayout: Long
 	) {
 		MemoryStack.stackPush().use {
-			val vertexShader: SpirV = compileShaderFile(shader.vertexShader.shaderLocation, ShaderType.VERTEX_SHADER)
-			val fragmentShader: SpirV = compileShaderFile(shader.fragmentShader.shaderLocation, ShaderType.FRAGMENT_SHADER)
+			val vertexShader: SpirV = compileShaderFile(shader.vertexShader, ShaderType.VERTEX_SHADER)
+			val fragmentShader: SpirV = compileShaderFile(shader.fragmentShader, ShaderType.FRAGMENT_SHADER)
 			val vertShaderModule = createShader(vertexShader.bytecode(), device)
 			val fragShaderModule = createShader(fragmentShader.bytecode(), device)
 			val entryPoint: ByteBuffer = it.UTF8("main")

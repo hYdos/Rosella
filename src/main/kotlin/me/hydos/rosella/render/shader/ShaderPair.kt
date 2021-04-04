@@ -3,6 +3,7 @@ package me.hydos.rosella.render.shader
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.render.device.Device
 import me.hydos.rosella.render.model.RenderObject
+import me.hydos.rosella.render.resource.Resource
 import me.hydos.rosella.render.swapchain.SwapChain
 import me.hydos.rosella.render.util.memory.Memory
 import me.hydos.rosella.render.util.ok
@@ -11,8 +12,8 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
 
 class ShaderPair(
-	val vertexShader: Shader,
-	val fragmentShader: Shader,
+	val vertexShader: Resource,
+	val fragmentShader: Resource,
 	val device: Device,
 	val memory: Memory,
 	var maxObjCount: Int,

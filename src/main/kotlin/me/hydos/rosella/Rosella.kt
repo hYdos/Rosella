@@ -22,7 +22,7 @@ import org.lwjgl.system.MemoryUtil.NULL
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.vkDestroySurfaceKHR
 import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.VK11.VK_API_VERSION_1_1
+import org.lwjgl.vulkan.VK12.VK_API_VERSION_1_2
 import java.nio.IntBuffer
 import java.nio.LongBuffer
 import java.util.function.Consumer
@@ -84,7 +84,7 @@ class Rosella(
 				.applicationVersion(VK_MAKE_VERSION(1, 0, 0))
 				.pEngineName(stack.UTF8Safe("Rosella"))
 				.engineVersion(VK_MAKE_VERSION(0, 1, 0))
-				.apiVersion(VK_API_VERSION_1_1)
+				.apiVersion(VK_API_VERSION_1_2)
 			val createInfo = VkInstanceCreateInfo.callocStack(stack)
 				.pApplicationInfo(applicationInfo)
 				.sType(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)

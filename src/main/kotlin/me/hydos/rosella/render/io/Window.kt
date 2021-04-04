@@ -11,6 +11,10 @@ class Window(title: String, width: Int, height: Int, windowResizable: Boolean = 
 	var monitorWidth: Int = 0
 	var monitorHeight: Int = 0
 
+	var fps = 0
+	var previousTime = glfwGetTime()
+	var frameCount = 0
+
 	internal val windowPtr: Long
 	private val loopCallbacks: MutableList<() -> Unit> = ObjectArrayList()
 	private val closeCallbacks: MutableList<() -> Unit> = ObjectArrayList()
@@ -22,10 +26,23 @@ class Window(title: String, width: Int, height: Int, windowResizable: Boolean = 
 
 		while (!glfwWindowShouldClose(windowPtr)) {
 			glfwPollEvents()
+			calculateFps()
 
 			for (callback in loopCallbacks) {
 				callback()
 			}
+		}
+	}
+
+	private fun calculateFps() {
+		val currentTime = glfwGetTime()
+		frameCount++
+		if (currentTime - previousTime >= 1.0) {
+			fps = frameCount
+			println(fps)
+
+			frameCount = 0
+			previousTime = currentTime
 		}
 	}
 

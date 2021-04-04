@@ -7,7 +7,6 @@ import me.hydos.rosella.render.model.GuiRenderObject
 import me.hydos.rosella.render.resource.Global
 import me.hydos.rosella.render.resource.Identifier
 import me.hydos.rosella.render.resource.Resource
-import me.hydos.rosella.render.shader.Shader
 import me.hydos.rosella.render.shader.ShaderPair
 import org.joml.Vector3f
 import org.lwjgl.vulkan.VK10
@@ -31,8 +30,8 @@ class Canvas(val rosella: Rosella, val window: Window) {
 
 		rosella.registerShader(
 			guiShader, ShaderPair(
-				Shader(Global.ensureResource(Identifier("rosella", "shaders/gui.v.glsl"))),
-				Shader(Global.ensureResource(Identifier("rosella", "shaders/gui.f.glsl"))),
+				Global.ensureResource(Identifier("rosella", "shaders/gui.v.glsl")),
+				Global.ensureResource(Identifier("rosella", "shaders/gui.f.glsl")),
 				rosella.device,
 				rosella.memory,
 				100,
@@ -43,8 +42,8 @@ class Canvas(val rosella: Rosella, val window: Window) {
 
 		rosella.registerShader(
 			colourGuiShader, ShaderPair(
-				Shader(Global.ensureResource(Identifier("rosella", "shaders/gui.v.glsl"))),
-				Shader(Global.ensureResource(Identifier("rosella", "shaders/gui.colour.f.glsl"))),
+				Global.ensureResource(Identifier("rosella", "shaders/gui.v.glsl")),
+				Global.ensureResource(Identifier("rosella", "shaders/gui.colour.f.glsl")),
 				rosella.device,
 				rosella.memory,
 				100,
@@ -96,7 +95,7 @@ class Canvas(val rosella: Rosella, val window: Window) {
 				layer.z,
 				colour
 			).apply {
-				translate(x.toFloat(), y.toFloat())
+				translate(x * getXScale(), y * getYScale())
 				scale(
 					width * getXScale(),
 					height * getYScale()
@@ -108,11 +107,11 @@ class Canvas(val rosella: Rosella, val window: Window) {
 	}
 
 	fun getXScale(): Float {
-		return 0.1f / 1920
+		return 1f / 1920
 	}
 
 	fun getYScale(): Float {
-		return 0.1f / 1080
+		return 1f / 1080
 	}
 }
 

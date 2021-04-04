@@ -7,7 +7,6 @@ import me.hydos.rosella.render.material.Material
 import me.hydos.rosella.render.model.GuiRenderObject
 import me.hydos.rosella.render.resource.Global
 import me.hydos.rosella.render.resource.Identifier
-import me.hydos.rosella.render.shader.Shader
 import me.hydos.rosella.render.shader.ShaderPair
 import org.lwjgl.vulkan.VK10
 
@@ -78,8 +77,8 @@ object Portal {
 	private fun loadShaders() {
 		engine.registerShader(
 			basicShader, ShaderPair(
-				Shader(Global.ensureResource(Identifier("rosella", "shaders/base.v.glsl"))),
-				Shader(Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl"))),
+				Global.ensureResource(Identifier("rosella", "shaders/base.v.glsl")),
+				Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl")),
 				engine.device,
 				engine.memory,
 				10,
@@ -90,8 +89,8 @@ object Portal {
 
 		engine.registerShader(
 			guiShader, ShaderPair(
-				Shader(Global.ensureResource(Identifier("rosella", "shaders/gui.v.glsl"))),
-				Shader(Global.ensureResource(Identifier("rosella", "shaders/gui.f.glsl"))),
+				Global.ensureResource(Identifier("rosella", "shaders/gui.v.glsl")),
+				Global.ensureResource(Identifier("rosella", "shaders/gui.f.glsl")),
 				engine.device,
 				engine.memory,
 				10,
