@@ -13,15 +13,15 @@ import org.lwjgl.vulkan.VK10
 object Portal {
 
 	val screen = Window("Rosella Engine", 1280, 720)
-	val engine = Rosella("Portal2 in Rosella", true, screen)
+	val engine = Rosella("Portal 3", true, screen)
 
-	val menuBackground = Identifier("rosella", "menu_background")
-	val portalLogo = Identifier("rosella", "portal_logo")
+	val menuBackground = Identifier("example", "menu_background")
+	val portalLogo = Identifier("example", "portal_logo")
 
 	val basicShader = Identifier("rosella", "example_shader")
 	val guiShader = Identifier("rosella", "gui_shader")
 
-	val background = Identifier("rosella", "sounds/music/mainmenu/portal2_background01.ogg")
+	val background = Identifier("example", "sounds/music/mainmenu/portal2_background01.ogg")
 
 	@JvmStatic
 	fun main(args: Array<String>) {
@@ -57,7 +57,7 @@ object Portal {
 	private fun loadMaterials() {
 		engine.registerMaterial(
 			menuBackground, Material(
-				Global.ensureResource(Identifier("rosella", "textures/background/background01.png")),
+				Global.ensureResource(Identifier("example", "textures/background/background01.png")),
 				guiShader,
 				VK10.VK_FORMAT_R8G8B8A8_UNORM,
 				false
@@ -65,7 +65,7 @@ object Portal {
 		)
 		engine.registerMaterial(
 			portalLogo, Material(
-				Global.ensureResource(Identifier("rosella", "textures/gui/portal2logo.png")),
+				Global.ensureResource(Identifier("example", "textures/gui/portal2logo.png")),
 				guiShader,
 				VK10.VK_FORMAT_R8G8B8A8_SRGB,
 				true
