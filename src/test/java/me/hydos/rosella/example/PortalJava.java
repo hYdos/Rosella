@@ -2,6 +2,7 @@ package me.hydos.rosella.example;
 
 import me.hydos.rosella.Rosella;
 import me.hydos.rosella.audio.SoundManager;
+import me.hydos.rosella.font.FontHelper;
 import me.hydos.rosella.render.io.Window;
 import me.hydos.rosella.render.material.Material;
 import me.hydos.rosella.render.model.GuiRenderObject;
@@ -26,10 +27,15 @@ public class PortalJava {
 
     public static void main(String[] args) {
         loadShaders();
+        loadFonts();
         loadMaterials();
         setupMainMenuScene();
         SoundManager.playback(Global.INSTANCE.ensureResource(background));
         doMainLoop();
+    }
+
+    private static void loadFonts() {
+        FontHelper.INSTANCE.loadFont(Global.INSTANCE.ensureResource(new Identifier("rosella", "fonts/DIN Bold.otf")));
     }
 
     private static void setupMainMenuScene() {

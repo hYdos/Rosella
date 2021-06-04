@@ -39,7 +39,7 @@ class Window(title: String, width: Int, height: Int, windowResizable: Boolean = 
 		frameCount++
 		if (currentTime - previousTime >= 1.0) {
 			fps = frameCount
-			println(fps)
+			println("Fps: $fps")
 
 			frameCount = 0
 			previousTime = currentTime
