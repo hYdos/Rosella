@@ -49,7 +49,7 @@ class Rosella(
 	internal lateinit var vulkanInstance: VkInstance
 	lateinit var maxImages: IntBuffer
 
-	internal val device: Device
+	val device: Device
 	private var debugMessenger: Long = 0
 	var surface: Long = 0
 

@@ -56,6 +56,10 @@ class Window(title: String, width: Int, height: Int, windowResizable: Boolean = 
 		loopCallbacks.add(callback)
 	}
 
+	fun onMainLoop(unit: JavaUnit) {
+		onMainLoop { unit.run() }
+	}
+
 	fun onWindowClose(function: () -> Unit) {
 		closeCallbacks.add(function)
 	}
@@ -85,4 +89,8 @@ class Window(title: String, width: Int, height: Int, windowResizable: Boolean = 
 			glfwTerminate()
 		})
 	}
+}
+
+interface JavaUnit {
+	fun run()
 }

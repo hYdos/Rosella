@@ -18,6 +18,7 @@ import java.nio.ShortBuffer
 
 object SoundManager {
 
+	@JvmStatic
 	fun initialize() {
 		val device = alcOpenDevice(BufferUtils.createByteBuffer(1))
 		check(device != NULL) { "Failed to open an OpenAL device." }
@@ -35,6 +36,7 @@ object SoundManager {
 		AL.createCapabilities(deviceCaps, MemoryUtil::memCallocPointer)
 	}
 
+	@JvmStatic
 	fun playback(file: Resource) {
 		val buffer: Int = alGenBuffers()
 		val source: Int = alGenSources()

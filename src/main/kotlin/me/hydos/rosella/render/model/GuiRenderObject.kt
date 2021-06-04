@@ -11,8 +11,15 @@ class GuiRenderObject(
 	materialIdentifier: Identifier,
 	private val z: Float = -1f,
 	private val colour: Vector3f = Vector3f(0f, 0f, 0f)
-) :
-	RenderObject(Resource.Empty, materialIdentifier) {
+) : RenderObject(Resource.Empty, materialIdentifier) {
+
+	constructor(matId: Identifier, z: Float, colour: Vector3f, scaleX: Float, scaleZ: Float) : this(matId, z, colour) {
+		scale(scaleX, scaleZ)
+	}
+
+	constructor(matId: Identifier, z: Float, colour: Vector3f, scaleX: Float, scaleZ: Float, translateX: Float, translateZ: Float) : this(matId, z, colour, scaleX, scaleZ) {
+		translate(translateX, translateZ)
+	}
 
 	override fun loadModelInfo() {
 		vertices = ArrayList()
