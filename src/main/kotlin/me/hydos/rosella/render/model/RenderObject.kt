@@ -49,11 +49,11 @@ open class RenderObject(private val model: Resource, val materialIdentifier: Ide
 		loadModelInfo()
 		vertexBuffer = engine.memory.createVertexBuffer(engine, vertices)
 		indexBuffer = engine.memory.createIndexBuffer(engine, indices)
-		material.shader.createDescriptorSets(engine.renderer.swapChain, this)
+		material.shader.raw.createDescriptorSets(engine.renderer.swapChain, this)
 	}
 
 	fun resize(renderer: Renderer) {
-		material.shader.createDescriptorSets(renderer.swapChain, this)
+		material.shader.raw.createDescriptorSets(renderer.swapChain, this)
 	}
 
 	open fun loadModelInfo() {

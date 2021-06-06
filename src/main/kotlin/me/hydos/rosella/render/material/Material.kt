@@ -8,7 +8,8 @@ import me.hydos.rosella.render.device.Device
 import me.hydos.rosella.render.model.Vertex
 import me.hydos.rosella.render.resource.Identifier
 import me.hydos.rosella.render.resource.Resource
-import me.hydos.rosella.render.shader.ShaderPair
+import me.hydos.rosella.render.shader.ShaderProgram
+import me.hydos.rosella.render.shader.RawShaderProgram
 import me.hydos.rosella.render.swapchain.RenderPass
 import me.hydos.rosella.render.swapchain.SwapChain
 import me.hydos.rosella.render.util.*
@@ -37,19 +38,19 @@ class Material(
 	var textureImage: Long = 0
 	var textureImageMemory: Long = 0
 
-	lateinit var shader: ShaderPair
+	lateinit var shader: ShaderProgram
 
 	var textureImageView: Long = 0
 	var textureSampler: Long = 0
 
 	fun loadShaders(engine: Rosella) {
-		val retrievedShader = engine.shaders[shaderId]
+		val retrievedShader = engine.shaderManager.getOrCreateShader(shaderId)
 			?: error("The shader $shaderId couldn't be found. (Are you registering it?)")
 		this.shader = retrievedShader
 	}
 
 	fun loadTextures(device: Device, engine: Rosella) {
-		if(texture != Resource.Empty) {
+		if (texture != Resource.Empty) {
 			createTextureImage(device, this, engine.renderer, engine.memory, imgFormat)
 			createTextureImageView(engine, this, imgFormat)
 			createTextureSampler(device, this)
@@ -66,10 +67,9 @@ class Material(
 		descriptorSetLayout: Long
 	) {
 		MemoryStack.stackPush().use {
-			val vertexShader: SpirV = compileShaderFile(shader.vertexShader, ShaderType.VERTEX_SHADER)
-			val fragmentShader: SpirV = compileShaderFile(shader.fragmentShader, ShaderType.FRAGMENT_SHADER)
-			val vertShaderModule = createShader(vertexShader.bytecode(), device)
-			val fragShaderModule = createShader(fragmentShader.bytecode(), device)
+			val vertShaderModule = shader.getVertShaderModule()
+			val fragShaderModule = shader.getFragShaderModule()
+
 			val entryPoint: ByteBuffer = it.UTF8("main")
 			val shaderStages = VkPipelineShaderStageCreateInfo.callocStack(2, it)
 
@@ -229,28 +229,8 @@ class Material(
 				.ok()
 			graphicsPipeline = pGraphicsPipeline[0]
 
-			/**
-			 * Free Shaders
-			 */
 			vkDestroyShaderModule(device.device, vertShaderModule, null)
 			vkDestroyShaderModule(device.device, fragShaderModule, null)
-
-			vertexShader.free()
-			fragmentShader.free()
-		}
-	}
-
-	/**
-	 * Create a Vulkan shader module. used during pipeline creation.
-	 */
-	private fun createShader(spirvCode: ByteBuffer, device: Device): Long {
-		MemoryStack.stackPush().use { stack ->
-			val createInfo = VkShaderModuleCreateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
-				.pCode(spirvCode)
-			val pShaderModule = stack.mallocLong(1)
-			vkCreateShaderModule(device.device, createInfo, null, pShaderModule).ok()
-			return pShaderModule[0]
 		}
 	}
 
@@ -260,6 +240,6 @@ class Material(
 	}
 
 	fun initializeShader(swapChain: SwapChain) {
-		shader.createPool(swapChain)
+		shader.raw.createPool(swapChain)
 	}
 }

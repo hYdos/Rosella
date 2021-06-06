@@ -11,7 +11,7 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
 
-class ShaderPair(
+class RawShaderProgram(
 	val vertexShader: Resource,
 	val fragmentShader: Resource,
 	val device: Device,

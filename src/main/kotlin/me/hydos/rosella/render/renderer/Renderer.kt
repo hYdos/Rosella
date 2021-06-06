@@ -45,7 +45,7 @@ class Renderer {
 		this.renderPass = RenderPass(device, swapChain, engine)
 		createImgViews(swapChain, device)
 		for (material in engine.materials.values) {
-			material.createPipeline(device, swapChain, renderPass, material.shader.descriptorSetLayout)
+			material.createPipeline(device, swapChain, renderPass, material.shader.raw.descriptorSetLayout)
 		}
 		depthBuffer.createDepthResources(device, swapChain, this)
 		createFrameBuffers()
@@ -91,7 +91,7 @@ class Renderer {
 
 			val imageIndex = pImageIndex[0]
 
-			for (shader in engine.shaders.values) {
+			for (shader in engine.shaderManager.shaders.values) {
 				shader.updateUbos(imageIndex, swapChain, engine)
 			}
 
@@ -145,7 +145,7 @@ class Renderer {
 	}
 
 	fun freeSwapChain(engine: Rosella) {
-		for (shaderPair in engine.shaders.values) {
+		for (shaderPair in engine.shaderManager.shaders.values) {
 			vkDestroyDescriptorPool(device.device, shaderPair.descriptorPool, null)
 		}
 

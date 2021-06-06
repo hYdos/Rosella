@@ -8,7 +8,8 @@ import me.hydos.rosella.render.material.Material
 import me.hydos.rosella.render.model.RenderObject
 import me.hydos.rosella.render.renderer.Renderer
 import me.hydos.rosella.render.resource.Identifier
-import me.hydos.rosella.render.shader.ShaderPair
+import me.hydos.rosella.render.shader.RawShaderProgram
+import me.hydos.rosella.render.shader.ShaderManager
 import me.hydos.rosella.render.swapchain.Frame
 import me.hydos.rosella.render.util.memory.Memory
 import me.hydos.rosella.render.util.ok
@@ -27,6 +28,7 @@ import java.nio.IntBuffer
 import java.nio.LongBuffer
 import java.util.function.Consumer
 import java.util.stream.Collectors
+import kotlin.system.exitProcess
 
 /**
  * Main engine class. most interactions will happen here
@@ -42,7 +44,7 @@ class Rosella(
 
 	var renderObjects = HashMap<String, RenderObject>()
 	var materials = HashMap<Identifier, Material>()
-	var shaders = HashMap<Identifier, ShaderPair>()
+	var shaderManager: ShaderManager
 
 	val camera = Camera(window)
 
@@ -70,6 +72,7 @@ class Rosella(
 
 		createSurface()
 		this.device = Device(this, validationLayers)
+		this.shaderManager = ShaderManager(device)
 		this.memory = Memory(device, vulkanInstance)
 		renderer.initialize(this)
 
@@ -180,10 +183,17 @@ class Rosella(
 
 	private fun debugCallback(severity: Int, messageType: Int, pCallbackData: Long, pUserData: Long): Int {
 		val callbackData = VkDebugUtilsMessengerCallbackDataEXT.create(pCallbackData)
+		val message = callbackData.pMessageString()
 		if (severity == EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-			System.err.println(callbackData.pMessageString())
+			if(message.startsWith("Validation Error")) {
+				val split = message.split("|")
+				val cause = split[2]
+				RuntimeException(cause).printStackTrace()
+			} else{
+				System.err.println(message)
+			}
 		} else {
-			println(callbackData.pMessageString())
+			println(message)
 		}
 		return VK_FALSE
 	}
@@ -216,7 +226,7 @@ class Rosella(
 			error("An render object already exists with that name!")
 		}
 		renderObject.load(this)
-		renderObjects.put(name, renderObject)
+		renderObjects[name] = renderObject
 		renderObject.create(this)
 	}
 
@@ -224,23 +234,28 @@ class Rosella(
 		materials[identifier] = material
 	}
 
-	fun registerShader(identifier: Identifier, shader: ShaderPair) {
-		shaders[identifier] = shader
+	fun registerShader(identifier: Identifier, rawShader: RawShaderProgram) {
+		shaderManager.shaders[identifier] = rawShader
 	}
 
 	fun reloadMaterials() {
+		var test = 0
 		for (material in materials.values) {
 			material.loadShaders(this)
 			material.loadTextures(device, this)
-			material.shader.createDescriptorSetLayout()
+			material.shader.raw.createDescriptorSetLayout()
 			material.createPipeline(
 				device,
 				renderer.swapChain,
 				renderer.renderPass,
-				material.shader.descriptorSetLayout
+				material.shader.raw.descriptorSetLayout
 			)
+			test++
+			println(test.toString() + " / " + materials.values.size)
 		}
+		println("Recreating Swap Chain")
 		renderer.recreateSwapChain(window, camera, this)
+		println("Swapchain Recreated")
 	}
 
 	private fun createDebugUtilsMessengerEXT(

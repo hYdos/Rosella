@@ -2,13 +2,14 @@ package me.hydos.rosella.example;
 
 import me.hydos.rosella.Rosella;
 import me.hydos.rosella.audio.SoundManager;
-import me.hydos.rosella.font.FontHelper;
+import me.hydos.rosella.render.font.CachedFont;
+import me.hydos.rosella.render.font.FontHelper;
 import me.hydos.rosella.render.io.Window;
 import me.hydos.rosella.render.material.Material;
 import me.hydos.rosella.render.model.GuiRenderObject;
 import me.hydos.rosella.render.resource.Global;
 import me.hydos.rosella.render.resource.Identifier;
-import me.hydos.rosella.render.shader.ShaderPair;
+import me.hydos.rosella.render.shader.RawShaderProgram;
 import org.joml.Vector3f;
 import org.lwjgl.vulkan.VK10;
 
@@ -25,6 +26,8 @@ public class PortalJava {
 
     public static final Identifier background = new Identifier("example", "sounds/music/mainmenu/portal2_background01.ogg");
 
+    public static final Identifier fontShader = new Identifier("rosella", "font_shader");
+
     public static void main(String[] args) {
         loadShaders();
         loadFonts();
@@ -35,7 +38,7 @@ public class PortalJava {
     }
 
     private static void loadFonts() {
-        FontHelper.INSTANCE.loadFont(Global.INSTANCE.ensureResource(new Identifier("rosella", "fonts/DIN Bold.otf")));
+        CachedFont portalFont = FontHelper.INSTANCE.getOrLoadFont(Global.INSTANCE.ensureResource(new Identifier("rosella", "fonts/DIN Bold.otf")), rosella);
     }
 
     private static void setupMainMenuScene() {
@@ -72,26 +75,26 @@ public class PortalJava {
 
     private static void loadShaders() {
         rosella.registerShader(
-                basicShader, new ShaderPair(
+                basicShader, new RawShaderProgram(
                         Global.INSTANCE.ensureResource(new Identifier("rosella", "shaders/base.v.glsl")),
                         Global.INSTANCE.ensureResource(new Identifier("rosella", "shaders/base.f.glsl")),
                         rosella.getDevice(),
                         rosella.getMemory(),
                         10,
-                        ShaderPair.PoolObjType.UBO,
-                        ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
+                        RawShaderProgram.PoolObjType.UBO,
+                        RawShaderProgram.PoolObjType.COMBINED_IMG_SAMPLER
                 )
         );
 
         rosella.registerShader(
-                guiShader, new ShaderPair(
+                guiShader, new RawShaderProgram(
                         Global.INSTANCE.ensureResource(new Identifier("rosella", "shaders/gui.v.glsl")),
                         Global.INSTANCE.ensureResource(new Identifier("rosella", "shaders/gui.f.glsl")),
                         rosella.getDevice(),
                         rosella.getMemory(),
                         10,
-                        ShaderPair.PoolObjType.UBO,
-                        ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
+                        RawShaderProgram.PoolObjType.UBO,
+                        RawShaderProgram.PoolObjType.COMBINED_IMG_SAMPLER
                 )
         );
     }

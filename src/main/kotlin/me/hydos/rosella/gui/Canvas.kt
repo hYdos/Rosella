@@ -7,7 +7,7 @@ import me.hydos.rosella.render.model.GuiRenderObject
 import me.hydos.rosella.render.resource.Global
 import me.hydos.rosella.render.resource.Identifier
 import me.hydos.rosella.render.resource.Resource
-import me.hydos.rosella.render.shader.ShaderPair
+import me.hydos.rosella.render.shader.RawShaderProgram
 import org.joml.Vector3f
 import org.lwjgl.vulkan.VK10
 
@@ -29,25 +29,25 @@ class Canvas(val rosella: Rosella, val window: Window) {
 		window.onWindowResize(this::onResize)
 
 		rosella.registerShader(
-			guiShader, ShaderPair(
+			guiShader, RawShaderProgram(
 				Global.ensureResource(Identifier("rosella", "shaders/gui.v.glsl")),
 				Global.ensureResource(Identifier("rosella", "shaders/gui.f.glsl")),
 				rosella.device,
 				rosella.memory,
 				100,
-				ShaderPair.PoolObjType.UBO,
-				ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
+				RawShaderProgram.PoolObjType.UBO,
+				RawShaderProgram.PoolObjType.COMBINED_IMG_SAMPLER
 			)
 		)
 
 		rosella.registerShader(
-			colourGuiShader, ShaderPair(
+			colourGuiShader, RawShaderProgram(
 				Global.ensureResource(Identifier("rosella", "shaders/gui.v.glsl")),
 				Global.ensureResource(Identifier("rosella", "shaders/gui.colour.f.glsl")),
 				rosella.device,
 				rosella.memory,
 				100,
-				ShaderPair.PoolObjType.UBO
+				RawShaderProgram.PoolObjType.UBO
 			)
 		)
 

@@ -1,4 +1,4 @@
-package me.hydos.rosella.font
+package me.hydos.rosella.render.font
 
 import java.awt.geom.Rectangle2D
 

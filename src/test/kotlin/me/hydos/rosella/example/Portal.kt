@@ -7,7 +7,7 @@ import me.hydos.rosella.render.material.Material
 import me.hydos.rosella.render.model.GuiRenderObject
 import me.hydos.rosella.render.resource.Global
 import me.hydos.rosella.render.resource.Identifier
-import me.hydos.rosella.render.shader.ShaderPair
+import me.hydos.rosella.render.shader.RawShaderProgram
 import org.lwjgl.vulkan.VK10
 
 object Portal {
@@ -76,26 +76,26 @@ object Portal {
 
 	private fun loadShaders() {
 		engine.registerShader(
-			basicShader, ShaderPair(
+			basicShader, RawShaderProgram(
 				Global.ensureResource(Identifier("rosella", "shaders/base.v.glsl")),
 				Global.ensureResource(Identifier("rosella", "shaders/base.f.glsl")),
 				engine.device,
 				engine.memory,
 				10,
-				ShaderPair.PoolObjType.UBO,
-				ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
+				RawShaderProgram.PoolObjType.UBO,
+				RawShaderProgram.PoolObjType.COMBINED_IMG_SAMPLER
 			)
 		)
 
 		engine.registerShader(
-			guiShader, ShaderPair(
+			guiShader, RawShaderProgram(
 				Global.ensureResource(Identifier("rosella", "shaders/gui.v.glsl")),
 				Global.ensureResource(Identifier("rosella", "shaders/gui.f.glsl")),
 				engine.device,
 				engine.memory,
 				10,
-				ShaderPair.PoolObjType.UBO,
-				ShaderPair.PoolObjType.COMBINED_IMG_SAMPLER
+				RawShaderProgram.PoolObjType.UBO,
+				RawShaderProgram.PoolObjType.COMBINED_IMG_SAMPLER
 			)
 		)
 	}
