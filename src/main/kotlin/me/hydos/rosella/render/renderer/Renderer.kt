@@ -7,6 +7,7 @@ import me.hydos.rosella.render.device.Device
 import me.hydos.rosella.render.device.Queues
 import me.hydos.rosella.render.io.Window
 import me.hydos.rosella.render.model.RenderObject
+import me.hydos.rosella.render.shader.ShaderProgram
 import me.hydos.rosella.render.swapchain.DepthBuffer
 import me.hydos.rosella.render.swapchain.Frame
 import me.hydos.rosella.render.swapchain.RenderPass
@@ -40,7 +41,7 @@ class Renderer {
 	var commandPool: Long = 0
 	lateinit var commandBuffers: ArrayList<VkCommandBuffer>
 
-	fun createSwapChain(engine: Rosella) {
+	private fun createSwapChain(engine: Rosella) {
 		this.swapChain = SwapChain(engine, device.device, device.physicalDevice, engine.surface)
 		this.renderPass = RenderPass(device, swapChain, engine)
 		createImgViews(swapChain, device)
@@ -108,6 +109,7 @@ class Renderer {
 				.pCommandBuffers(stack.pointers(commandBuffers[imageIndex]))
 			vkResetFences(device.device, thisFrame.pFence())
 			vkQueueSubmit(queues.graphicsQueue, submitInfo, thisFrame.fence()).ok()
+
 			val presentInfo = VkPresentInfoKHR.callocStack(stack)
 				.sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
 				.pWaitSemaphores(thisFrame.pRenderFinishedSemaphore())
@@ -196,7 +198,7 @@ class Renderer {
 					pRenderFinishedSemaphore
 				).ok()
 				vkCreateFence(device.device, fenceInfo, null, pFence).ok()
-				inFlightFrames!!.add(
+				inFlightFrames.add(
 					Frame(
 						pImageAvailableSemaphore[0],
 						pRenderFinishedSemaphore[0],
@@ -236,9 +238,17 @@ class Renderer {
 	 * TODO: instancing
 	 */
 	fun rebuildCommandBuffers(renderPass: RenderPass, engine: Rosella) {
+		val usedShaders = ArrayList<ShaderProgram>()
 		for (material in engine.materials.values) {
-			material.initializeShader(swapChain)
+			if (!usedShaders.contains(material.shader)) {
+				usedShaders.add(material.shader)
+			}
 		}
+
+		for (shader in usedShaders) {
+			shader.raw.createPool(swapChain)
+		}
+
 		for (renderObject in engine.renderObjects.values) {
 			renderObject.resize(this)
 		}

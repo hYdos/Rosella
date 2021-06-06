@@ -11,6 +11,7 @@ import me.hydos.rosella.render.resource.Identifier
 import me.hydos.rosella.render.shader.RawShaderProgram
 import me.hydos.rosella.render.shader.ShaderManager
 import me.hydos.rosella.render.swapchain.Frame
+import me.hydos.rosella.render.texture.TextureManager
 import me.hydos.rosella.render.util.memory.Memory
 import me.hydos.rosella.render.util.ok
 import org.lwjgl.PointerBuffer
@@ -28,7 +29,6 @@ import java.nio.IntBuffer
 import java.nio.LongBuffer
 import java.util.function.Consumer
 import java.util.stream.Collectors
-import kotlin.system.exitProcess
 
 /**
  * Main engine class. most interactions will happen here
@@ -45,6 +45,7 @@ class Rosella(
 	var renderObjects = HashMap<String, RenderObject>()
 	var materials = HashMap<Identifier, Material>()
 	var shaderManager: ShaderManager
+	var textureManager: TextureManager
 
 	val camera = Camera(window)
 
@@ -73,6 +74,7 @@ class Rosella(
 		createSurface()
 		this.device = Device(this, validationLayers)
 		this.shaderManager = ShaderManager(device)
+		this.textureManager = TextureManager(device)
 		this.memory = Memory(device, vulkanInstance)
 		renderer.initialize(this)
 
@@ -242,7 +244,7 @@ class Rosella(
 		var test = 0
 		for (material in materials.values) {
 			material.loadShaders(this)
-			material.loadTextures(device, this)
+			material.loadTextures(this)
 			material.shader.raw.createDescriptorSetLayout()
 			material.createPipeline(
 				device,

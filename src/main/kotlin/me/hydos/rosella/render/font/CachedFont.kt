@@ -6,10 +6,14 @@ import me.hydos.rosella.render.model.GlyphRenderObject
 import me.hydos.rosella.render.resource.Global
 import me.hydos.rosella.render.resource.Identifier
 import me.hydos.rosella.render.shader.RawShaderProgram
+import org.joml.Matrix4f
+import org.joml.Vector3f
 import org.lwjgl.vulkan.VK10
 import java.awt.Color
 import java.awt.Font
 import java.awt.image.BufferedImage
+import java.io.File
+import javax.imageio.ImageIO
 import kotlin.math.ceil
 
 
@@ -30,8 +34,11 @@ class CachedFont(font: Font, rosella: Rosella) {
 			}
 			c++
 		}
+
 		fontImage = toImage(font)
-		c = 0x0000.toChar()
+		val outputfile = File("image.png")
+		outputfile.createNewFile()
+		ImageIO.write(fontImage, "png", outputfile)
 
 		rosella.registerShader(
 			fontShader, RawShaderProgram(
@@ -52,22 +59,24 @@ class CachedFont(font: Font, rosella: Rosella) {
 		val g = image.graphics
 		g.font = font
 		val context = g.fontMetrics.fontRenderContext
+		c = 0x0000.toChar()
+
+		val fontMaterial = Identifier("rosella", "font_texture")
+		rosella.registerMaterial(
+			fontMaterial, Material(
+				Global.fromBufferedImage(fontImage, fontMaterial),
+				fontShader,
+				VK10.VK_FORMAT_R8G8B8A8_UNORM,
+				false
+			)
+		)
+
 		while (c < Char.MAX_VALUE) {
 			if (font.canDisplay(c)) {
 				val rect = font.getStringBounds(c.toString(), context)
 
-				val charMaterialId = Identifier("rosella", "char_$c")
-				rosella.registerMaterial(
-					charMaterialId, Material(
-						Global.fromBufferedImage(fontImage, charMaterialId),
-						fontShader,
-						VK10.VK_FORMAT_R8G8B8A8_UNORM,
-						false
-					)
-				)
-
 				charMap[c] = GlyphRenderObject(
-					charMaterialId,
+					fontMaterial,
 					-0.1f,
 					charOffsetX = xOffset,
 					cachedFont = this
@@ -102,5 +111,25 @@ class CachedFont(font: Font, rosella: Rosella) {
 		g.drawString(allChars, 0, fm.ascent)
 		g.dispose()
 		return image
+	}
+
+	fun glyphOf(
+		char: Char,
+		colour: Vector3f,
+		z: Float,
+		scaleX: Float,
+		scaleZ: Float,
+		translateX: Float,
+		translateZ: Float
+	): GlyphRenderObject {
+		val modelTransformMatrix = Matrix4f()
+		modelTransformMatrix.scale(scaleX, scaleZ, 1f)
+		modelTransformMatrix.translate(translateX, translateZ, 0f)
+
+		val clone = charMap[char]!!.clone()
+		clone.colour = colour
+		clone.z = z
+		clone.modelTransformMatrix = modelTransformMatrix
+		return clone
 	}
 }

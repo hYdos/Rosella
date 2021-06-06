@@ -7,10 +7,12 @@ import me.hydos.rosella.render.shader.ubo.BasicUbo
 import org.joml.Vector2f
 import org.joml.Vector3f
 
-open class GuiRenderObject(
+open class GuiRenderObject
+
+	(
 	materialIdentifier: Identifier,
-	private val z: Float = -1f,
-	val colour: Vector3f = Vector3f(0f, 0f, 0f)
+	var z: Float = -1f,
+	var colour: Vector3f = Vector3f(0f, 0f, 0f)
 ) : RenderObject(Resource.Empty, materialIdentifier) {
 
 	constructor(matId: Identifier, z: Float, colour: Vector3f, scaleX: Float, scaleZ: Float) : this(matId, z, colour) {

@@ -2,7 +2,6 @@ package me.hydos.rosella.render.model
 
 import me.hydos.rosella.render.font.CachedFont
 import me.hydos.rosella.render.resource.Identifier
-import org.joml.Vector2f
 import org.joml.Vector3f
 
 class GlyphRenderObject(
@@ -13,48 +12,56 @@ class GlyphRenderObject(
 	val cachedFont: CachedFont
 ) : GuiRenderObject(materialIdentifier, z, colour) {
 
-	override fun loadModelInfo() {
-		vertices = ArrayList()
-		indices = ArrayList()
+//	init {
+//		vertices = ArrayList()
+//		indices = ArrayList()
+//
+//		val fontStringScale = 1 / cachedFont.allCharsLength
+//		val scaledCharOffsetMin = charOffsetX * fontStringScale
+//		val scaledCharOffsetMax = fontStringScale - scaledCharOffsetMin
+//
+//		vertices.add(
+//			Vertex(
+//				Vector3f(-0.5f, -0.5f, 0f),
+//				colour,
+//				Vector2f(0f + scaledCharOffsetMin, 0f + scaledCharOffsetMin)
+//			)
+//		)
+//		vertices.add(
+//			Vertex(
+//				Vector3f(0.5f, -0.5f, 0f),
+//				colour,
+//				Vector2f(1f - scaledCharOffsetMax, 0f + scaledCharOffsetMin)
+//			)
+//		)
+//		vertices.add(
+//			Vertex(
+//				Vector3f(0.5f, 0.5f, 0f),
+//				colour,
+//				Vector2f(1f - scaledCharOffsetMax, 1f - scaledCharOffsetMax)
+//			)
+//		)
+//		vertices.add(
+//			Vertex(
+//				Vector3f(-0.5f, 0.5f, 0f),
+//				colour,
+//				Vector2f(0f + scaledCharOffsetMin, 1f - scaledCharOffsetMax)
+//			)
+//		)
+//
+//		indices.add(0)
+//		indices.add(1)
+//		indices.add(2)
+//		indices.add(2)
+//		indices.add(3)
+//		indices.add(0)
+//	}
 
-		val fontStringScale = 1 / cachedFont.allCharsLength
-		val scaledCharOffsetMin = charOffsetX * fontStringScale
-		val scaledCharOffsetMax = fontStringScale - scaledCharOffsetMin
+//	override fun loadModelInfo() {
+//		println("test")
+//	}
 
-		vertices.add(
-			Vertex(
-				Vector3f(-0.5f, -0.5f, 0f),
-				colour,
-				Vector2f(0f + scaledCharOffsetMin, 0f + scaledCharOffsetMin)
-			)
-		)
-		vertices.add(
-			Vertex(
-				Vector3f(0.5f, -0.5f, 0f),
-				colour,
-				Vector2f(1f - scaledCharOffsetMax, 0f + scaledCharOffsetMin)
-			)
-		)
-		vertices.add(
-			Vertex(
-				Vector3f(0.5f, 0.5f, 0f),
-				colour,
-				Vector2f(1f - scaledCharOffsetMax, 1f - scaledCharOffsetMax)
-			)
-		)
-		vertices.add(
-			Vertex(
-				Vector3f(-0.5f, 0.5f, 0f),
-				colour,
-				Vector2f(0f + scaledCharOffsetMin, 1f - scaledCharOffsetMax)
-			)
-		)
-
-		indices.add(0)
-		indices.add(1)
-		indices.add(2)
-		indices.add(2)
-		indices.add(3)
-		indices.add(0)
+	fun clone(): GlyphRenderObject {
+		return GlyphRenderObject(materialIdentifier, z, colour, charOffsetX, cachedFont)
 	}
 }

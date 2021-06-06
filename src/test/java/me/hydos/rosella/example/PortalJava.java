@@ -28,28 +28,35 @@ public class PortalJava {
 
     public static final Identifier fontShader = new Identifier("rosella", "font_shader");
 
+    private static CachedFont portalFont;
+
     public static void main(String[] args) {
         loadShaders();
         loadFonts();
         loadMaterials();
         setupMainMenuScene();
-        SoundManager.playback(Global.INSTANCE.ensureResource(background));
+//        SoundManager.playback(Global.INSTANCE.ensureResource(background));
         doMainLoop();
     }
 
     private static void loadFonts() {
-        CachedFont portalFont = FontHelper.INSTANCE.getOrLoadFont(Global.INSTANCE.ensureResource(new Identifier("rosella", "fonts/DIN Bold.otf")), rosella);
+        portalFont = FontHelper.INSTANCE.getOrLoadFont(Global.INSTANCE.ensureResource(new Identifier("rosella", "fonts/DIN Bold.otf")), rosella);
     }
 
     private static void setupMainMenuScene() {
-        rosella.addRenderObject(
-                new GuiRenderObject(menuBackground, -1f, new Vector3f(0, 0, 0), 1.5f, 1f),
-                "mainMenuBackground"
-        );
+//        rosella.addRenderObject(
+//                new GuiRenderObject(menuBackground, -1f, new Vector3f(0, 0, 0), 1.5f, 1f),
+//                "mainMenuBackground"
+//        );
 
         rosella.addRenderObject(
                 new GuiRenderObject(portalLogo, -0.9f, new Vector3f(0, 0, 0), 0.4f, 0.1f, -1f, -2.6f),
                 "portalLogo"
+        );
+
+        rosella.addRenderObject(
+                portalFont.glyphOf('a', new Vector3f(0f, 0f, 0f), -0.8f, 0.1f, 0.1f, -0f, -0f),
+                "a"
         );
     }
 

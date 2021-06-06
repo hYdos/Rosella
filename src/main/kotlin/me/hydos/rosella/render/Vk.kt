@@ -3,11 +3,11 @@
  */
 package me.hydos.rosella.render
 
-import me.hydos.rosella.Rosella
 import me.hydos.rosella.render.device.Device
 import me.hydos.rosella.render.device.QueueFamilyIndices
-import me.hydos.rosella.render.material.Material
+import me.hydos.rosella.render.texture.TextureImage
 import me.hydos.rosella.render.renderer.Renderer
+import me.hydos.rosella.render.resource.Resource
 import me.hydos.rosella.render.swapchain.DepthBuffer
 import me.hydos.rosella.render.swapchain.RenderPass
 import me.hydos.rosella.render.swapchain.SwapChain
@@ -64,10 +64,11 @@ fun createImageView(image: Long, format: Int, aspectFlags: Int, device: Device):
 			.viewType(VK_IMAGE_VIEW_TYPE_2D)
 			.format(format)
 		viewInfo.subresourceRange().aspectMask(aspectFlags)
-		viewInfo.subresourceRange().baseMipLevel(0)
-		viewInfo.subresourceRange().levelCount(1)
-		viewInfo.subresourceRange().baseArrayLayer(0)
-		viewInfo.subresourceRange().layerCount(1)
+			.baseMipLevel(0)
+			.levelCount(1)
+			.baseArrayLayer(0)
+			.layerCount(1)
+
 		val pImageView = stack.mallocLong(1)
 		vkCreateImageView(device.device, viewInfo, null, pImageView).ok("Failed to create texture image view")
 		return pImageView[0]
@@ -181,7 +182,7 @@ fun findMemoryType(typeFilter: Int, properties: Int, device: Device): Int {
 	error("Failed to find suitable memory type")
 }
 
-fun createTextureSampler(device: Device, material: Material) {
+fun createTextureSampler(device: Device, material: Resource): Long {
 	MemoryStack.stackPush().use { stack ->
 		val samplerInfo = VkSamplerCreateInfo.callocStack(stack)
 			.sType(VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO)
@@ -198,19 +199,19 @@ fun createTextureSampler(device: Device, material: Material) {
 			.compareOp(VK_COMPARE_OP_ALWAYS)
 			.mipmapMode(VK_SAMPLER_MIPMAP_MODE_LINEAR)
 		val pTextureSampler = stack.mallocLong(1)
-		if (vkCreateSampler(device.device, samplerInfo, null, pTextureSampler) !== VK_SUCCESS) {
+		if (vkCreateSampler(device.device, samplerInfo, null, pTextureSampler) != VK_SUCCESS) {
 			throw RuntimeException("Failed to create texture sampler")
 		}
-		material.textureSampler = pTextureSampler[0]
+		return pTextureSampler[0]
 	}
 }
 
-fun createTextureImageView(engine: Rosella, material: Material, imgFormat: Int) {
-	material.textureImageView = createImageView(
-		material.textureImage,
+fun createTextureImageView(device: Device, imgFormat: Int, textureImage: Long): Long {
+	return createImageView(
+		textureImage,
 		imgFormat,
 		VK_IMAGE_ASPECT_COLOR_BIT,
-		engine.device
+		device
 	)
 }
 
@@ -319,9 +320,9 @@ fun transitionImageLayout(
  * A Giant mess of an texture image creator.
  * TODO: clean
  */
-fun createTextureImage(device: Device, material: Material, renderer: Renderer, memory: Memory, imgFormat: Int) {
+fun createTextureImage(device: Device, resource: Resource, renderer: Renderer, memory: Memory, imgFormat: Int, textureImage: TextureImage) {
 	MemoryStack.stackPush().use { stack ->
-		val file = material.texture.readAllBytes(true)
+		val file = resource.readAllBytes(true)
 		val pWidth = stack.mallocInt(1)
 		val pHeight = stack.mallocInt(1)
 		val pChannels = stack.mallocInt(1)
@@ -329,7 +330,7 @@ fun createTextureImage(device: Device, material: Material, renderer: Renderer, m
 			STBImage.stbi_load_from_memory(file, pWidth, pHeight, pChannels, STBImage.STBI_rgb_alpha)
 		val imageSize = (pWidth[0] * pHeight[0] * 4).toLong()
 		if (pixels == null) {
-			throw RuntimeException("Failed to load texture image ${material.texture.identifier}")
+			throw RuntimeException("Failed to load texture image ${resource.identifier}")
 		}
 
 
@@ -355,12 +356,12 @@ fun createTextureImage(device: Device, material: Material, renderer: Renderer, m
 			pTextureImageMemory,
 			renderer.device
 		)
-		material.textureImage = pTextureImage[0]
-		material.textureImageMemory = pTextureImageMemory[0]
+		textureImage.textureImage = pTextureImage[0]
+		textureImage.textureImageMemory = pTextureImageMemory[0]
 
 
 		transitionImageLayout(
-			material.textureImage,
+			textureImage.textureImage,
 			imgFormat,
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -368,9 +369,9 @@ fun createTextureImage(device: Device, material: Material, renderer: Renderer, m
 			renderer.device,
 			renderer
 		)
-		copyBufferToImage(stagingBuf.buffer, material.textureImage, pWidth[0], pHeight[0], device, renderer)
+		copyBufferToImage(stagingBuf.buffer, textureImage.textureImage, pWidth[0], pHeight[0], device, renderer)
 		transitionImageLayout(
-			material.textureImage,
+			textureImage.textureImage,
 			imgFormat,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

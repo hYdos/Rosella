@@ -1,17 +1,14 @@
 package me.hydos.rosella.render.material
 
 import me.hydos.rosella.Rosella
-import me.hydos.rosella.render.createTextureImage
-import me.hydos.rosella.render.createTextureImageView
-import me.hydos.rosella.render.createTextureSampler
 import me.hydos.rosella.render.device.Device
 import me.hydos.rosella.render.model.Vertex
 import me.hydos.rosella.render.resource.Identifier
 import me.hydos.rosella.render.resource.Resource
 import me.hydos.rosella.render.shader.ShaderProgram
-import me.hydos.rosella.render.shader.RawShaderProgram
 import me.hydos.rosella.render.swapchain.RenderPass
 import me.hydos.rosella.render.swapchain.SwapChain
+import me.hydos.rosella.render.texture.Texture
 import me.hydos.rosella.render.util.*
 import org.joml.Vector3f
 import org.lwjgl.system.MemoryStack
@@ -26,7 +23,7 @@ import java.nio.LongBuffer
  * guaranteed to change once and a while
  */
 class Material(
-	val texture: Resource,
+	val resource: Resource,
 	private val shaderId: Identifier,
 	private val imgFormat: Int,
 	private val useBlend: Boolean
@@ -35,13 +32,9 @@ class Material(
 	var pipelineLayout: Long = 0
 	var graphicsPipeline: Long = 0
 
-	var textureImage: Long = 0
-	var textureImageMemory: Long = 0
-
 	lateinit var shader: ShaderProgram
 
-	var textureImageView: Long = 0
-	var textureSampler: Long = 0
+	lateinit var texture: Texture
 
 	fun loadShaders(engine: Rosella) {
 		val retrievedShader = engine.shaderManager.getOrCreateShader(shaderId)
@@ -49,11 +42,9 @@ class Material(
 		this.shader = retrievedShader
 	}
 
-	fun loadTextures(device: Device, engine: Rosella) {
-		if (texture != Resource.Empty) {
-			createTextureImage(device, this, engine.renderer, engine.memory, imgFormat)
-			createTextureImageView(engine, this, imgFormat)
-			createTextureSampler(device, this)
+	fun loadTextures(engine: Rosella) {
+		if (resource != Resource.Empty) {
+			texture = engine.textureManager.getOrLoadTexture(resource, engine, imgFormat)!!
 		}
 	}
 
@@ -237,9 +228,5 @@ class Material(
 	fun free(device: Device) {
 		vkDestroyPipeline(device.device, graphicsPipeline, null)
 		vkDestroyPipelineLayout(device.device, pipelineLayout, null)
-	}
-
-	fun initializeShader(swapChain: SwapChain) {
-		shader.raw.createPool(swapChain)
 	}
 }
