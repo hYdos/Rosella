@@ -40,8 +40,8 @@ class CachedFont(font: Font, rosella: Rosella) {
 
 		rosella.registerShader(
 			fontShader, RawShaderProgram(
-				Global.ensureResource(Identifier("rosella", "shaders/gui.v.glsl")),
-				Global.ensureResource(Identifier("rosella", "shaders/gui.f.glsl")),
+				Global.ensureResource(Identifier("rosella", "shaders/fonts.v.glsl")),
+				Global.ensureResource(Identifier("rosella", "shaders/fonts.f.glsl")),
 				rosella.device,
 				rosella.memory,
 				99999,

@@ -45,10 +45,10 @@ public class PortalJava {
     }
 
     private static void setupMainMenuScene() {
-//        rosella.addRenderObject(
-//                new GuiRenderObject(menuBackground, -1f, new Vector3f(0, 0, 0), 1.5f, 1f),
-//                "mainMenuBackground"
-//        );
+        rosella.addRenderObject(
+                new GuiRenderObject(menuBackground, -1f, new Vector3f(0, 0, 0), 1.5f, 1f),
+                "mainMenuBackground"
+        );
 
         rosella.addRenderObject(
                 new GuiRenderObject(portalLogo, -0.9f, new Vector3f(0, 0, 0), 0.4f, 0.1f, -1f, -2.6f),
@@ -56,14 +56,9 @@ public class PortalJava {
         );
 
         rosella.addRenderObject(
-                portalFont.createString("The Quick Brown\n Fox Jumped Over\n The Lazy Dog", new Vector3f(0, 0, 0), -0.8f, 0.05f, -0.5f, 0f),
+                portalFont.createString("The Quick Brown\n Fox Jumped Over\n The Lazy Dog", new Vector3f(255, 255, 255), -0.8f, 0.05f, -4f, 0f),
                 "fontTest"
         );
-
-//        rosella.addRenderObject(
-//                portalFont.glyphOf('a', new Vector3f(0f, 0f, 0f), -0.8f, 0.1f, 0.1f, 0.5f, -0f),
-//                "a"
-//        );
     }
 
     private static void loadMaterials() {
