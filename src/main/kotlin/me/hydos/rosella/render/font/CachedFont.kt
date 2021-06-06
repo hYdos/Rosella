@@ -2,28 +2,26 @@ package me.hydos.rosella.render.font
 
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.render.material.Material
-import me.hydos.rosella.render.model.GlyphRenderObject
+import me.hydos.rosella.render.model.StringRenderObject
 import me.hydos.rosella.render.resource.Global
 import me.hydos.rosella.render.resource.Identifier
 import me.hydos.rosella.render.shader.RawShaderProgram
-import org.joml.Matrix4f
 import org.joml.Vector3f
 import org.lwjgl.vulkan.VK10
 import java.awt.Color
 import java.awt.Font
 import java.awt.image.BufferedImage
-import java.io.File
-import javax.imageio.ImageIO
 import kotlin.math.ceil
 
 
 class CachedFont(font: Font, rosella: Rosella) {
 
 	private val fontShader = Identifier("rosella", "font_shader")
+	private val fontMaterial = Identifier("rosella", "font_texture")
 
 	var allChars = ""
 	var allCharsLength = 0f
-	val charMap = HashMap<Char, GlyphRenderObject>()
+	val charMap = HashMap<Char, GlyphInfo>()
 	private val fontImage: BufferedImage
 
 	init {
@@ -36,9 +34,9 @@ class CachedFont(font: Font, rosella: Rosella) {
 		}
 
 		fontImage = toImage(font)
-		val outputfile = File("image.png")
+/*		val outputfile = File("image.png")
 		outputfile.createNewFile()
-		ImageIO.write(fontImage, "png", outputfile)
+		ImageIO.write(fontImage, "png", outputfile)*/
 
 		rosella.registerShader(
 			fontShader, RawShaderProgram(
@@ -61,7 +59,6 @@ class CachedFont(font: Font, rosella: Rosella) {
 		val context = g.fontMetrics.fontRenderContext
 		c = 0x0000.toChar()
 
-		val fontMaterial = Identifier("rosella", "font_texture")
 		rosella.registerMaterial(
 			fontMaterial, Material(
 				Global.fromBufferedImage(fontImage, fontMaterial),
@@ -74,13 +71,7 @@ class CachedFont(font: Font, rosella: Rosella) {
 		while (c < Char.MAX_VALUE) {
 			if (font.canDisplay(c)) {
 				val rect = font.getStringBounds(c.toString(), context)
-
-				charMap[c] = GlyphRenderObject(
-					fontMaterial,
-					-0.1f,
-					charOffsetX = xOffset,
-					cachedFont = this
-				)
+				charMap[c] = GlyphInfo(xOffset, rect.width.toFloat())
 				xOffset += rect.width.toFloat()
 			}
 			c++
@@ -113,23 +104,14 @@ class CachedFont(font: Font, rosella: Rosella) {
 		return image
 	}
 
-	fun glyphOf(
-		char: Char,
+	fun createString(
+		string: String,
 		colour: Vector3f,
 		z: Float,
-		scaleX: Float,
-		scaleZ: Float,
+		scale: Float,
 		translateX: Float,
 		translateZ: Float
-	): GlyphRenderObject {
-		val modelTransformMatrix = Matrix4f()
-		modelTransformMatrix.scale(scaleX, scaleZ, 1f)
-		modelTransformMatrix.translate(translateX, translateZ, 0f)
-
-		val clone = charMap[char]!!.clone()
-		clone.colour = colour
-		clone.z = z
-		clone.modelTransformMatrix = modelTransformMatrix
-		return clone
+	): StringRenderObject {
+		return StringRenderObject(fontMaterial, this, string, z, colour, scale, scale, translateX, translateZ)
 	}
 }

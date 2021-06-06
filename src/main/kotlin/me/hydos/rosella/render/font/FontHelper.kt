@@ -11,7 +11,7 @@ object FontHelper {
 	fun getOrLoadFont(fontFile: Resource, rosella: Rosella): CachedFont? {
 		val startTime = System.currentTimeMillis()
 		if (!FONTS.containsKey(fontFile)) {
-			val font = Font.createFont(Font.TRUETYPE_FONT, fontFile.openStream()).deriveFont(Font.BOLD, 40f)
+			val font = Font.createFont(Font.TRUETYPE_FONT, fontFile.openStream()).deriveFont(Font.BOLD, 80f)
 			FONTS[fontFile] = CachedFont(font, rosella)
 		}
 

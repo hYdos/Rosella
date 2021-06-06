@@ -7,6 +7,7 @@ import me.hydos.rosella.render.font.FontHelper;
 import me.hydos.rosella.render.io.Window;
 import me.hydos.rosella.render.material.Material;
 import me.hydos.rosella.render.model.GuiRenderObject;
+import me.hydos.rosella.render.model.StringRenderObject;
 import me.hydos.rosella.render.resource.Global;
 import me.hydos.rosella.render.resource.Identifier;
 import me.hydos.rosella.render.shader.RawShaderProgram;
@@ -55,9 +56,14 @@ public class PortalJava {
         );
 
         rosella.addRenderObject(
-                portalFont.glyphOf('a', new Vector3f(0f, 0f, 0f), -0.8f, 0.1f, 0.1f, -0f, -0f),
-                "a"
+                portalFont.createString("The Quick Brown\n Fox Jumped Over\n The Lazy Dog", new Vector3f(0, 0, 0), -0.8f, 0.05f, -0.5f, 0f),
+                "fontTest"
         );
+
+//        rosella.addRenderObject(
+//                portalFont.glyphOf('a', new Vector3f(0f, 0f, 0f), -0.8f, 0.1f, 0.1f, 0.5f, -0f),
+//                "a"
+//        );
     }
 
     private static void loadMaterials() {
