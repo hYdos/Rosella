@@ -18,6 +18,8 @@ class StringRenderObject(
 	translateZ: Float
 ) : GuiRenderObject(matId, z, colour, scaleX, scaleZ, translateX, translateZ) {
 
+	private val magicScaleVal: Float = 0.08190016f / 3
+
 	init {
 		scale(0.5f, 1f)
 	}
@@ -28,13 +30,13 @@ class StringRenderObject(
 		for (i in string.indices) {
 			val c: Char = string[i]
 			if (c == '\n') {
-				yOffset -= 1
+				yOffset -= 0.8f
 				xOffset = 0f
 				continue;
 			}
 			val charInfo = font.charMap[c]!!
 			addCharModel(charInfo, xOffset, yOffset)
-			xOffset += charInfo.charWidth / 45
+			xOffset += charInfo.charWidth * magicScaleVal
 		}
 	}
 
