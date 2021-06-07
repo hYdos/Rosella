@@ -8,8 +8,7 @@ an work in progress, vulkan, modern jvm render engine
 
 ## Progress
 Currently im doing:
-#### refactors
-#### gui system TMTMTMTMT
+#### Fonts :tm:
 
 ## Long Term goals
 1. use "modern rendering techniques" such as gpu driven rendering (https://vkguide.dev/docs/gpudriven)
