@@ -38,6 +38,7 @@ class Rosella(
 	val enableValidationLayers: Boolean,
 	val window: Window
 ) {
+	val polygonMode: Int = VK_POLYGON_MODE_LINE
 	var memory: Memory
 
 	var renderer: Renderer = Renderer()
@@ -250,7 +251,8 @@ class Rosella(
 				device,
 				renderer.swapChain,
 				renderer.renderPass,
-				material.shader.raw.descriptorSetLayout
+				material.shader.raw.descriptorSetLayout,
+				polygonMode
 			)
 			test++
 			println(test.toString() + " / " + materials.values.size)

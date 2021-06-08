@@ -28,7 +28,6 @@ class Material(
 	private val imgFormat: Int,
 	private val useBlend: Boolean
 ) {
-
 	var pipelineLayout: Long = 0
 	var graphicsPipeline: Long = 0
 
@@ -55,7 +54,8 @@ class Material(
 		device: Device,
 		swapChain: SwapChain,
 		renderPass: RenderPass,
-		descriptorSetLayout: Long
+		descriptorSetLayout: Long,
+		polygonMode: Int
 	) {
 		MemoryStack.stackPush().use {
 			val vertShaderModule = shader.getVertShaderModule()
@@ -128,7 +128,7 @@ class Material(
 					.sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
 					.depthClampEnable(false)
 					.rasterizerDiscardEnable(false)
-					.polygonMode(VK_POLYGON_MODE_FILL)
+					.polygonMode(polygonMode)
 					.lineWidth(1.0f)
 					.cullMode(VK_CULL_MODE_BACK_BIT)
 					.frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)

@@ -46,7 +46,7 @@ class Renderer {
 		this.renderPass = RenderPass(device, swapChain, engine)
 		createImgViews(swapChain, device)
 		for (material in engine.materials.values) {
-			material.createPipeline(device, swapChain, renderPass, material.shader.raw.descriptorSetLayout)
+			material.createPipeline(device, swapChain, renderPass, material.shader.raw.descriptorSetLayout, engine.polygonMode)
 		}
 		depthBuffer.createDepthResources(device, swapChain, this)
 		createFrameBuffers()
@@ -169,6 +169,8 @@ class Renderer {
 		}
 		vkDestroyRenderPass(device.device, renderPass.renderPass, null)
 		swapChain.swapChainImageViews.forEach { imageView -> vkDestroyImageView(device.device, imageView, null) }
+
+		swapChain.free(engine.device.device)
 	}
 
 	private fun createSyncObjects() {

@@ -18,8 +18,6 @@ class StringRenderObject(
 	translateZ: Float
 ) : GuiRenderObject(matId, z, colour, scaleX, scaleZ, translateX, translateZ) {
 
-	private val magicScaleVal: Float = 0.08190016f / 3
-
 	init {
 		scale(0.5f, 1f)
 	}
@@ -30,13 +28,13 @@ class StringRenderObject(
 		for (i in string.indices) {
 			val c: Char = string[i]
 			if (c == '\n') {
-				yOffset -= 0.8f
+				yOffset -= 1f
 				xOffset = 0f
-				continue;
+				continue
 			}
 			val charInfo = font.charMap[c]!!
 			addCharModel(charInfo, xOffset, yOffset)
-			xOffset += charInfo.charWidth * magicScaleVal
+			xOffset += 2 * charInfo.charWidth * 0.01f
 		}
 	}
 
@@ -49,28 +47,29 @@ class StringRenderObject(
 
 		vertices.add(
 			Vertex(
-				Vector3f(xOffset + -0.5f, yOffset + -0.5f, 0f),
+				Vector3f(xOffset + -glyphInfo.charWidth * 0.01f, yOffset + -0.5f, 0f),
 				colour,
 				Vector2f(scaledCharOffsetMin, 0f)
 			)
 		)
+
 		vertices.add(
 			Vertex(
-				Vector3f(xOffset + 0.5f, yOffset + -0.5f, 0f),
+				Vector3f(xOffset + glyphInfo.charWidth * 0.01f, yOffset + -0.5f, 0f),
 				colour,
 				Vector2f(scaledCharOffsetMax, 0f)
 			)
 		)
 		vertices.add(
 			Vertex(
-				Vector3f(xOffset + 0.5f, yOffset + 0.5f, 0f),
+				Vector3f(xOffset + glyphInfo.charWidth * 0.01f, yOffset + 0.5f, 0f),
 				colour,
 				Vector2f(scaledCharOffsetMax, 1f)
 			)
 		)
 		vertices.add(
 			Vertex(
-				Vector3f(xOffset + -0.5f, yOffset + 0.5f, 0f),
+				Vector3f(xOffset + -glyphInfo.charWidth * 0.01f, yOffset + 0.5f, 0f),
 				colour,
 				Vector2f(scaledCharOffsetMin, 1f)
 			)

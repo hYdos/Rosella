@@ -9,13 +9,19 @@ layout(location = 1) in vec2 fragTexCoord;
 layout(location = 0) out vec4 outColor;
 
 void main() {
+    bool wireframe = true;
+
     outColor = texture(texSampler, fragTexCoord);
 
-    if(outColor.a < 0.05) {
+    if (outColor.a < 0.05 && !wireframe) {
         discard;
     } else {
         outColor.r = fragColor.r;
         outColor.g = fragColor.g;
         outColor.b = fragColor.b;
+    }
+
+    if (wireframe) {
+        outColor = vec4(1, 1, 1, 1);
     }
 }
