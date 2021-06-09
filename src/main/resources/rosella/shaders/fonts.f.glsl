@@ -9,7 +9,7 @@ layout(location = 1) in vec2 fragTexCoord;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    bool wireframe = true;
+    bool wireframe = false;
 
     outColor = texture(texSampler, fragTexCoord);
 

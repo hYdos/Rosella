@@ -1,6 +1,7 @@
 .idea/
 run/
 target/
+.gradle/
 *.log
 *.iml
 *.class

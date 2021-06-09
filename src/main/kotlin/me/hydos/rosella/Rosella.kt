@@ -38,7 +38,7 @@ class Rosella(
 	val enableValidationLayers: Boolean,
 	val window: Window
 ) {
-	val polygonMode: Int = VK_POLYGON_MODE_LINE
+	val polygonMode: Int = VK_POLYGON_MODE_FILL
 	var memory: Memory
 
 	var renderer: Renderer = Renderer()
