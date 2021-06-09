@@ -2,7 +2,8 @@ import org.gradle.internal.os.OperatingSystem
 
 plugins {
 	java
-	id("maven-publish")
+	kotlin("jvm") version "1.5.10"
+	id("com.github.johnrengelman.shadow") version "7.0.0"
 }
 
 group = "me.hydos"
@@ -37,6 +38,11 @@ dependencies {
 	implementation("org.lwjgl", "lwjgl-stb")
 	implementation("org.lwjgl", "lwjgl-vma")
 	implementation("org.lwjgl", "lwjgl-vulkan")
+
+	implementation("org.joml", "joml", "1.10.1")
+	implementation("it.unimi.dsi", "fastutil", "8.5.4")
+	implementation("com.google.code.gson", "gson", "2.8.7")
+
 	runtimeOnly("org.lwjgl", "lwjgl", classifier = lwjglNatives)
 	runtimeOnly("org.lwjgl", "lwjgl-assimp", classifier = lwjglNatives)
 	runtimeOnly("org.lwjgl", "lwjgl-glfw", classifier = lwjglNatives)

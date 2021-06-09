@@ -3,7 +3,6 @@ package me.hydos.rosella.render.io
 import it.unimi.dsi.fastutil.objects.ObjectArrayList
 import org.lwjgl.glfw.GLFW.*
 
-
 /**
  * Represents a window in which Rosella can be attached to
  */

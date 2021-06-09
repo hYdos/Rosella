@@ -2,6 +2,7 @@
 run/
 target/
 .gradle/
+build/
 *.log
 *.iml
 *.class
