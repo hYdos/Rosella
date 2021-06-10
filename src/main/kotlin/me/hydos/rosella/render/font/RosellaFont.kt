@@ -49,7 +49,7 @@ class RosellaFont(private val font: Font, rosella: Rosella) {
 		translateX: Float,
 		translateZ: Float
 	): RenderObject {
-		val graphics = BufferedImage(1, 1, BufferedImage.TYPE_4BYTE_ABGR).graphics as Graphics2D
+		val graphics = BufferedImage(1920, 1080, BufferedImage.TYPE_4BYTE_ABGR).graphics as Graphics2D
 		val outline = font.createGlyphVector(graphics.fontRenderContext, string).outline
 		return ShapeRenderObject(
 			outline,
