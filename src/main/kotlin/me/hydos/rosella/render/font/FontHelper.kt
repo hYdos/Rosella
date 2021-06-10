@@ -6,16 +6,8 @@ import java.awt.Font
 
 object FontHelper {
 
-	private val FONTS = HashMap<Resource, CachedFont>()
-
-	fun getOrLoadFont(fontFile: Resource, rosella: Rosella): CachedFont? {
-		val startTime = System.currentTimeMillis()
-		if (!FONTS.containsKey(fontFile)) {
-			val font = Font.createFont(Font.TRUETYPE_FONT, fontFile.openStream()).deriveFont(Font.BOLD, 80f)
-			FONTS[fontFile] = CachedFont(font, rosella)
-		}
-
-		println("Loaded font in " + (System.currentTimeMillis() - startTime) + " ms")
-		return FONTS[fontFile]
+	fun loadFont(fontFile: Resource, rosella: Rosella): RosellaFont {
+		val font = Font.createFont(Font.TRUETYPE_FONT, fontFile.openStream()).deriveFont(Font.BOLD, 80f)
+		return RosellaFont(font, rosella)
 	}
 }

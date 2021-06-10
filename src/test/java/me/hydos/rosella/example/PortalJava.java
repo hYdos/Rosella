@@ -1,13 +1,11 @@
 package me.hydos.rosella.example;
 
 import me.hydos.rosella.Rosella;
-import me.hydos.rosella.audio.SoundManager;
-import me.hydos.rosella.render.font.CachedFont;
 import me.hydos.rosella.render.font.FontHelper;
+import me.hydos.rosella.render.font.RosellaFont;
 import me.hydos.rosella.render.io.Window;
 import me.hydos.rosella.render.material.Material;
 import me.hydos.rosella.render.model.GuiRenderObject;
-import me.hydos.rosella.render.model.StringRenderObject;
 import me.hydos.rosella.render.resource.Global;
 import me.hydos.rosella.render.resource.Identifier;
 import me.hydos.rosella.render.shader.RawShaderProgram;
@@ -29,7 +27,7 @@ public class PortalJava {
 
     public static final Identifier fontShader = new Identifier("rosella", "font_shader");
 
-    private static CachedFont portalFont;
+    private static RosellaFont portalFont;
 
     public static void main(String[] args) {
         loadShaders();
@@ -41,7 +39,7 @@ public class PortalJava {
     }
 
     private static void loadFonts() {
-        portalFont = FontHelper.INSTANCE.getOrLoadFont(Global.INSTANCE.ensureResource(new Identifier("rosella", "fonts/DIN Bold.otf")), rosella);
+        portalFont = FontHelper.INSTANCE.loadFont(Global.INSTANCE.ensureResource(new Identifier("rosella", "fonts/DIN Bold.otf")), rosella);
     }
 
     private static void setupMainMenuScene() {
