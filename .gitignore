@@ -1,5 +1,6 @@
 .idea/
 run/
+out/
 target/
 .gradle/
 build/
