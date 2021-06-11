@@ -49,7 +49,6 @@ class ShapeRenderObject(
 					drawLine(location, a)
 					drawLine(a, b)
 					val quad = QuadCurve2D.Float(location.first, location.second, a.first, a.second, b.first, b.second)
-					drawQuad(quad.x1, quad.y1, quad.x2, quad.y2)
 				}
 				PathIterator.SEG_CUBICTO -> {
 					val a = buffer[0] to buffer[1]
@@ -86,20 +85,6 @@ class ShapeRenderObject(
 		vertices.add(Vertex(Vector3f(to.first, to.second, 0f), colour, Vector2f(0f, 0f)))
 		indices.add(vertices.size - 3)
 		indices.add(vertices.size - 2)
-		indices.add(vertices.size - 1)
-	}
-
-	private fun drawQuad(x1: Float, y1: Float, x2: Float, y2: Float) {
-		vertices.add(Vertex(Vector3f(x1, y1, 0f), colour, Vector2f(0f, 0f)))
-		vertices.add(Vertex(Vector3f(x2, y1, 0f), colour, Vector2f(1f, 0f)))
-		vertices.add(Vertex(Vector3f(x2, y2, 0f), colour, Vector2f(1f, 1f)))
-		vertices.add(Vertex(Vector3f(x1, y2, 0f), colour, Vector2f(0f, 1f)))
-
-		indices.add(vertices.size - 1)
-		indices.add(vertices.size - 2)
-		indices.add(vertices.size - 3)
-		indices.add(vertices.size - 3)
-		indices.add(vertices.size - 4)
 		indices.add(vertices.size - 1)
 	}
 }
