@@ -2,6 +2,12 @@ package me.hydos.rosella.render.model;
 
 import java.util.function.Function;
 
+/**
+ * Powered by https://en.wikipedia.org/wiki/Lagrange_polynomial
+ * Not written in Kotlin since it doesn't like the crazy long math expressions for some reason
+ *
+ * @author ramidzkh
+ */
 class KotlinWTF {
 
 	static Function<Float, Float> interpolate(float x1, float y1, float x2, float y2, float x3, float y3) {
