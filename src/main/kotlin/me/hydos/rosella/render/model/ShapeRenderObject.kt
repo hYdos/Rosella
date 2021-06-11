@@ -5,9 +5,7 @@ import org.joml.Vector2f
 import org.joml.Vector3f
 import java.awt.Shape
 import java.awt.geom.AffineTransform
-import java.awt.geom.CubicCurve2D
 import java.awt.geom.PathIterator
-import java.awt.geom.QuadCurve2D
 import kotlin.math.max
 
 class ShapeRenderObject(
@@ -20,6 +18,8 @@ class ShapeRenderObject(
 	translateX: Float,
 	translateZ: Float
 ) : GuiRenderObject(matId, z, colour, scaleX, scaleZ, translateX, translateZ) {
+
+	private val steps = 100
 
 	override fun loadModelInfo() {
 		val iterator = shape.getPathIterator(AffineTransform().apply {
@@ -46,27 +46,61 @@ class ShapeRenderObject(
 				PathIterator.SEG_QUADTO -> {
 					val a = buffer[0] to buffer[1]
 					val b = buffer[2] to buffer[3]
-					drawLine(location, a)
-					drawLine(a, b)
-					val quad = QuadCurve2D.Float(location.first, location.second, a.first, a.second, b.first, b.second)
+					val f = run {
+						val function = KotlinWTF.interpolate(
+							location.first,
+							location.second,
+							a.first,
+							a.second,
+							b.first,
+							b.second
+						)
+
+						({ a: Int ->
+							val x = a / steps.toFloat()
+							val y = function.apply(x)
+							x to y
+						})
+					}
+
+					var last = f(0)
+
+					for (x in 0..steps) {
+						val new = f(x)
+						drawLine(last, new)
+						last = new
+					}
 				}
 				PathIterator.SEG_CUBICTO -> {
 					val a = buffer[0] to buffer[1]
 					val b = buffer[2] to buffer[3]
 					val c = buffer[4] to buffer[5]
-					drawLine(location, a)
-					drawLine(a, b)
-					drawLine(b, c)
-					val cubic = CubicCurve2D.Float(
-						location.first,
-						location.second,
-						a.first,
-						a.second,
-						b.first,
-						b.second,
-						c.first,
-						c.second
-					)
+					val f = run {
+						val function = KotlinWTF.interpolate(
+							location.first,
+							location.second,
+							a.first,
+							a.second,
+							b.first,
+							b.second,
+							c.first,
+							c.second
+						)
+
+						({ a: Int ->
+							val x = a / steps.toFloat()
+							val y = function.apply(x)
+							x to y
+						})
+					}
+
+					var last = f(0)
+
+					for (x in 0..steps) {
+						val new = f(x)
+						drawLine(last, new)
+						last = new
+					}
 				}
 				PathIterator.SEG_CLOSE -> {
 				}
