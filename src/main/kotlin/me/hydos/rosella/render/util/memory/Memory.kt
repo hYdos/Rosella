@@ -92,6 +92,10 @@ class Memory(val device: Device, private val instance: VkInstance) {
 	): BufferInfo {
 		var allocation: Long
 		stackPush().use {
+			if (size == 0) {
+				throw RuntimeException("Failed To Create VMA Buffer Reason: Buffer Is Too Small (0)")
+			}
+
 			val vulkanBufferInfo = VkBufferCreateInfo.callocStack(it)
 				.sType(VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
 				.size(size.toLong())
@@ -102,7 +106,10 @@ class Memory(val device: Device, private val instance: VkInstance) {
 				.usage(vmaUsage)
 
 			val pAllocation = it.mallocPointer(1)
-			Vma.vmaCreateBuffer(allocator, vulkanBufferInfo, vmaBufferInfo, pBuffer, pAllocation, null)
+			val result = Vma.vmaCreateBuffer(allocator, vulkanBufferInfo, vmaBufferInfo, pBuffer, pAllocation, null)
+			if (result != 0) {
+				throw RuntimeException("Failed To Create VMA Buffer. Error Code $result")
+			}
 			allocation = pAllocation[0]
 		}
 		return BufferInfo(pBuffer[0], allocation)
@@ -111,7 +118,7 @@ class Memory(val device: Device, private val instance: VkInstance) {
 	/**
 	 * Copies a buffer from one place to another. usually used to copy a staging buffer into GPU mem
 	 */
-	fun copyBuffer(srcBuffer: Long, dstBuffer: Long, size: Int, engine: Rosella, device: Device) {
+	private fun copyBuffer(srcBuffer: Long, dstBuffer: Long, size: Int, engine: Rosella, device: Device) {
 		stackPush().use {
 			val pCommandBuffer = it.mallocPointer(1)
 			val commandBuffer = engine.renderer.beginCmdBuffer(it, pCommandBuffer)
@@ -133,12 +140,12 @@ class Memory(val device: Device, private val instance: VkInstance) {
 	/**
 	 * Creates an index buffer from an list of indices
 	 */
-	fun createIndexBuffer(engine: Rosella, indices: ArrayList<Int>): Long {
+	fun createIndexBuffer(engine: Rosella, indices: List<Int>): Long {
 		stackPush().use {
 			val size: Int = (Integer.BYTES * indices.size)
 			val pBuffer = it.mallocLong(1)
 			val stagingBuffer = engine.memory.createStagingBuf(size, pBuffer, it) { data ->
-				memcpy(data.getByteBuffer(0, size), indices)
+				memcpyI(data.getByteBuffer(0, size), indices)
 			}
 			createBuffer(
 				size,
@@ -202,7 +209,7 @@ data class BufferInfo(val buffer: Long, val allocation: Long)
 /**
  * Copies indices into the specified buffer
  */
-fun memcpy(buffer: ByteBuffer, indices: ArrayList<Int>) {
+fun memcpyI(buffer: ByteBuffer, indices: List<Int>) {
 	for (index in indices) {
 		buffer.putInt(index)
 	}

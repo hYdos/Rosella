@@ -5,8 +5,9 @@ import me.hydos.rosella.render.*
 import me.hydos.rosella.render.camera.Camera
 import me.hydos.rosella.render.device.Device
 import me.hydos.rosella.render.device.Queues
+import me.hydos.rosella.render.io.JUnit
 import me.hydos.rosella.render.io.Window
-import me.hydos.rosella.render.model.RenderObject
+import me.hydos.rosella.render.model.Renderable
 import me.hydos.rosella.render.shader.ShaderProgram
 import me.hydos.rosella.render.swapchain.DepthBuffer
 import me.hydos.rosella.render.swapchain.Frame
@@ -30,6 +31,9 @@ class Renderer {
 
 	private var resizeFramebuffer: Boolean = false
 
+	private var r: Float = 0f
+	private var g: Float = 0f
+	private var b: Float = 0f
 
 	lateinit var swapChain: SwapChain
 	lateinit var renderPass: RenderPass
@@ -41,12 +45,20 @@ class Renderer {
 	var commandPool: Long = 0
 	lateinit var commandBuffers: ArrayList<VkCommandBuffer>
 
+	var safeQueue = ArrayList<JUnit>()
+
 	private fun createSwapChain(engine: Rosella) {
 		this.swapChain = SwapChain(engine, device.device, device.physicalDevice, engine.surface)
 		this.renderPass = RenderPass(device, swapChain, engine)
 		createImgViews(swapChain, device)
 		for (material in engine.materials.values) {
-			material.createPipeline(device, swapChain, renderPass, material.shader.raw.descriptorSetLayout, engine.polygonMode)
+			material.createPipeline(
+				device,
+				swapChain,
+				renderPass,
+				material.shader.raw.descriptorSetLayout,
+				engine.polygonMode
+			)
 		}
 		depthBuffer.createDepthResources(device, swapChain, this)
 		createFrameBuffers()
@@ -74,6 +86,12 @@ class Renderer {
 		MemoryStack.stackPush().use { stack ->
 			val thisFrame = inFlightFrames[currentFrame]
 			vkWaitForFences(device.device, thisFrame.pFence(), true, UINT64_MAX)
+
+			for (jUnit in safeQueue) {
+				jUnit.run()
+			}
+			safeQueue.clear()
+
 			val pImageIndex = stack.mallocInt(1)
 
 			var vkResult: Int = KHRSwapchain.vkAcquireNextImageKHR(
@@ -136,7 +154,8 @@ class Renderer {
 			val height = stack.ints(0)
 			while (width[0] == 0 && height[0] == 0) {
 				GLFW.glfwGetFramebufferSize(window.windowPtr, width, height)
-				GLFW.glfwWaitEvents()
+//				GLFW.glfwWaitEvents()
+				println("Remember to uncomment this")
 			}
 		}
 
@@ -279,7 +298,7 @@ class Renderer {
 			val beginInfo = createBeginInfo(it)
 			val renderPassInfo = createRenderPassInfo(it, renderPass)
 			val renderArea = createRenderArea(it, 0, 0, swapChain)
-			val clearValues = createClearValues(it, 50 / 255f, 138 / 255f, 201 / 255f, 1.0f, 0)
+			val clearValues = createClearValues(it, r, g, b, 1.0f, 0)
 
 			renderPassInfo.renderArea(renderArea)
 				.pClearValues(clearValues)
@@ -292,18 +311,19 @@ class Renderer {
 				vkCmdBeginRenderPass(commandBuffer, renderPassInfo, VK_SUBPASS_CONTENTS_INLINE)
 				run {
 					for (renderObject in engine.renderObjects.values) {
-						bindModel(renderObject, it, renderObject.descriptorSets[i], commandBuffer)
-						vkCmdDrawIndexed(commandBuffer, renderObject.indices.size, 1, 0, 0, 0)
+						bindModel(renderObject, it, renderObject.getDescriptorSets()[i], commandBuffer)
+						vkCmdDrawIndexed(commandBuffer, renderObject.getIndices().size, 1, 0, 0, 0)
 					}
 				}
 				vkCmdEndRenderPass(commandBuffer)
 				vkEndCommandBuffer(commandBuffer).ok()
 			}
 		}
+		println("Command Buffers rebuilt! " + engine.renderObjects.size + " objects rendered.")
 	}
 
 	private fun bindModel(
-		renderObject: RenderObject,
+		renderObject: Renderable,
 		matrix: MemoryStack,
 		descriptorSet: Long,
 		commandBuffer: VkCommandBuffer
@@ -311,17 +331,17 @@ class Renderer {
 		vkCmdBindPipeline(
 			commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			renderObject.material.graphicsPipeline
+			renderObject.getMaterial().graphicsPipeline
 		)
 
 		val offsets = matrix.longs(0)
-		val vertexBuffers = matrix.longs(renderObject.vertexBuffer)
+		val vertexBuffers = matrix.longs(renderObject.getVerticesBuffer())
 		vkCmdBindVertexBuffers(commandBuffer, 0, vertexBuffers, offsets)
-		vkCmdBindIndexBuffer(commandBuffer, renderObject.indexBuffer, 0, VK_INDEX_TYPE_UINT32)
+		vkCmdBindIndexBuffer(commandBuffer, renderObject.getIndicesBuffer(), 0, VK_INDEX_TYPE_UINT32)
 		vkCmdBindDescriptorSets(
 			commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			renderObject.material.pipelineLayout,
+			renderObject.getMaterial().pipelineLayout,
 			0,
 			matrix.longs(descriptorSet),
 			null
@@ -335,6 +355,15 @@ class Renderer {
 		device = engine.device
 		createCmdPool(this, engine.surface)
 		createSwapChain(engine)
+	}
+
+	fun clearColor(red: Float, green: Float, blue: Float, rosella: Rosella) {
+		if (this.r != red || this.g != green || this.b != blue) {
+			this.r = red
+			this.g = green
+			this.b = blue
+			rebuildCommandBuffers(renderPass, rosella)
+		}
 	}
 
 	companion object {

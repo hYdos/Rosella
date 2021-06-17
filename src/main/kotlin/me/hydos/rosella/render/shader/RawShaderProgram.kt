@@ -2,7 +2,7 @@ package me.hydos.rosella.render.shader
 
 import me.hydos.rosella.Rosella
 import me.hydos.rosella.render.device.Device
-import me.hydos.rosella.render.model.RenderObject
+import me.hydos.rosella.render.model.Renderable
 import me.hydos.rosella.render.resource.Resource
 import me.hydos.rosella.render.swapchain.SwapChain
 import me.hydos.rosella.render.util.memory.Memory
@@ -12,8 +12,8 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
 
 class RawShaderProgram(
-	val vertexShader: Resource,
-	val fragmentShader: Resource,
+	var vertexShader: Resource?,
+	var fragmentShader: Resource?,
 	val device: Device,
 	val memory: Memory,
 	var maxObjCount: Int,
@@ -21,15 +21,16 @@ class RawShaderProgram(
 ) {
 	var descriptorPool: Long = 0
 	var descriptorSetLayout: Long = 0
+	var attributes = ArrayList<ShaderAttribute>() // TODO: FIXME implement these into the engine
 
 	fun updateUbos(currentImage: Int, swapChain: SwapChain, engine: Rosella) {
 		for (renderObject in engine.renderObjects.values) {
-			renderObject.ubo.update(
+			renderObject.getUbo().update(
 				currentImage,
 				swapChain,
 				engine.camera.view,
 				engine.camera.proj,
-				renderObject.modelTransformMatrix
+				renderObject.getTransformMatrix()
 			)
 		}
 	}
@@ -88,7 +89,7 @@ class RawShaderProgram(
 		}
 	}
 
-	fun createDescriptorSets(swapChain: SwapChain, renderObject: RenderObject) {
+	fun createDescriptorSets(swapChain: SwapChain, renderable: Renderable) {
 		MemoryStack.stackPush().use { stack ->
 			val layouts = stack.mallocLong(swapChain.swapChainImages.size)
 			for (i in 0 until layouts.capacity()) {
@@ -103,22 +104,22 @@ class RawShaderProgram(
 			vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets)
 				.ok("Failed to allocate descriptor sets")
 
-			renderObject.descriptorSets = ArrayList(pDescriptorSets.capacity())
+			renderable.setDescriptorSets(ArrayList(pDescriptorSets.capacity()))
 
 			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
 				.offset(0)
-				.range(renderObject.ubo.getSize().toLong())
+				.range(renderable.getUbo().getSize().toLong())
 
 			val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
 				.imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-				.imageView(renderObject.material.texture.textureImage.view)
-				.sampler(renderObject.material.texture.textureSampler)
+				.imageView(renderable.getMaterial().texture.textureImage.view)
+				.sampler(renderable.getMaterial().texture.textureSampler)
 
 			val descriptorWrites = VkWriteDescriptorSet.callocStack(poolObjects.size, stack)
 
 			for (i in 0 until pDescriptorSets.capacity()) {
 				val descriptorSet = pDescriptorSets[i]
-				bufferInfo.buffer(renderObject.ubo.getUniformBuffers()[i].buffer)
+				bufferInfo.buffer(renderable.getUbo().getUniformBuffers()[i].buffer)
 				poolObjects.forEachIndexed { index, poolObj ->
 					val descriptorWrite = descriptorWrites[index]
 						.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
@@ -139,7 +140,7 @@ class RawShaderProgram(
 					descriptorWrite.dstSet(descriptorSet)
 				}
 				vkUpdateDescriptorSets(device.device, descriptorWrites, null)
-				renderObject.descriptorSets.add(descriptorSet)
+				renderable.getDescriptorSets().add(descriptorSet)
 			}
 		}
 	}
