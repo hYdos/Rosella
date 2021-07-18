@@ -7,9 +7,9 @@ import java.nio.ByteBuffer
  */
 interface UploadableImage {
 
-	fun getWidth(): Int
-	fun getHeight(): Int
-	fun getChannels(): Int
-	fun getPixels(): ByteBuffer
-	fun getImageSize(): Int
+    fun getWidth(): Int
+    fun getHeight(): Int
+    fun getFormat(): ImageFormat
+    fun getSize(): Int
+    fun getPixels(): ByteBuffer?
 }

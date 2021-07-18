@@ -1,28 +1,22 @@
 package me.hydos.rosella.render.shader
 
-import me.hydos.rosella.render.device.Device
-import me.hydos.rosella.render.resource.Identifier
+import me.hydos.rosella.Rosella
 
-class ShaderManager(val device: Device) {
+class ShaderManager(val rosella: Rosella) {
 
-	var shaders = HashMap<Identifier, RawShaderProgram>()
-	var cachedShaders = HashMap<Identifier, ShaderProgram>()
+    var cachedShaders = HashMap<RawShaderProgram, ShaderProgram>()
 
-	fun getOrCreateShader(identifier: Identifier): ShaderProgram? {
-		if(!cachedShaders.containsKey(identifier)) {
-			cachedShaders[identifier] = ShaderProgram(shaders[identifier]!!, device)
-		}
+    fun getOrCreateShader(rawShader: RawShaderProgram): ShaderProgram? {
+        if (!cachedShaders.containsKey(rawShader)) {
+            cachedShaders[rawShader] = ShaderProgram(rawShader, rosella, rawShader.maxObjCount)
+        }
 
-		return cachedShaders[identifier]
-	}
+        return cachedShaders[rawShader]
+    }
 
-	@Deprecated("Try not to store instances of a raw shader program. only store an Identifier or store an ShaderProgram")
-	fun getOrCreateShader(rawShader: RawShaderProgram): ShaderProgram? {
-		for (identifier in shaders.keys) {
-			if(rawShader == shaders[identifier]) {
-				return getOrCreateShader(identifier)
-			}
-		}
-		error("Couldn't find a loaded shader matching that. oh no")
-	}
+    fun free() {
+        for (program in cachedShaders.values) {
+            program.free()
+        }
+    }
 }

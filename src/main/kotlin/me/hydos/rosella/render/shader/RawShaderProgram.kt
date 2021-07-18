@@ -1,152 +1,240 @@
 package me.hydos.rosella.render.shader
 
-import me.hydos.rosella.Rosella
-import me.hydos.rosella.render.device.Device
-import me.hydos.rosella.render.model.Renderable
+import it.unimi.dsi.fastutil.Hash.VERY_FAST_LOAD_FACTOR
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet
+import me.hydos.rosella.device.VulkanDevice
+import me.hydos.rosella.memory.Memory
+import me.hydos.rosella.render.descriptorsets.DescriptorSets
+import me.hydos.rosella.render.renderer.Renderer
 import me.hydos.rosella.render.resource.Resource
-import me.hydos.rosella.render.swapchain.SwapChain
-import me.hydos.rosella.render.util.memory.Memory
+import me.hydos.rosella.render.shader.ubo.Ubo
+import me.hydos.rosella.render.swapchain.Swapchain
+import me.hydos.rosella.render.texture.Texture
+import me.hydos.rosella.render.texture.TextureManager
 import me.hydos.rosella.render.util.ok
+import me.hydos.rosella.scene.`object`.impl.SimpleFramebufferObjectManager
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
 
-class RawShaderProgram(
-	var vertexShader: Resource?,
-	var fragmentShader: Resource?,
-	val device: Device,
-	val memory: Memory,
-	var maxObjCount: Int,
-	vararg var poolObjects: PoolObjType
+open class RawShaderProgram(
+    var vertexShader: Resource?,
+    var fragmentShader: Resource?,
+    val device: VulkanDevice,
+    val memory: Memory,
+    var maxObjCount: Int,
+    private vararg var poolObjects: PoolObjectInfo
 ) {
-	var descriptorPool: Long = 0
-	var descriptorSetLayout: Long = 0
-	var attributes = ArrayList<ShaderAttribute>() // TODO: FIXME implement these into the engine
+    var descriptorPool: Long = 0
+    var descriptorSetLayout: Long = 0
 
-	fun updateUbos(currentImage: Int, swapChain: SwapChain, engine: Rosella) {
-		for (renderObject in engine.renderObjects.values) {
-			renderObject.getUbo().update(
-				currentImage,
-				swapChain,
-				engine.camera.view,
-				engine.camera.proj,
-				renderObject.getTransformMatrix()
-			)
-		}
-	}
+    private val preparableTextures = ReferenceOpenHashSet<Texture?>(3, VERY_FAST_LOAD_FACTOR)
 
-	fun createPool(swapChain: SwapChain) {
-		MemoryStack.stackPush().use { stack ->
-			val poolSizes = VkDescriptorPoolSize.callocStack(poolObjects.size, stack)
+    fun updateUbos(currentImage: Int, swapchain: Swapchain, objectManager: SimpleFramebufferObjectManager) {
+        for (instances in objectManager.renderObjects.values) {
+            for (instance in instances) {
+                instance.ubo.update(
+                    currentImage,
+                    swapchain
+                )
+            }
+        }
+    }
 
-			poolObjects.forEachIndexed { i, poolObj ->
-				poolSizes[i]
-					.type(poolObj.vkType)
-					.descriptorCount(swapChain.swapChainImages.size * maxObjCount)
-			}
+    fun prepareTexturesForRender(
+        renderer: Renderer,
+        textureManager: TextureManager
+    ) { // TODO: should we move this?
+        preparableTextures.forEach {
+            if (it != null) {
+                textureManager.prepareTexture(renderer, it)
+            }
+        }
+        preparableTextures.clear()
+    }
 
-			val poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
-				.pPoolSizes(poolSizes)
-				.maxSets(swapChain.swapChainImages.size * maxObjCount)
+    private fun createPool(swapchain: Swapchain) {
+        if (descriptorPool != 0L) {
+            vkDestroyDescriptorPool(device.rawDevice, descriptorPool, null)
+        }
+        MemoryStack.stackPush().use { stack ->
+            val poolSizes = VkDescriptorPoolSize.callocStack(poolObjects.size, stack)
 
-			val pDescriptorPool = stack.mallocLong(1)
-			vkCreateDescriptorPool(
-				device.device,
-				poolInfo,
-				null,
-				pDescriptorPool
-			).ok("Failed to create descriptor pool")
+            poolObjects.forEachIndexed { i, poolObj ->
+                poolSizes[i]
+                    .type(poolObj.getVkType())
+                    .descriptorCount(swapchain.swapChainImages.size * maxObjCount)
+            }
 
-			descriptorPool = pDescriptorPool[0]
-		}
-	}
+            val poolInfo = VkDescriptorPoolCreateInfo.callocStack(stack)
+                .sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
+                .pPoolSizes(poolSizes)
+                .maxSets(swapchain.swapChainImages.size * maxObjCount)
+                .flags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)
 
-	fun createDescriptorSetLayout() {
-		MemoryStack.stackPush().use {
-			val bindings = VkDescriptorSetLayoutBinding.callocStack(poolObjects.size, it)
+            val pDescriptorPool = stack.mallocLong(1)
+            vkCreateDescriptorPool(
+                device.rawDevice,
+                poolInfo,
+                null,
+                pDescriptorPool
+            ).ok("Failed to create descriptor pool")
 
-			poolObjects.forEachIndexed { i, poolObj ->
-				bindings[i]
-					.binding(i)
-					.descriptorCount(1)
-					.descriptorType(poolObj.vkType)
-					.pImmutableSamplers(null)
-					.stageFlags(poolObj.vkShader)
-			}
+            descriptorPool = pDescriptorPool[0]
+        }
+    }
 
-			val layoutInfo = VkDescriptorSetLayoutCreateInfo.callocStack(it)
-			layoutInfo.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
-			layoutInfo.pBindings(bindings)
-			val pDescriptorSetLayout = it.mallocLong(1)
-			vkCreateDescriptorSetLayout(
-				device.device,
-				layoutInfo,
-				null,
-				pDescriptorSetLayout
-			).ok("Failed to create descriptor set layout")
-			descriptorSetLayout = pDescriptorSetLayout[0]
-		}
-	}
+    fun createDescriptorSetLayout() {
+        MemoryStack.stackPush().use {
+            val bindings = VkDescriptorSetLayoutBinding.callocStack(poolObjects.size, it)
 
-	fun createDescriptorSets(swapChain: SwapChain, renderable: Renderable) {
-		MemoryStack.stackPush().use { stack ->
-			val layouts = stack.mallocLong(swapChain.swapChainImages.size)
-			for (i in 0 until layouts.capacity()) {
-				layouts.put(i, descriptorSetLayout)
-			}
-			val allocInfo = VkDescriptorSetAllocateInfo.callocStack(stack)
-				.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
-				.descriptorPool(descriptorPool)
-				.pSetLayouts(layouts)
-			val pDescriptorSets = stack.mallocLong(swapChain.swapChainImages.size)
+            poolObjects.forEachIndexed { i, poolObj ->
+                bindings[i]
+                    .binding(if (poolObj.getBindingLocation() == -1) i else poolObj.getBindingLocation())
+                    .descriptorCount(1)
+                    .descriptorType(poolObj.getVkType())
+                    .pImmutableSamplers(null)
+                    .stageFlags(poolObj.getShaderStage())
+            }
 
-			vkAllocateDescriptorSets(device.device, allocInfo, pDescriptorSets)
-				.ok("Failed to allocate descriptor sets")
+            val layoutInfo = VkDescriptorSetLayoutCreateInfo.callocStack(it)
+            layoutInfo.sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
+            layoutInfo.pBindings(bindings)
+            val pDescriptorSetLayout = it.mallocLong(1)
+            vkCreateDescriptorSetLayout(
+                device.rawDevice,
+                layoutInfo,
+                null,
+                pDescriptorSetLayout
+            ).ok("Failed to create descriptor set layout")
+            descriptorSetLayout = pDescriptorSetLayout[0]
+        }
+    }
 
-			renderable.setDescriptorSets(ArrayList(pDescriptorSets.capacity()))
+    fun createDescriptorSets(
+        swapchain: Swapchain,
+        logger: org.apache.logging.log4j.Logger,
+        currentTextures: Array<Texture?>,
+        ubo: Ubo
+    ) {
+        this.preparableTextures.addAll(currentTextures)
 
-			val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
-				.offset(0)
-				.range(renderable.getUbo().getSize().toLong())
+        if (descriptorPool == 0L) {
+            createPool(swapchain)
+        }
+        if (descriptorSetLayout == 0L) {
+            logger.warn("Descriptor Set Layouts are invalid! rebuilding... (THIS IS NOT FAST)")
+            createDescriptorSetLayout()
+        }
+        MemoryStack.stackPush().use { stack ->
+            val layouts = stack.mallocLong(swapchain.swapChainImages.size)
+            for (i in 0 until layouts.capacity()) {
+                layouts.put(i, descriptorSetLayout)
+            }
+            val allocInfo = VkDescriptorSetAllocateInfo.callocStack(stack)
+                .sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
+                .descriptorPool(descriptorPool)
+                .pSetLayouts(layouts)
+            val pDescriptorSets = stack.mallocLong(swapchain.swapChainImages.size)
 
-			val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
-				.imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-				.imageView(renderable.getMaterial().texture.textureImage.view)
-				.sampler(renderable.getMaterial().texture.textureSampler)
+            vkAllocateDescriptorSets(device.rawDevice, allocInfo, pDescriptorSets)
+                .ok("Failed to allocate descriptor sets")
 
-			val descriptorWrites = VkWriteDescriptorSet.callocStack(poolObjects.size, stack)
+            val descriptorSets = DescriptorSets(descriptorPool, pDescriptorSets.capacity())
+            val bufferInfo = VkDescriptorBufferInfo.callocStack(1, stack)
+                .offset(0)
+                .range(ubo.getSize().toLong())
 
-			for (i in 0 until pDescriptorSets.capacity()) {
-				val descriptorSet = pDescriptorSets[i]
-				bufferInfo.buffer(renderable.getUbo().getUniformBuffers()[i].buffer)
-				poolObjects.forEachIndexed { index, poolObj ->
-					val descriptorWrite = descriptorWrites[index]
-						.sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-						.dstBinding(index)
-						.dstArrayElement(0)
-						.descriptorType(poolObj.vkType)
-						.descriptorCount(1)
+            val descriptorWrites = VkWriteDescriptorSet.callocStack(poolObjects.size, stack)
 
-					when (poolObj.vkType) {
-						VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER -> {
-							descriptorWrite.pBufferInfo(bufferInfo)
-						}
+            for (i in 0 until pDescriptorSets.capacity()) {
+                val descriptorSet = pDescriptorSets[i]
+                bufferInfo.buffer(ubo.getUniformBuffers()[i].buffer())
+                poolObjects.forEachIndexed { index, poolObj ->
+                    // TODO OPT: maybe group descriptors up by type if that's faster than defining each one by itself
+                    val descriptorWrite = descriptorWrites[index]
+                        .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                        .dstBinding(if (poolObj.getBindingLocation() == -1) index else poolObj.getBindingLocation())
+                        .dstArrayElement(0)
+                        .descriptorType(poolObj.getVkType())
+                        .descriptorCount(1)
 
-						VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER -> {
-							descriptorWrite.pImageInfo(imageInfo)
-						}
-					}
-					descriptorWrite.dstSet(descriptorSet)
-				}
-				vkUpdateDescriptorSets(device.device, descriptorWrites, null)
-				renderable.getDescriptorSets().add(descriptorSet)
-			}
-		}
-	}
+                    when (poolObj.getVkType()) {
+                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER -> {
+                            descriptorWrite.pBufferInfo(bufferInfo)
+                        }
 
-	enum class PoolObjType(val vkType: Int, val vkShader: Int) {
-		UBO(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT),
-		COMBINED_IMG_SAMPLER(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-	}
+                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER -> {
+                            if (poolObj is PoolSamplerInfo) {
+                                val texture = if (poolObj.samplerIndex == -1) {
+                                    TextureManager.BLANK_TEXTURE
+                                } else {
+                                    currentTextures[poolObj.samplerIndex] ?: TextureManager.BLANK_TEXTURE
+                                }
+
+                                val imageInfo = VkDescriptorImageInfo.callocStack(1, stack)
+                                    .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                                    .imageView(texture.textureImage.view)
+                                    .sampler(texture.textureSampler!!)
+
+                                descriptorWrite.pImageInfo(imageInfo)
+                            }
+                        }
+                    }
+                    descriptorWrite.dstSet(descriptorSet)
+                }
+                vkUpdateDescriptorSets(device.rawDevice, descriptorWrites, null)
+                descriptorSets.setDescriptorPool(descriptorPool)
+                descriptorSets.add(descriptorSet)
+            }
+
+            ubo.setDescriptors(descriptorSets)
+        }
+    }
+
+    fun free() {
+        vkDestroyDescriptorSetLayout(device.rawDevice, descriptorSetLayout, null)
+        vkDestroyDescriptorPool(device.rawDevice, descriptorPool, null)
+    }
+
+    interface PoolObjectInfo {
+        /**
+         * If -1, the object will use the current index in the list when iterating
+         * TODO: when converting this to java, make a static variable for -1 and use that
+         */
+        fun getBindingLocation(): Int
+        fun getVkType(): Int
+        fun getShaderStage(): Int
+    }
+
+    enum class PoolUboInfo : PoolObjectInfo {
+        INSTANCE;
+
+        override fun getBindingLocation(): Int {
+            return -1
+        }
+
+        override fun getVkType(): Int {
+            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+        }
+
+        override fun getShaderStage(): Int {
+            return VK_SHADER_STAGE_ALL
+        }
+    }
+
+    data class PoolSamplerInfo(private val bindingLocation: Int, val samplerIndex: Int) : PoolObjectInfo {
+
+        override fun getBindingLocation(): Int {
+            return bindingLocation
+        }
+
+        override fun getVkType(): Int {
+            return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+        }
+
+        override fun getShaderStage(): Int {
+            return VK_SHADER_STAGE_ALL
+        }
+    }
 }

@@ -5,58 +5,56 @@ import org.lwjgl.stb.STBImage
 import org.lwjgl.system.MemoryStack
 import java.nio.ByteBuffer
 
-class StbiImage(resource: Resource) : UploadableImage {
+class StbiImage(resource: Resource, private val format: ImageFormat) : UploadableImage {
 
-	private var height: Int
-	private var width: Int
-	private var channels: Int
-	private var imageSize: Int
-	private var pixels: ByteBuffer
+    private var width: Int
+    private var height: Int
+    private var size: Int
+    private var pixels: ByteBuffer
 
-	init {
-		MemoryStack.stackPush().use { stack ->
-			val file = resource.readAllBytes(true)
-			val pWidth = stack.mallocInt(1)
-			val pHeight = stack.mallocInt(1)
-			val pChannels = stack.mallocInt(1)
-			var pixels: ByteBuffer? =
-				STBImage.stbi_load_from_memory(file, pWidth, pHeight, pChannels, STBImage.STBI_rgb_alpha)
-			if (pixels == null) {
-				pixels = ByteBuffer.wrap(resource.openStream().readAllBytes())
-				if (pixels == null) {
-					throw RuntimeException("Failed to load texture image ${resource.identifier}")
-				}
-			}
+    init {
+        MemoryStack.stackPush().use { stack ->
+            val file = resource.readAllBytes(true)
+            val pWidth = stack.mallocInt(1)
+            val pHeight = stack.mallocInt(1)
+            val pChannels = stack.mallocInt(1)
+            var pixels: ByteBuffer? = STBImage.stbi_load_from_memory(file, pWidth, pHeight, pChannels, format.channels)
+            if (pixels != null) {
+                if (pChannels[0] != format.channels) {
+                    throw RuntimeException("Failed to load texture image ${resource.identifier}: Expected channel count (${format.channels}) did not match returned channel count (${pChannels[0]})")
+                }
+            } else {
+                pixels = ByteBuffer.wrap(resource.openStream().readAllBytes())
+                if (pixels == null) {
+                    throw RuntimeException("Failed to load texture image ${resource.identifier}")
+                }
+            }
 
-			this.width = pWidth[0]
-			this.height = pHeight[0]
-			this.channels = pChannels[0]
-			this.pixels = pixels
-			this.imageSize = width * height * 4 // ARGB = 4?
-			if (imageSize == 0) {
-				throw RuntimeException("ImageSize is equal to 0")
-			}
-		}
-	}
+            this.width = pWidth[0]
+            this.height = pHeight[0]
+            this.size = width * height * format.pixelSize
+            this.pixels = pixels
+        }
+    }
 
 
-	override fun getWidth(): Int {
-		return width
-	}
+    override fun getWidth(): Int {
+        return width
+    }
 
-	override fun getHeight(): Int {
-		return height
-	}
+    override fun getHeight(): Int {
+        return height
+    }
 
-	override fun getChannels(): Int {
-		return channels
-	}
+    override fun getFormat(): ImageFormat {
+        return format
+    }
 
-	override fun getImageSize(): Int {
-		return imageSize
-	}
+    override fun getSize(): Int {
+        return size
+    }
 
-	override fun getPixels(): ByteBuffer {
-		return pixels
-	}
+    override fun getPixels(): ByteBuffer {
+        return pixels
+    }
 }
